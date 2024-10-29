@@ -1,0 +1,4 @@
+forge-std/=lib/forge-std/src/
+ds-test/=lib/ds-test/src/
+ds-token/=lib/ds-token/src/
+ds-value/=lib/ds-value/src/
