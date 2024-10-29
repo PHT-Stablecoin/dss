@@ -3,8 +3,10 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/Script.sol";
+import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Core contracts
 import {Vat} from "dss/vat.sol";
@@ -23,7 +25,9 @@ import {Spotter} from "dss/spot.sol";
 import {End} from "dss/end.sol";
 
 // Test Tokens
-contract XINF is ERC20 {
+contract XINF is
+    ERC20 // Governance Token (MKR)
+{
     constructor(uint256 initialSupply) public ERC20("Infinex Token", "XINF") {
         _mint(msg.sender, initialSupply);
     }
@@ -35,9 +39,15 @@ contract XINF is ERC20 {
     }
 }
 
-contract TestUSDT is ERC20 {
+contract TestUSDT is
+    ERC20 // Collateral Token (USDT)
+{
     constructor(uint256 initialSupply) public ERC20("Test USDT", "tstUSDT") {
         _mint(msg.sender, initialSupply);
+    }
+
+    function decimals() public view virtual override returns (uint8) {
+        return 6;
     }
 }
 
@@ -56,22 +66,29 @@ contract DSValue {
     }
 }
 
-contract MCDDeployScript is Script {
+contract MCDDeployScript is Script, Test {
     // System Parameters
     uint256 constant RAY = 10 ** 27;
     uint256 constant WAD = 10 ** 18;
-    uint256 constant LINE = 10000000 ether; // Total debt ceiling
-    uint256 constant USDT_LINE = 5000000 ether; // USDT debt ceiling
-    uint256 constant USDT_MAT = 110 * 10 ** 25; // USDT Liquidation ratio (110%)
-    uint256 constant DUTY = 1000000001243680656318820312; // Stability fee (4% yearly)
-    uint256 constant CHOP = 113 * 10 ** 25; // Liquidation penalty (13%)
+    uint256 constant RAD = 10 ** 45;
+    // Total debt ceiling - needs to be in RAD
+    uint256 constant LINE = 10000000 * RAD;
+    // USDT debt ceiling - needs to be in RAD
+    uint256 constant USDT_LINE = 5000000 * RAD;
+    // USDT Liquidation ratio (200%) - needs to be in RAY
+    uint256 constant USDT_MAT = 2 * RAY;
+    // Stability fee (4% yearly) - already correct in RAY
+    uint256 constant DUTY = 1000000001243680656318820312;
+    // Liquidation penalty (13%) - needs to be in WAD
+    uint256 constant CHOP = 113 * 10 ** 16; // 1.13 * WAD
 
     // Governance Parameters
-    uint256 constant INITIAL_XINF_SUPPLY = 1000000 ether; // 1M XINF
-    uint256 constant INITIAL_USDT_SUPPLY = 10000000 ether; // 10M USDT
-    uint256 constant BEG = 103 * 10 ** 25; // Minimum bid increase (3%)
-    uint256 constant TTL = 3 hours; // Bid duration
-    uint256 constant TAU = 2 days; // Max auction duration
+    uint256 constant INITIAL_XINF_SUPPLY = 1000000 * WAD;
+    uint256 constant INITIAL_USDT_SUPPLY = 10000000 * (10 ** 6); // USDT has 6 decimals
+    // Minimum bid increase (3%) - needs to be in WAD
+    uint256 constant BEG = 103 * 10 ** 16; // 1.03 * WAD
+    uint256 constant TTL = 3 hours;
+    uint256 constant TAU = 2 days;
 
     // Deployed contract addresses
     Vat public vat;
@@ -120,7 +137,7 @@ contract MCDDeployScript is Script {
         vat.init("USDT-A");
         vat.file("Line", LINE);
         vat.file("USDT-A", "line", USDT_LINE);
-        vat.file("USDT-A", "dust", 100 * RAY); // 100 DAI minimum
+        vat.file("USDT-A", "dust", 100 * RAD); // 100 DAI minimum
 
         // Setup USDT Join Adapter
         usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
@@ -128,7 +145,7 @@ contract MCDDeployScript is Script {
 
         // Setup Liquidation with correct units
         dog.file("USDT-A", "chop", CHOP);
-        dog.file("USDT-A", "hole", 5000 * RAY);
+        dog.file("USDT-A", "hole", 5000 * RAD);
 
         // Setup Stability Fee
         jug.init("USDT-A");
@@ -141,10 +158,10 @@ contract MCDDeployScript is Script {
         // Setup Price Feed with correct decimal handling
         // Deploy Price Oracle Mock
         usdtPip = new DSValue();
-        // USDT has 18 decimals in our test token, so we use WAD
-        usdtPip.setValue(1 * WAD); // 1 USDT = $1
+
+        usdtPip.setValue(1 * (10 ** uint256(usdt.decimals()))); // 1 USDT = $1
         spot.file("USDT-A", "pip", address(usdtPip));
-        spot.file("USDT-A", "mat", USDT_MAT);
+        spot.file("USDT-A", "mat", USDT_MAT); // Already in RAY
         spot.poke("USDT-A");
 
         // Deploy Liquidation Auction
@@ -158,11 +175,15 @@ contract MCDDeployScript is Script {
         usdtClip.file("vow", address(vow));
 
         // Setup Clipper parameters
-        usdtClip.file("buf", 120 * 10 ** 25); // Maximum price multiplier (20%)
-        usdtClip.file("tail", 3 hours); // Max auction duration
-        usdtClip.file("cusp", 60 * 10 ** 25); // Percentage drop before reset
-        usdtClip.file("chip", 1 * 10 ** 25); // Percentage for keeper reward
-        usdtClip.file("tip", 100 ether); // Flat fee for keeper reward
+        // buf (Maximum price multiplier 20%) - needs to be in RAY
+        usdtClip.file("buf", 120 * 10 ** 25); // 1.2 * RAY
+        usdtClip.file("tail", 3 hours);
+        // cusp (Percentage drop before reset) - needs to be in RAY
+        usdtClip.file("cusp", 60 * 10 ** 25); // 0.6 * RAY
+        // chip (Percentage for keeper reward) - needs to be in WAD
+        usdtClip.file("chip", 1 * 10 ** 16); // 0.01 * WAD
+        // tip (Flat fee for keeper reward) - needs to be in RAD
+        usdtClip.file("tip", 100 * RAD);
 
         // Auth Setup
         vat.rely(address(daiJoin));
@@ -189,8 +210,18 @@ contract MCDDeployScript is Script {
 
         address user = address(0x1);
         address liquidator = address(0x2);
-        uint256 usdtAmount = 1000 * WAD; // 1000 USDT
-        uint256 drawAmount = 500 * RAY; // 500 DAI (in RAY precision)
+        uint256 usdtAmount = 1000 * (10 ** uint256(usdt.decimals())); // 1000 USDT
+
+        // Need to call drip to update rate to current time
+        jug.drip("USDT-A");
+        (, uint256 rate, , , ) = vat.ilks("USDT-A");
+        console.log("Rate:", rate);
+
+        uint256 drawAmount = 100 * WAD;
+
+        console.log("Usdt amount:", usdtAmount);
+        console.log("Draw amount:", drawAmount);
+
         // Setup test scenario
         vm.startPrank(address(msg.sender));
         usdt.transfer(user, usdtAmount);
@@ -201,6 +232,18 @@ contract MCDDeployScript is Script {
         vm.startPrank(user);
         usdt.approve(address(usdtJoin), usdtAmount);
         usdtJoin.join(user, usdtAmount);
+
+        // check join worked correctly
+        assertEq(
+            IERC20(address(usdt)).balanceOf(address(usdtJoin)),
+            usdtAmount
+        );
+
+        assertEq(
+            vat.gem("USDT-A", user),
+            usdtAmount,
+            "Vat: Incorrect collateral amount deposited"
+        );
 
         // User opens vault and draws DAI
         (uint256 ink, uint256 art) = vat.urns("USDT-A", user);
@@ -222,7 +265,7 @@ contract MCDDeployScript is Script {
             user,
             user,
             int256(usdtAmount),
-            int256(drawAmount / RAY) // Convert to correct unit for art
+            int256(drawAmount) // Convert to correct unit for art
         );
 
         // Verify vault state
@@ -236,8 +279,8 @@ contract MCDDeployScript is Script {
 
         vm.stopPrank();
 
-        // Simulate price drop and liquidation
-        usdtPip.setValue(0.8 ether); // USDT price drops to $0.80
+        // For price drop test, set price in WAD
+        usdtPip.setValue(8 * 10 ** 17); // 0.80 USD in WAD
         spot.poke("USDT-A");
 
         console.log("\nPrice dropped to $0.80, checking liquidation...");
@@ -258,5 +301,28 @@ contract MCDDeployScript is Script {
         vm.stopPrank();
 
         console.log("\nAll post-deployment checks passed!");
+    }
+
+    // Convert token amount to dink
+    function tokenToWad(
+        uint256 amount,
+        uint8 decimals
+    ) private pure returns (uint256) {
+        return amount * 10 ** (18 - uint256(decimals));
+    }
+
+    // Convert DAI amount to dart
+    function daiToRay(
+        uint256 daiAmount,
+        uint256 rate
+    ) private pure returns (uint256) {
+        return (daiAmount * RAY) / rate;
+    }
+
+    function ray(uint256 wad) internal pure returns (uint256) {
+        return wad * 10 ** 9;
+    }
+    function rad(uint256 wad) internal pure returns (uint256) {
+        return wad * 10 ** 27;
     }
 }

@@ -19,50 +19,62 @@
 
 pragma solidity ^0.6.12;
 
+import "forge-std/console.sol";
+
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
 
 contract Vat {
     // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address usr) external auth { require(live == 1, "Vat/not-live"); wards[usr] = 1; }
-    function deny(address usr) external auth { require(live == 1, "Vat/not-live"); wards[usr] = 0; }
-    modifier auth {
+    mapping(address => uint) public wards;
+    function rely(address usr) external auth {
+        require(live == 1, "Vat/not-live");
+        wards[usr] = 1;
+    }
+    function deny(address usr) external auth {
+        require(live == 1, "Vat/not-live");
+        wards[usr] = 0;
+    }
+    modifier auth() {
         require(wards[msg.sender] == 1, "Vat/not-authorized");
         _;
     }
 
-    mapping(address => mapping (address => uint)) public can;
-    function hope(address usr) external { can[msg.sender][usr] = 1; }
-    function nope(address usr) external { can[msg.sender][usr] = 0; }
+    mapping(address => mapping(address => uint)) public can;
+    function hope(address usr) external {
+        can[msg.sender][usr] = 1;
+    }
+    function nope(address usr) external {
+        can[msg.sender][usr] = 0;
+    }
     function wish(address bit, address usr) internal view returns (bool) {
         return either(bit == usr, can[bit][usr] == 1);
     }
 
     // --- Data ---
     struct Ilk {
-        uint256 Art;   // Total Normalised Debt     [wad]
-        uint256 rate;  // Accumulated Rates         [ray]
-        uint256 spot;  // Price with Safety Margin  [ray]
-        uint256 line;  // Debt Ceiling              [rad]
-        uint256 dust;  // Urn Debt Floor            [rad]
+        uint256 Art; // Total Normalised Debt     [wad]
+        uint256 rate; // Accumulated Rates         [ray]
+        uint256 spot; // Price with Safety Margin  [ray]
+        uint256 line; // Debt Ceiling              [rad]
+        uint256 dust; // Urn Debt Floor            [rad]
     }
     struct Urn {
-        uint256 ink;   // Locked Collateral  [wad]
-        uint256 art;   // Normalised Debt    [wad]
+        uint256 ink; // Locked Collateral  [wad]
+        uint256 art; // Normalised Debt    [wad]
     }
 
-    mapping (bytes32 => Ilk)                       public ilks;
-    mapping (bytes32 => mapping (address => Urn )) public urns;
-    mapping (bytes32 => mapping (address => uint)) public gem;  // [wad]
-    mapping (address => uint256)                   public dai;  // [rad]
-    mapping (address => uint256)                   public sin;  // [rad]
+    mapping(bytes32 => Ilk) public ilks;
+    mapping(bytes32 => mapping(address => Urn)) public urns;
+    mapping(bytes32 => mapping(address => uint)) public gem; // [wad]
+    mapping(address => uint256) public dai; // [rad]
+    mapping(address => uint256) public sin; // [rad]
 
-    uint256 public debt;  // Total Dai Issued    [rad]
-    uint256 public vice;  // Total Unbacked Dai  [rad]
-    uint256 public Line;  // Total Debt Ceiling  [rad]
-    uint256 public live;  // Active Flag
+    uint256 public debt; // Total Dai Issued    [rad]
+    uint256 public vice; // Total Unbacked Dai  [rad]
+    uint256 public Line; // Total Debt Ceiling  [rad]
+    uint256 public live; // Active Flag
 
     // --- Init ---
     constructor() public {
@@ -133,14 +145,25 @@ contract Vat {
     }
 
     function either(bool x, bool y) internal pure returns (bool z) {
-        assembly{ z := or(x, y)}
+        assembly {
+            z := or(x, y)
+        }
     }
     function both(bool x, bool y) internal pure returns (bool z) {
-        assembly{ z := and(x, y)}
+        assembly {
+            z := and(x, y)
+        }
     }
 
     // --- CDP Manipulation ---
-    function frob(bytes32 i, address u, address v, address w, int dink, int dart) external {
+    function frob(
+        bytes32 i,
+        address u,
+        address v,
+        address w,
+        int dink,
+        int dart
+    ) external {
         // system is live
         require(live == 1, "Vat/not-live");
 
@@ -155,15 +178,36 @@ contract Vat {
 
         int dtab = _mul(ilk.rate, dart);
         uint tab = _mul(ilk.rate, urn.art);
-        debt     = _add(debt, dtab);
+        debt = _add(debt, dtab);
+
+        console.log("tab:", tab);
+        console.log("_mul(urn.ink, ilk.spot):", _mul(urn.ink, ilk.spot));
+        console.log("dart:", dart);
+        console.log("ilk.rate", ilk.rate);
+        console.log("_mul(ilk.Art, ilk.rate)", _mul(ilk.Art, ilk.rate));
+        console.log("ilk.line", ilk.line);
+        console.log("debt", debt);
+        console.log("Line", Line);
 
         // either debt has decreased, or debt ceilings are not exceeded
-        require(either(dart <= 0, both(_mul(ilk.Art, ilk.rate) <= ilk.line, debt <= Line)), "Vat/ceiling-exceeded");
+        require(
+            either(
+                dart <= 0,
+                both(_mul(ilk.Art, ilk.rate) <= ilk.line, debt <= Line)
+            ),
+            "Vat/ceiling-exceeded"
+        );
         // urn is either less risky than before, or it is safe
-        require(either(both(dart <= 0, dink >= 0), tab <= _mul(urn.ink, ilk.spot)), "Vat/not-safe");
+        require(
+            either(both(dart <= 0, dink >= 0), tab <= _mul(urn.ink, ilk.spot)),
+            "Vat/not-safe"
+        );
 
         // urn is either more safe, or the owner consents
-        require(either(both(dart <= 0, dink >= 0), wish(u, msg.sender)), "Vat/not-allowed-u");
+        require(
+            either(both(dart <= 0, dink >= 0), wish(u, msg.sender)),
+            "Vat/not-allowed-u"
+        );
         // collateral src consents
         require(either(dink <= 0, wish(v, msg.sender)), "Vat/not-allowed-v");
         // debt dst consents
@@ -173,13 +217,19 @@ contract Vat {
         require(either(urn.art == 0, tab >= ilk.dust), "Vat/dust");
 
         gem[i][v] = _sub(gem[i][v], dink);
-        dai[w]    = _add(dai[w],    dtab);
+        dai[w] = _add(dai[w], dtab);
 
         urns[i][u] = urn;
-        ilks[i]    = ilk;
+        ilks[i] = ilk;
     }
     // --- CDP Fungibility ---
-    function fork(bytes32 ilk, address src, address dst, int dink, int dart) external {
+    function fork(
+        bytes32 ilk,
+        address src,
+        address dst,
+        int dink,
+        int dart
+    ) external {
         Urn storage u = urns[ilk][src];
         Urn storage v = urns[ilk][dst];
         Ilk storage i = ilks[ilk];
@@ -193,7 +243,10 @@ contract Vat {
         uint vtab = _mul(v.art, i.rate);
 
         // both sides consent
-        require(both(wish(src, msg.sender), wish(dst, msg.sender)), "Vat/not-allowed");
+        require(
+            both(wish(src, msg.sender), wish(dst, msg.sender)),
+            "Vat/not-allowed"
+        );
 
         // both sides safe
         require(utab <= _mul(u.ink, i.spot), "Vat/not-safe-src");
@@ -204,7 +257,14 @@ contract Vat {
         require(either(vtab >= i.dust, v.art == 0), "Vat/dust-dst");
     }
     // --- CDP Confiscation ---
-    function grab(bytes32 i, address u, address v, address w, int dink, int dart) external auth {
+    function grab(
+        bytes32 i,
+        address u,
+        address v,
+        address w,
+        int dink,
+        int dart
+    ) external auth {
         Urn storage urn = urns[i][u];
         Ilk storage ilk = ilks[i];
 
@@ -215,8 +275,8 @@ contract Vat {
         int dtab = _mul(ilk.rate, dart);
 
         gem[i][v] = _sub(gem[i][v], dink);
-        sin[w]    = _sub(sin[w],    dtab);
-        vice      = _sub(vice,      dtab);
+        sin[w] = _sub(sin[w], dtab);
+        vice = _sub(vice, dtab);
     }
 
     // --- Settlement ---
@@ -224,14 +284,14 @@ contract Vat {
         address u = msg.sender;
         sin[u] = _sub(sin[u], rad);
         dai[u] = _sub(dai[u], rad);
-        vice   = _sub(vice,   rad);
-        debt   = _sub(debt,   rad);
+        vice = _sub(vice, rad);
+        debt = _sub(debt, rad);
     }
     function suck(address u, address v, uint rad) external auth {
         sin[u] = _add(sin[u], rad);
         dai[v] = _add(dai[v], rad);
-        vice   = _add(vice,   rad);
-        debt   = _add(debt,   rad);
+        vice = _add(vice, rad);
+        debt = _add(debt, rad);
     }
 
     // --- Rates ---
@@ -239,8 +299,8 @@ contract Vat {
         require(live == 1, "Vat/not-live");
         Ilk storage ilk = ilks[i];
         ilk.rate = _add(ilk.rate, rate);
-        int rad  = _mul(ilk.Art, rate);
-        dai[u]   = _add(dai[u], rad);
-        debt     = _add(debt,   rad);
+        int rad = _mul(ilk.Art, rate);
+        dai[u] = _add(dai[u], rad);
+        debt = _add(debt, rad);
     }
 }
