@@ -28,13 +28,16 @@ contract MCDDeployScript is Script {
     uint256 constant DUTY = 1.05e27; // Stability fee (5%)
     uint256 constant CHOP = 1.13e27; // Liquidation penalty (13%)
 
+    // @TODO parameterize this or get from chain
+    uint256 constant CHAIN_ID = 1;
+
     function run() external {
         // Deploy core contracts
         vm.startBroadcast();
 
         // Deploy Core System
         Vat vat = new Vat();
-        Dai dai = new Dai(0); // chainId
+        Dai dai = new Dai(CHAIN_ID);
         DaiJoin daiJoin = new DaiJoin(address(vat), address(dai));
         Jug jug = new Jug(address(vat));
         Vow vow = new Vow(address(vat), address(0), address(0)); // Update flap/flop later
@@ -62,21 +65,21 @@ contract MCDDeployScript is Script {
         end.file("spot", address(spotter));
 
         // Initialize Core System
-        vat.init("ETH-A"); // Initialize first collateral type
+        vat.init("USDT-A"); // Initialize first collateral type
         vat.file("Line", LINE); // Set total debt ceiling
-        vat.file("ETH-A", "line", ILKS_LINE); // Set collateral debt ceiling
-        vat.file("ETH-A", "dust", 100 ether); // Minimum debt size
+        vat.file("USDT-A", "line", ILKS_LINE); // Set collateral debt ceiling
+        vat.file("USDT-A", "dust", 100 ether); // Minimum debt size
 
         // Setup Liquidation Parameters
-        dog.file("ETH-A", "chop", CHOP);
-        dog.file("ETH-A", "hole", 5000 ether);
+        dog.file("USDT-A", "chop", CHOP);
+        dog.file("USDT-A", "hole", 5000 ether);
 
         // Setup Stability Fee
-        jug.init("ETH-A");
-        jug.file("ETH-A", "duty", DUTY);
+        jug.init("USDT-A");
+        jug.file("USDT-A", "duty", DUTY);
 
         // Setup Price Feed
-        spotter.file("ETH-A", "mat", MAT);
+        spotter.file("USDT-A", "mat", MAT);
 
         // Auth Setup
         vat.rely(address(daiJoin));
@@ -89,7 +92,7 @@ contract MCDDeployScript is Script {
 
         // Deploy Collateral Adapter
         // Note: In production, you'd deploy actual collateral tokens
-        GemJoin ethJoin = new GemJoin(address(vat), "ETH-A", address(0));
+        GemJoin ethJoin = new GemJoin(address(vat), "USDT-A", address(dai));
         vat.rely(address(ethJoin));
 
         // Deploy Liquidation Auction Contract
@@ -97,13 +100,13 @@ contract MCDDeployScript is Script {
             address(vat),
             address(spotter),
             address(dog),
-            "ETH-A"
+            "USDT-A"
         );
         dog.rely(address(clip));
         clip.file("vow", address(vow));
 
         // Additional system parameters
-        vat.file("ETH-A", "dust", 100 ether); // Minimum debt size
+        vat.file("USDT-A", "dust", 100 ether); // Minimum debt size
         clip.file("buf", 1.2e27); // Liquidation penalty
         clip.file("tail", 3 hours); // Max auction duration
         clip.file("cusp", 0.4e27); // Percentage drop before reset
@@ -126,7 +129,7 @@ contract MCDDeployScript is Script {
         console.log("FLOP:", address(flop));
         console.log("");
         console.log("Collateral Specific:");
-        console.log("ETH_JOIN:", address(ethJoin));
-        console.log("ETH_CLIP:", address(clip));
+        console.log("USDT_JOIN:", address(ethJoin));
+        console.log("USDT_CLIP:", address(clip));
     }
 }
