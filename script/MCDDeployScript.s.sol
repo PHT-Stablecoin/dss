@@ -1,135 +1,262 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // Core contracts
-import {Vat} from "../src/vat.sol";
-import {Jug} from "../src/jug.sol";
-import {Vow} from "../src/vow.sol";
-import {Cat} from "../src/cat.sol";
-import {Dog} from "../src/dog.sol";
-import {Dai} from "../src/dai.sol";
-import {DaiJoin} from "../src/join.sol";
-import {Flapper} from "../src/flap.sol";
-import {Flopper} from "../src/flop.sol";
-import {Flipper} from "../src/flip.sol";
-import {Clipper} from "../src/clip.sol";
-import {GemJoin} from "../src/join.sol";
-import {Spotter} from "../src/spot.sol";
-import {End} from "../src/end.sol";
+import {Vat} from "dss/vat.sol";
+import {Jug} from "dss/jug.sol";
+import {Vow} from "dss/vow.sol";
+import {Cat} from "dss/cat.sol";
+import {Dog} from "dss/dog.sol";
+import {Dai} from "dss/dai.sol";
+import {DaiJoin} from "dss/join.sol";
+import {Flapper} from "dss/flap.sol";
+import {Flopper} from "dss/flop.sol";
+import {Flipper} from "dss/flip.sol";
+import {Clipper} from "dss/clip.sol";
+import {GemJoin} from "dss/join.sol";
+import {Spotter} from "dss/spot.sol";
+import {End} from "dss/end.sol";
+
+// Test Tokens
+contract XINF is ERC20 {
+    constructor(uint256 initialSupply) public ERC20("Infinex Token", "XINF") {
+        _mint(msg.sender, initialSupply);
+    }
+
+    address public gov;
+    function setGov(address _gov) external {
+        require(msg.sender == gov || gov == address(0), "XINF/not-authorized");
+        gov = _gov;
+    }
+}
+
+contract TestUSDT is ERC20 {
+    constructor(uint256 initialSupply) public ERC20("Test USDT", "tstUSDT") {
+        _mint(msg.sender, initialSupply);
+    }
+}
+
+// Oracle Mock for Testing
+contract DSValue {
+    bytes32 public value;
+    function setValue(uint256 val) external {
+        value = bytes32(val);
+    }
+    function read() external view returns (bytes32) {
+        return value;
+    }
+
+    function peek() external view returns (bytes32, bool) {
+        return (value, true);
+    }
+}
 
 contract MCDDeployScript is Script {
     // System Parameters
+    uint256 constant RAY = 10 ** 27;
+    uint256 constant WAD = 10 ** 18;
     uint256 constant LINE = 10000000 ether; // Total debt ceiling
-    uint256 constant ILKS_LINE = 5000000 ether; // Individual collateral debt ceiling
-    uint256 constant MAT = 1.5e27; // Liquidation ratio (150%)
-    uint256 constant DUTY = 1.05e27; // Stability fee (5%)
-    uint256 constant CHOP = 1.13e27; // Liquidation penalty (13%)
+    uint256 constant USDT_LINE = 5000000 ether; // USDT debt ceiling
+    uint256 constant USDT_MAT = 110 * 10 ** 25; // USDT Liquidation ratio (110%)
+    uint256 constant DUTY = 1000000001243680656318820312; // Stability fee (4% yearly)
+    uint256 constant CHOP = 113 * 10 ** 25; // Liquidation penalty (13%)
 
-    // @TODO parameterize this or get from chain
-    uint256 constant CHAIN_ID = 1;
+    // Governance Parameters
+    uint256 constant INITIAL_XINF_SUPPLY = 1000000 ether; // 1M XINF
+    uint256 constant INITIAL_USDT_SUPPLY = 10000000 ether; // 10M USDT
+    uint256 constant BEG = 103 * 10 ** 25; // Minimum bid increase (3%)
+    uint256 constant TTL = 3 hours; // Bid duration
+    uint256 constant TAU = 2 days; // Max auction duration
+
+    // Deployed contract addresses
+    Vat public vat;
+    Dai public dai;
+    DaiJoin public daiJoin;
+    XINF public xinf;
+    TestUSDT public usdt;
+    GemJoin public usdtJoin;
+    Jug public jug;
+    Vow public vow;
+    Dog public dog;
+    Spotter public spot;
+    DSValue public usdtPip;
+    Clipper public usdtClip;
 
     function run() external {
-        // Deploy core contracts
         vm.startBroadcast();
 
+        // Deploy Tokens
+        xinf = new XINF(INITIAL_XINF_SUPPLY);
+        usdt = new TestUSDT(INITIAL_USDT_SUPPLY);
+
         // Deploy Core System
-        Vat vat = new Vat();
-        Dai dai = new Dai(CHAIN_ID);
-        DaiJoin daiJoin = new DaiJoin(address(vat), address(dai));
-        Jug jug = new Jug(address(vat));
-        Vow vow = new Vow(address(vat), address(0), address(0)); // Update flap/flop later
-        Dog dog = new Dog(address(vat));
-        Spotter spotter = new Spotter(address(vat));
+        vat = new Vat();
+        dai = new Dai(0); // chainId
+        daiJoin = new DaiJoin(address(vat), address(dai));
+        jug = new Jug(address(vat));
 
-        // Deploy Price Feed Module
-        // Note: In production, you'd want to deploy actual price feeds
-        // This is a simplified example
+        // Deploy Auction Modules
+        Flapper flap = new Flapper(address(vat), address(xinf));
+        Flopper flop = new Flopper(address(vat), address(xinf));
 
-        // Deploy Liquidation Module
-        Flapper flap = new Flapper(address(vat), address(dai));
-        Flopper flop = new Flopper(address(vat), address(0)); // gov token
-
-        // Update Vow addresses
-        vow.file("flapper", address(flap));
-        vow.file("flopper", address(flop));
+        // Deploy System Modules
+        vow = new Vow(address(vat), address(flop), address(flap));
+        dog = new Dog(address(vat));
+        spot = new Spotter(address(vat));
 
         // Deploy End (Emergency Shutdown)
         End end = new End();
         end.file("vat", address(vat));
-        end.file("cat", address(0)); // Legacy
         end.file("dog", address(dog));
         end.file("vow", address(vow));
-        end.file("spot", address(spotter));
+        end.file("spot", address(spot));
 
-        // Initialize Core System
-        vat.init("USDT-A"); // Initialize first collateral type
-        vat.file("Line", LINE); // Set total debt ceiling
-        vat.file("USDT-A", "line", ILKS_LINE); // Set collateral debt ceiling
-        vat.file("USDT-A", "dust", 100 ether); // Minimum debt size
+        // Initialize USDT as Collateral
+        vat.init("USDT-A");
+        vat.file("Line", LINE);
+        vat.file("USDT-A", "line", USDT_LINE);
+        vat.file("USDT-A", "dust", 100 * RAY); // 100 DAI minimum
 
-        // Setup Liquidation Parameters
+        // Setup USDT Join Adapter
+        usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
+        vat.rely(address(usdtJoin));
+
+        // Setup Liquidation with correct units
         dog.file("USDT-A", "chop", CHOP);
-        dog.file("USDT-A", "hole", 5000 ether);
+        dog.file("USDT-A", "hole", 5000 * RAY);
 
         // Setup Stability Fee
         jug.init("USDT-A");
         jug.file("USDT-A", "duty", DUTY);
 
         // Setup Price Feed
-        spotter.file("USDT-A", "mat", MAT);
+        // need to auth spotter before we can poke
+        vat.rely(address(spot));
+
+        // Setup Price Feed with correct decimal handling
+        // Deploy Price Oracle Mock
+        usdtPip = new DSValue();
+        // USDT has 18 decimals in our test token, so we use WAD
+        usdtPip.setValue(1 * WAD); // 1 USDT = $1
+        spot.file("USDT-A", "pip", address(usdtPip));
+        spot.file("USDT-A", "mat", USDT_MAT);
+        spot.poke("USDT-A");
+
+        // Deploy Liquidation Auction
+        usdtClip = new Clipper(
+            address(vat),
+            address(spot),
+            address(dog),
+            "USDT-A"
+        );
+        dog.rely(address(usdtClip));
+        usdtClip.file("vow", address(vow));
+
+        // Setup Clipper parameters
+        usdtClip.file("buf", 120 * 10 ** 25); // Maximum price multiplier (20%)
+        usdtClip.file("tail", 3 hours); // Max auction duration
+        usdtClip.file("cusp", 60 * 10 ** 25); // Percentage drop before reset
+        usdtClip.file("chip", 1 * 10 ** 25); // Percentage for keeper reward
+        usdtClip.file("tip", 100 ether); // Flat fee for keeper reward
 
         // Auth Setup
         vat.rely(address(daiJoin));
         vat.rely(address(jug));
-        vat.rely(address(spotter));
+        vat.rely(address(spot));
         vat.rely(address(dog));
         vat.rely(address(end));
-
+        vat.rely(address(flap));
+        vat.rely(address(flop));
         dai.rely(address(daiJoin));
+        xinf.setGov(msg.sender);
 
-        // Deploy Collateral Adapter
-        // Note: In production, you'd deploy actual collateral tokens
-        GemJoin ethJoin = new GemJoin(address(vat), "USDT-A", address(dai));
-        vat.rely(address(ethJoin));
-
-        // Deploy Liquidation Auction Contract
-        Clipper clip = new Clipper(
-            address(vat),
-            address(spotter),
-            address(dog),
-            "USDT-A"
-        );
-        dog.rely(address(clip));
-        clip.file("vow", address(vow));
-
-        // Additional system parameters
-        vat.file("USDT-A", "dust", 100 ether); // Minimum debt size
-        clip.file("buf", 1.2e27); // Liquidation penalty
-        clip.file("tail", 3 hours); // Max auction duration
-        clip.file("cusp", 0.4e27); // Percentage drop before reset
-        clip.file("chip", 0.02e27); // Percentage for keeper reward
-        clip.file("tip", 100 ether); // Flat fee for keeper reward
+        flap.rely(address(vow));
+        flop.rely(address(vow));
 
         vm.stopBroadcast();
 
-        // Log deployed addresses
-        console.log("Core Contracts:");
-        console.log("VAT:", address(vat));
-        console.log("DAI:", address(dai));
-        console.log("DAI_JOIN:", address(daiJoin));
-        console.log("JUG:", address(jug));
-        console.log("VOW:", address(vow));
-        console.log("DOG:", address(dog));
-        console.log("SPOTTER:", address(spotter));
-        console.log("END:", address(end));
-        console.log("FLAP:", address(flap));
-        console.log("FLOP:", address(flop));
-        console.log("");
-        console.log("Collateral Specific:");
-        console.log("USDT_JOIN:", address(ethJoin));
-        console.log("USDT_CLIP:", address(clip));
+        // Run post-deployment checks
+        checkDeployment();
+    }
+
+    function checkDeployment() internal {
+        console.log("\nRunning post-deployment checks...");
+
+        address user = address(0x1);
+        address liquidator = address(0x2);
+        uint256 usdtAmount = 1000 * WAD; // 1000 USDT
+        uint256 drawAmount = 500 * RAY; // 500 DAI (in RAY precision)
+        // Setup test scenario
+        vm.startPrank(address(msg.sender));
+        usdt.transfer(user, usdtAmount);
+        xinf.transfer(liquidator, 1000 * WAD);
+        vm.stopPrank();
+
+        // User approves and joins USDT
+        vm.startPrank(user);
+        usdt.approve(address(usdtJoin), usdtAmount);
+        usdtJoin.join(user, usdtAmount);
+
+        // User opens vault and draws DAI
+        (uint256 ink, uint256 art) = vat.urns("USDT-A", user);
+        require(ink == 0 && art == 0, "Vault should start empty");
+
+        // First, approve the vat to manipulate user's USDT
+        vat.hope(address(usdtJoin));
+        // Debug prints before frob
+        console.log("Initial state:");
+        console.log("Collateral to lock (ink):", usdtAmount);
+        console.log("DAI to generate (art):", drawAmount);
+        bytes32 ilk = "USDT-A";
+        (uint256 Art, , uint256 Spot, , ) = vat.ilks(ilk);
+        console.log("Current ilk Art:", Art);
+        console.log("Current ilk Spot:", Spot);
+        vat.frob(
+            "USDT-A",
+            user,
+            user,
+            user,
+            int256(usdtAmount),
+            int256(drawAmount / RAY) // Convert to correct unit for art
+        );
+
+        // Verify vault state
+        (ink, art) = vat.urns("USDT-A", user);
+        require(ink == usdtAmount, "Incorrect collateral amount");
+        require(art == drawAmount, "Incorrect debt amount");
+
+        console.log("Vault opened successfully");
+        console.log("Collateral: ", ink);
+        console.log("Debt: ", art);
+
+        vm.stopPrank();
+
+        // Simulate price drop and liquidation
+        usdtPip.setValue(0.8 ether); // USDT price drops to $0.80
+        spot.poke("USDT-A");
+
+        console.log("\nPrice dropped to $0.80, checking liquidation...");
+
+        // Liquidator takes action
+        vm.startPrank(liquidator);
+        uint256 id = dog.bark("USDT-A", user, address(liquidator));
+        require(id > 0, "Liquidation should succeed");
+
+        // Verify vault state after liquidation
+        (ink, art) = vat.urns("USDT-A", user);
+        require(ink == 0, "Vault should be emptied");
+        require(art == 0, "Debt should be cleared");
+
+        console.log("Liquidation successful");
+        console.log("Final ink: ", ink);
+        console.log("Final art: ", art);
+        vm.stopPrank();
+
+        console.log("\nAll post-deployment checks passed!");
     }
 }
