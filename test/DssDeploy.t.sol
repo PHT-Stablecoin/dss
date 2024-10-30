@@ -81,6 +81,17 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(vat.gem("ETH", address(this)), 1 ether);
     }
 
+    function testJoinUSDT() public {
+        deploy();
+        usdt.mint(1 ether);
+        assertEq(usdt.balanceOf(address(this)), 1 ether);
+        assertEq(vat.gem("USDT-A", address(this)), 0);
+        usdt.approve(address(usdtJoin), 1 ether);
+        usdtJoin.join(address(this), 1 ether);
+        assertEq(usdt.balanceOf(address(this)), 0);
+        assertEq(vat.gem("USDT-A", address(this)), 1 ether);
+    }
+
     function testJoinGem() public {
         deploy();
         col.mint(1 ether);
@@ -345,7 +356,7 @@ contract DssDeployTest is DssDeployTestBase {
         user2.doTend(address(ethFlip), batchId, 1 ether, rad(140 ether));
         user1.doTend(address(ethFlip), batchId, 1 ether, rad(180 ether));
 
-        hevm.warp(now + ethFlip.ttl() + 1);
+        vm.warp(now + ethFlip.ttl() + 1);
         user1.doDeal(address(ethFlip), batchId);
 
         vow.flog(eraBite);
@@ -363,10 +374,10 @@ contract DssDeployTest is DssDeployTestBase {
         deploy();
         uint batchId = _flop();
         user1.doDent(address(flop), batchId, 0.6 ether, rad(20 ether));
-        hevm.warp(now + flop.ttl() - 1);
+        vm.warp(now + flop.ttl() - 1);
         user2.doDent(address(flop), batchId, 0.2 ether, rad(20 ether));
         user1.doDent(address(flop), batchId, 0.16 ether, rad(20 ether));
-        hevm.warp(now + flop.ttl() + 1);
+        vm.warp(now + flop.ttl() + 1);
         uint prevGovSupply = gov.totalSupply();
         user1.doDeal(address(flop), batchId);
         assertEq(gov.totalSupply(), prevGovSupply + 0.16 ether);
@@ -381,7 +392,7 @@ contract DssDeployTest is DssDeployTestBase {
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 0.5 ether);
         vat.frob("ETH", address(this), address(this), address(this), 0.1 ether, 10 ether);
-        hevm.warp(now + 1);
+        vm.warp(now + 1);
         assertEq(vat.dai(address(vow)), 0);
         jug.drip("ETH");
         assertEq(vat.dai(address(vow)), rad(10 * 0.05 ether));
@@ -409,7 +420,7 @@ contract DssDeployTest is DssDeployTestBase {
 
         assertEq(gov.balanceOf(address(user1)), 1 ether - 0.0016 ether);
         assertEq(gov.balanceOf(address(user2)), 1 ether);
-        hevm.warp(now + flap.ttl() + 1);
+        vm.warp(now + flap.ttl() + 1);
         assertEq(gov.balanceOf(address(flap)), 0.0016 ether);
         user1.doDeal(address(flap), batchId);
         assertEq(gov.balanceOf(address(flap)), 0);
@@ -563,7 +574,8 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(vat.dai(address(this)), mul(10 ether, RAY));
         vat.hope(address(pot));
         pot.join(10 ether);
-        hevm.warp(now + 1);
+        
+        vm.warp(now + 1);
         jug.drip("ETH");
         pot.drip();
         pot.exit(10 ether);
@@ -706,6 +718,7 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(vat.wards(address(cat)), 1, "cat wards");
         assertEq(vat.wards(address(dog)), 1, "dog wards");
         assertEq(vat.wards(address(usdtClip)), 1, "usdtClip wards");
+        assertEq(vat.wards(address(col2Clip)), 1);
         assertEq(vat.wards(address(jug)), 1, "jug wards");
         assertEq(vat.wards(address(spotter)), 1, "spotter wards");
         assertEq(vat.wards(address(end)), 1, "end wards");
@@ -719,7 +732,7 @@ contract DssDeployTest is DssDeployTestBase {
 
         // dog
         assertEq(dog.wards(address(dssDeploy)), 1, "dssDeploy wards");
-        // assertEq(dog.wards(address(end)), 1);
+        // assertEq(dog.wards(address(end)), 1, "dssDeploy end wards");
         assertEq(dog.wards(address(pause.proxy())), 1, "pause proxy wards");
 
         // vow
@@ -778,6 +791,10 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(col2Clip.wards(address(end)), 1);
         assertEq(col2Clip.wards(address(pause.proxy())), 1);
         assertEq(col2Clip.wards(address(esm)), 1);
+        assertEq(usdtClip.wards(address(dssDeploy)), 1);
+        assertEq(usdtClip.wards(address(end)), 1);
+        assertEq(usdtClip.wards(address(pause.proxy())), 1);
+        assertEq(usdtClip.wards(address(esm)), 1);
 
         // pause
         assertEq(address(pause.authority()), address(authority));
@@ -787,10 +804,13 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(address(dssDeploy.authority()), address(0));
         assertEq(dssDeploy.owner(), address(this));
 
-        dssDeploy.releaseAuth(address(this));
-        dssDeploy.releaseAuthFlip("ETH");
-        dssDeploy.releaseAuthFlip("COL");
-        dssDeploy.releaseAuthClip("COL2");
+        /// TODO DISCUSS
+        dssDeploy.releaseAuth(address(dssDeploy));
+        dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
+        dssDeploy.releaseAuthFlip("COL", address(dssDeploy));
+        dssDeploy.releaseAuthClip("COL2", address(dssDeploy));
+        dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
+
         assertEq(vat.wards(address(dssDeploy)), 0);
         assertEq(cat.wards(address(dssDeploy)), 0);
         assertEq(dog.wards(address(dssDeploy)), 0);
@@ -806,5 +826,7 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(ethFlip.wards(address(dssDeploy)), 0);
         assertEq(colFlip.wards(address(dssDeploy)), 0);
         assertEq(col2Clip.wards(address(dssDeploy)), 0);
+        assertEq(usdtClip.wards(address(dssDeploy)), 0);
+
     }
 }

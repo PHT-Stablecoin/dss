@@ -499,4 +499,13 @@ contract DssDeploy is DSAuth {
     function releaseAuthClip(bytes32 ilk) public auth {
         ilks[ilk].clip.deny(address(this));
     }
+
+    /// TODO REMOVE;
+    function releaseAuthFlip(bytes32 ilk, address _whoDeny) public auth {
+        ilks[ilk].flip.deny(_whoDeny);
+    }
+    /// TODO REMOVE;
+    function releaseAuthClip(bytes32 ilk, address _whoDeny) public auth {
+        ilks[ilk].clip.deny(_whoDeny);
+    }
 }
