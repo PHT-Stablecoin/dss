@@ -304,6 +304,7 @@ contract DssDeployTestBase is Test, ProxyActions {
     DSValue pipCOL;
     DSValue pipCOL2;
     DSValue pipUSDT;
+    DSValue pipPHS;
     DSValue pipXINF;
 
     MockGuard authority;
@@ -323,6 +324,7 @@ contract DssDeployTestBase is Test, ProxyActions {
     Dai dai;
     TestUSDT usdt;
     GemJoin usdtJoin;
+    GemJoin phsJoin;
     DaiJoin daiJoin;
     Spotter spotter;
     Pot pot;
@@ -333,6 +335,7 @@ contract DssDeployTestBase is Test, ProxyActions {
     Clipper ethClip;
     Flipper ethFlip;
     Clipper usdtClip;
+    Clipper phsClip;
     DSToken col;
     DSToken col2;
     Flipper colFlip;
@@ -463,8 +466,8 @@ contract DssDeployTestBase is Test, ProxyActions {
         // @TODO there is no oracle for the GOV token?
         pipETH.poke(bytes32(uint(300 * 10 ** 18))); // Price 300 PHT = 1 ETH (precision 18)
         pipUSDT.poke(bytes32(uint(50 * 10 ** 18))); // Price 50 PHT = 1 USDT (precision 18)
-        (, ethClip, ) = dssDeploy.ilks("ETH");
-        (ethFlip, , ) = dssDeploy.ilks("ETH");
+        // @TODO add / change to ethClip
+        (ethFlip, ethClip, ) = dssDeploy.ilks("ETH");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
         this.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         this.file(address(spotter), "USDT-A", "mat", uint(1100000000 ether)); // Liquidation ratio 110%

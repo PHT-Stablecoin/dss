@@ -700,48 +700,48 @@ contract DssDeployTest is DssDeployTestBase {
         deployKeepAuth();
 
         // vat
-        assertEq(vat.wards(address(dssDeploy)), 1);
-        assertEq(vat.wards(address(ethJoin)), 1);
-        assertEq(vat.wards(address(colJoin)), 1);
-        assertEq(vat.wards(address(cat)), 1);
-        assertEq(vat.wards(address(dog)), 1);
-        assertEq(vat.wards(address(col2Clip)), 1);
-        assertEq(vat.wards(address(jug)), 1);
-        assertEq(vat.wards(address(spotter)), 1);
-        assertEq(vat.wards(address(end)), 1);
-        assertEq(vat.wards(address(esm)), 1);
-        assertEq(vat.wards(address(pause.proxy())), 1);
+        assertEq(vat.wards(address(dssDeploy)), 1, "dssDeploy wards");
+        assertEq(vat.wards(address(ethJoin)), 1, "ethJoin wards");
+        assertEq(vat.wards(address(usdtJoin)), 1, "usdtJoin wards");
+        assertEq(vat.wards(address(cat)), 1, "cat wards");
+        assertEq(vat.wards(address(dog)), 1, "dog wards");
+        assertEq(vat.wards(address(usdtClip)), 1, "usdtClip wards");
+        assertEq(vat.wards(address(jug)), 1, "jug wards");
+        assertEq(vat.wards(address(spotter)), 1, "spotter wards");
+        assertEq(vat.wards(address(end)), 1, "end wards");
+        assertEq(vat.wards(address(esm)), 1, "esm wards");
+        assertEq(vat.wards(address(pause.proxy())), 1, "pause proxy wards");
 
         // cat
-        assertEq(cat.wards(address(dssDeploy)), 1);
-        assertEq(cat.wards(address(end)), 1);
-        assertEq(cat.wards(address(pause.proxy())), 1);
+        assertEq(cat.wards(address(dssDeploy)), 1, "dssDeploy wards");
+        assertEq(cat.wards(address(end)), 1, "end wards");
+        assertEq(cat.wards(address(pause.proxy())), 1, "pause proxy wards");
 
         // dog
-        assertEq(dog.wards(address(dssDeploy)), 1);
+        assertEq(dog.wards(address(dssDeploy)), 1, "dssDeploy wards");
         // assertEq(dog.wards(address(end)), 1);
-        assertEq(dog.wards(address(pause.proxy())), 1);
+        assertEq(dog.wards(address(pause.proxy())), 1, "pause proxy wards");
 
         // vow
         assertEq(vow.wards(address(dssDeploy)), 1);
-        assertEq(vow.wards(address(cat)), 1);
-        assertEq(vow.wards(address(end)), 1);
-        assertEq(vow.wards(address(pause.proxy())), 1);
+        assertEq(vow.wards(address(cat)), 1, "cat wards");
+        assertEq(vow.wards(address(end)), 1, "end wards");
+        assertEq(vow.wards(address(pause.proxy())), 1, "pause proxy wards");
 
         // jug
-        assertEq(jug.wards(address(dssDeploy)), 1);
-        assertEq(jug.wards(address(pause.proxy())), 1);
+        assertEq(jug.wards(address(dssDeploy)), 1, "jug.dssDeploy wards");
+        assertEq(jug.wards(address(pause.proxy())), 1, "jug.pause proxy wards");
 
         // pot
-        assertEq(pot.wards(address(dssDeploy)), 1);
-        assertEq(pot.wards(address(pause.proxy())), 1);
+        assertEq(pot.wards(address(dssDeploy)), 1, "pot.dssDeploy wards");
+        assertEq(pot.wards(address(pause.proxy())), 1, "pot.pause proxy wards");
 
         // dai
-        assertEq(dai.wards(address(dssDeploy)), 1);
+        assertEq(dai.wards(address(dssDeploy)), 1, "dai.dssDeploy wards");
 
         // spotter
-        assertEq(spotter.wards(address(dssDeploy)), 1);
-        assertEq(spotter.wards(address(pause.proxy())), 1);
+        assertEq(spotter.wards(address(dssDeploy)), 1, "spotter.dssDeploy wards");
+        assertEq(spotter.wards(address(pause.proxy())), 1, "spotter.pause proxy wards");
 
         // flap
         assertEq(flap.wards(address(dssDeploy)), 1);
