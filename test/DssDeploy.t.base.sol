@@ -1,22 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-//
-// Dssd.t.base.sol
-//
-// Copyright (C) 2018-2022 Dai Foundation
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
@@ -294,7 +275,7 @@ contract MockGuard {
     }
 }
 
-contract DssDeployScript is Script, Test, ProxyActions {
+contract DssDeployTestBase is Test, ProxyActions {
     Hevm hevm;
 
     VatFab vatFab;
@@ -350,6 +331,7 @@ contract DssDeployScript is Script, Test, ProxyActions {
     ESM esm;
 
     Clipper ethClip;
+    Flipper ethFlip;
     Clipper usdtClip;
     DSToken col;
     DSToken col2;
@@ -372,16 +354,10 @@ contract DssDeployScript is Script, Test, ProxyActions {
         require(y == 0 || (z = x * y) / y == x);
     }
 
-    function run() external {
-        // in Foundry, msg.sender and address(this) are different
-        address msgSender = msg.sender;
-
-        vm.startBroadcast();
+    function deploy() public {
         setUp();
-        deployKeepAuth(msgSender);
-        dssDeploy.releaseAuth(msgSender);
-
-        vm.stopBroadcast();
+        deployKeepAuth();
+        dssDeploy.releaseAuth(address(this));
     }
 
     function setUp() public virtual {
@@ -440,7 +416,7 @@ contract DssDeployScript is Script, Test, ProxyActions {
     function rad(uint wad) internal pure returns (uint) {
         return wad * 10 ** 27;
     }
-    function deployKeepAuth(address _msgSender) public {
+    function deployKeepAuth() public {
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();
@@ -473,7 +449,7 @@ contract DssDeployScript is Script, Test, ProxyActions {
 
         usdt = new TestUSDT(INITIAL_USDT_SUPPLY);
         usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
-        LinearDecrease calc = calcFab.newLinearDecrease(_msgSender);
+        LinearDecrease calc = calcFab.newLinearDecrease(address(this));
         calc.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calc));
 
@@ -488,6 +464,7 @@ contract DssDeployScript is Script, Test, ProxyActions {
         pipETH.poke(bytes32(uint(300 * 10 ** 18))); // Price 300 PHT = 1 ETH (precision 18)
         pipUSDT.poke(bytes32(uint(50 * 10 ** 18))); // Price 50 PHT = 1 USDT (precision 18)
         (, ethClip, ) = dssDeploy.ilks("ETH");
+        (ethFlip, , ) = dssDeploy.ilks("ETH");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
         this.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         this.file(address(spotter), "USDT-A", "mat", uint(1100000000 ether)); // Liquidation ratio 110%
