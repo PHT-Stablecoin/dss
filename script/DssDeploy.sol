@@ -33,9 +33,7 @@ import {Flapper} from "dss/flap.sol";
 import {Flopper} from "dss/flop.sol";
 import {Flipper} from "dss/flip.sol";
 import {Clipper} from "dss/clip.sol";
-import {LinearDecrease,
-        StairstepExponentialDecrease,
-        ExponentialDecrease} from "dss/abaci.sol";
+import {LinearDecrease, StairstepExponentialDecrease, ExponentialDecrease} from "dss/abaci.sol";
 import {Dai} from "dss/dai.sol";
 import {Cure} from "dss/cure.sol";
 import {End} from "dss/end.sol";
@@ -122,7 +120,13 @@ contract FlipFab {
 }
 
 contract ClipFab {
-    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk) public returns (Clipper clip) {
+    function newClip(
+        address owner,
+        address vat,
+        address spotter,
+        address dog,
+        bytes32 ilk
+    ) public returns (Clipper clip) {
         clip = new Clipper(vat, spotter, dog, ilk);
         clip.rely(owner);
         clip.deny(address(this));
@@ -188,45 +192,45 @@ contract ESMFab {
 }
 
 contract PauseFab {
-    function newPause(uint delay, address owner, address authority) public returns(DSPause pause) {
+    function newPause(uint delay, address owner, address authority) public returns (DSPause pause) {
         pause = new DSPause(delay, owner, authority);
     }
 }
 
 contract DssDeploy is DSAuth {
-    VatFab     public vatFab;
-    JugFab     public jugFab;
-    VowFab     public vowFab;
-    CatFab     public catFab;
-    DogFab     public dogFab;
-    DaiFab     public daiFab;
+    VatFab public vatFab;
+    JugFab public jugFab;
+    VowFab public vowFab;
+    CatFab public catFab;
+    DogFab public dogFab;
+    DaiFab public daiFab;
     DaiJoinFab public daiJoinFab;
-    FlapFab    public flapFab;
-    FlopFab    public flopFab;
-    FlipFab    public flipFab;
-    ClipFab    public clipFab;
-    CalcFab    public calcFab;
-    SpotFab    public spotFab;
-    PotFab     public potFab;
-    CureFab    public cureFab;
-    EndFab     public endFab;
-    ESMFab     public esmFab;
-    PauseFab   public pauseFab;
+    FlapFab public flapFab;
+    FlopFab public flopFab;
+    FlipFab public flipFab;
+    ClipFab public clipFab;
+    CalcFab public calcFab;
+    SpotFab public spotFab;
+    PotFab public potFab;
+    CureFab public cureFab;
+    EndFab public endFab;
+    ESMFab public esmFab;
+    PauseFab public pauseFab;
 
-    Vat     public vat;
-    Jug     public jug;
-    Vow     public vow;
-    Cat     public cat;
-    Dog     public dog;
-    Dai     public dai;
+    Vat public vat;
+    Jug public jug;
+    Vow public vow;
+    Cat public cat;
+    Dog public dog;
+    Dai public dai;
     DaiJoin public daiJoin;
     Flapper public flap;
     Flopper public flop;
     Spotter public spotter;
-    Pot     public pot;
-    Cure    public cure;
-    End     public end;
-    ESM     public esm;
+    Pot public pot;
+    Cure public cure;
+    End public end;
+    ESM public esm;
     DSPause public pause;
 
     mapping(bytes32 => Ilk) public ilks;
@@ -473,19 +477,19 @@ contract DssDeploy is DSAuth {
         ilks[ilk].clip.rely(address(pause.proxy()));
     }
 
-    function releaseAuth() public auth {
-        vat.deny(address(this));
-        cat.deny(address(this));
-        dog.deny(address(this));
-        vow.deny(address(this));
-        jug.deny(address(this));
-        pot.deny(address(this));
-        dai.deny(address(this));
-        spotter.deny(address(this));
-        flap.deny(address(this));
-        flop.deny(address(this));
-        cure.deny(address(this));
-        end.deny(address(this));
+    function releaseAuth(address _whoDeny) public auth {
+        vat.deny(_whoDeny);
+        cat.deny(_whoDeny);
+        dog.deny(_whoDeny);
+        vow.deny(_whoDeny);
+        jug.deny(_whoDeny);
+        pot.deny(_whoDeny);
+        dai.deny(_whoDeny);
+        spotter.deny(_whoDeny);
+        flap.deny(_whoDeny);
+        flop.deny(_whoDeny);
+        cure.deny(_whoDeny);
+        end.deny(_whoDeny);
     }
 
     function releaseAuthFlip(bytes32 ilk) public auth {
