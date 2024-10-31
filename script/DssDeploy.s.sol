@@ -1,22 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-//
-// Dssd.t.base.sol
-//
-// Copyright (C) 2018-2022 Dai Foundation
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
@@ -51,18 +32,27 @@ contract XINF is ERC20 {
 }
 
 // Collateral Token (USDT)
-contract TestUSDT is ERC20 {
-    constructor(uint256 initialSupply) public ERC20("Test USDT", "tstUSDT") {
-        _mint(msg.sender, initialSupply);
-    }
-    function decimals() public view virtual override returns (uint8) {
-        return 6;
+contract TestUSDT is DSToken {
+    constructor() public DSToken("tstUSDT") {
+        decimals = 6;
+        name = "Test USDT";
     }
 }
 
-interface Hevm {
-    function warp(uint256) external;
-}
+contract WETH is DSToken("WETH") {}
+
+// contract TestUSDT is ERC20 {
+//     constructor(uint256 initialSupply) public ERC20("Test USDT", "tstUSDT") {
+//         _mint(msg.sender, initialSupply);
+//     }
+//     function decimals() public view virtual override returns (uint8) {
+//         return 6;
+//     }
+//     function mint(uint256 amount) public {
+//         _mint(msg.sender, amount);
+//     }
+// }
+
 
 interface FlipperLike {
     function tend(uint, uint, uint) external;
@@ -78,7 +68,9 @@ interface HopeLike {
     function hope(address guy) external;
 }
 
-contract WETH is DSToken("WETH") {}
+
+// TODO
+
 
 contract FakeUser {
     function doApprove(address token, address guy) public {
@@ -282,6 +274,7 @@ contract ProxyActions {
     }
 }
 
+// TODO
 contract MockGuard {
     mapping(address => mapping(address => mapping(bytes4 => bool))) acl;
 
@@ -295,7 +288,6 @@ contract MockGuard {
 }
 
 contract DssDeployScript is Script, Test, ProxyActions {
-    Hevm hevm;
 
     VatFab vatFab;
     JugFab jugFab;
@@ -320,14 +312,14 @@ contract DssDeployScript is Script, Test, ProxyActions {
 
     DSToken gov;
     DSValue pipETH;
-    DSValue pipCOL;
-    DSValue pipCOL2;
     DSValue pipUSDT;
+    DSValue pipPHS;
     DSValue pipXINF;
 
     MockGuard authority;
 
-    WETH weth;
+    IERC20 weth;
+    IERC20 usdt;
     GemJoin ethJoin;
     GemJoin colJoin;
     GemJoin col2Join;
@@ -340,8 +332,8 @@ contract DssDeployScript is Script, Test, ProxyActions {
     Flapper flap;
     Flopper flop;
     Dai dai;
-    TestUSDT usdt;
     GemJoin usdtJoin;
+    GemJoin phsJoin;
     DaiJoin daiJoin;
     Spotter spotter;
     Pot pot;
@@ -350,14 +342,10 @@ contract DssDeployScript is Script, Test, ProxyActions {
     ESM esm;
 
     Clipper ethClip;
+    Flipper ethFlip;
     Clipper usdtClip;
-    DSToken col;
-    DSToken col2;
-    Flipper colFlip;
-    Clipper col2Clip;
+    Clipper phsClip;
 
-    FakeUser user1;
-    FakeUser user2;
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -368,20 +356,20 @@ contract DssDeployScript is Script, Test, ProxyActions {
     uint256 constant INITIAL_XINF_SUPPLY = 1000000 * WAD;
     uint256 constant INITIAL_USDT_SUPPLY = 10000000 * (10 ** 6); // USDT has 6 decimals
 
+    // TOKENS
+    address constant MAINNET_USDT_ADDR = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    address constant MAINNET_WETH_ADDR = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x);
     }
 
-    function run() external {
-        // in Foundry, msg.sender and address(this) are different
-        address msgSender = msg.sender;
-
+    function run() public {
         vm.startBroadcast();
+        
         setUp();
-        deployKeepAuth(msgSender);
-        dssDeploy.releaseAuth(msgSender);
-
-        vm.stopBroadcast();
+        deployKeepAuth();
+        dssDeploy.releaseAuth(address(dssDeploy));
     }
 
     function setUp() public virtual {
@@ -428,19 +416,16 @@ contract DssDeployScript is Script, Test, ProxyActions {
         pipETH = new DSValue();
         pipUSDT = new DSValue();
         pipXINF = new DSValue();
+
+        // TODO
         authority = new MockGuard();
-
-        user1 = new FakeUser();
-        user2 = new FakeUser();
-
-        // hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        // hevm.warp(0);
     }
 
     function rad(uint wad) internal pure returns (uint) {
         return wad * 10 ** 27;
     }
-    function deployKeepAuth(address _msgSender) public {
+
+    function deployKeepAuth() public {
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();
@@ -467,13 +452,18 @@ contract DssDeployScript is Script, Test, ProxyActions {
         pause = dssDeploy.pause();
         authority.permit(address(this), address(pause), bytes4(keccak256("plot(address,bytes32,bytes,uint256)")));
 
+
+        // TODO
+        // weth = IERC20(MAINNET_WETH_ADDRESS);
         weth = new WETH();
         ethJoin = new GemJoin(address(vat), "ETH", address(weth));
         dssDeploy.deployCollateralFlip("ETH", address(ethJoin), address(pipETH));
 
-        usdt = new TestUSDT(INITIAL_USDT_SUPPLY);
+        // TODO
+        // usdt = IERC20(MAINNET_USDT_ADDRESS);
+        usdt = new TestUSDT();
         usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
-        LinearDecrease calc = calcFab.newLinearDecrease(_msgSender);
+        LinearDecrease calc = calcFab.newLinearDecrease(address(this));
         calc.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calc));
 
@@ -485,29 +475,37 @@ contract DssDeployScript is Script, Test, ProxyActions {
         // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
         // or relative to the USD price?
         // @TODO there is no oracle for the GOV token?
-        pipETH.poke(bytes32(uint(300 * 10 ** 18))); // Price 300 PHT = 1 ETH (precision 18)
-        pipUSDT.poke(bytes32(uint(50 * 10 ** 18))); // Price 50 PHT = 1 USDT (precision 18)
-        (, ethClip, ) = dssDeploy.ilks("ETH");
+        pipETH.poke(bytes32(uint(300 * 10 ** 18))); // Price 300 DAI = 1 ETH (precision 18)
+        pipUSDT.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 USDT (precision 18)
+
+        // @TODO add / change to ethClip
+        (ethFlip,, ) = dssDeploy.ilks("ETH");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
+
         this.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
-        this.file(address(spotter), "USDT-A", "mat", uint(1100000000 ether)); // Liquidation ratio 110%
+        this.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
+
         spotter.poke("ETH");
         spotter.poke("USDT-A");
-        (, , uint spot, , ) = vat.ilks("ETH");
+
+        (,, uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);
         (, , spot, , ) = vat.ilks("USDT-A");
-        assertEq(spot, (50 * RAY * RAY) / 1100000000 ether);
+        assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
 
-        MockGuard(address(gov.authority())).permit(
-            address(flop),
-            address(gov),
-            bytes4(keccak256("mint(address,uint256)"))
-        );
-        MockGuard(address(gov.authority())).permit(
-            address(flap),
-            address(gov),
-            bytes4(keccak256("burn(address,uint256)"))
-        );
+
+        {   
+            MockGuard(address(gov.authority())).permit(
+                address(flop),
+                address(gov),
+                bytes4(keccak256("mint(address,uint256)"))
+            );
+            MockGuard(address(gov.authority())).permit(
+                address(flap),
+                address(gov),
+                bytes4(keccak256("burn(address,uint256)"))
+            );
+        }
 
         gov.mint(100 ether);
     }
