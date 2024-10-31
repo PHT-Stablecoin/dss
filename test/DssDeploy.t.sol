@@ -27,46 +27,58 @@ contract DssDeployTest is DssDeployTestBase {
         deploy();
     }
 
-    function testFailMissingVat() public {
+    function test_failMissingVat() public {
+        vm.expectRevert("Missing previous step");
+
         dssDeploy.deployTaxation();
     }
 
-    function testFailMissingTaxation() public {
+    function test_failMissingTaxation() public {
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
+
+        vm.expectRevert("Missing previous step");
         dssDeploy.deployAuctions(address(gov));
     }
 
-    function testFailMissingAuctions() public {
+    function test_failMissingAuctions() public {
         dssDeploy.deployVat();
         dssDeploy.deployTaxation();
         dssDeploy.deployDai(99);
+
+        vm.expectRevert("Missing previous step");
         dssDeploy.deployLiquidator();
     }
 
-    function testFailMissingLiquidator() public {
+    function test_failMissingLiquidator() public {
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();
         dssDeploy.deployAuctions(address(gov));
+
+        vm.expectRevert("Missing previous step");
         dssDeploy.deployEnd();
     }
 
-    function testFailMissingEnd() public {
+    function test_failMissingEnd() public {
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();
         dssDeploy.deployAuctions(address(gov));
         dssDeploy.deployLiquidator();
+
+        vm.expectRevert("Missing previous step");
         dssDeploy.deployPause(0, address(authority));
     }
 
-    function testFailMissingPause() public {
+    function test_failMissingPause() public {
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();
         dssDeploy.deployAuctions(address(gov));
         dssDeploy.deployLiquidator();
+
+        vm.expectRevert("Missing previous step");
         dssDeploy.deployESM(address(gov), 10);
     }
 
@@ -169,19 +181,21 @@ contract DssDeployTest is DssDeployTestBase {
         vat.frob("COL", address(this), address(this), address(this), 0.5 ether, 20.454545454545454545 ether); // 0.5 * 45 / 1.1 = 20.454545454545454545 DAI max
     }
 
-    function testFailFrobDrawDaiLimit() public {
+    function test_failFrobDrawDaiLimit() public {
         deploy();
         weth.mint(1 ether);
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 1 ether);
+        vm.expectRevert("Vat/not-safe");
         vat.frob("ETH", address(this), address(this), address(this), 0.5 ether, 100 ether + 1);
     }
 
-    function testFailFrobDrawDaiGemLimit() public {
+    function test_failFrobDrawDaiGemLimit() public {
         deploy();
         col.mint(1 ether);
         col.approve(address(colJoin), 1 ether);
         colJoin.join(address(this), 1 ether);
+        vm.expectRevert("Vat/not-safe");
         vat.frob("COL", address(this), address(this), address(this), 0.5 ether, 20.454545454545454545 ether + 1);
     }
 
@@ -212,31 +226,34 @@ contract DssDeployTest is DssDeployTestBase {
         user1.doFrob(address(vat), "ETH", address(this), address(this), address(this), 0.5 ether, 60 ether);
     }
 
-    function testFailFrobDust() public {
+    function test_failFrobDust() public {
         deploy();
         weth.mint(100 ether); // Big number just to make sure to avoid unsafe situation
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 100 ether);
 
         this.file(address(vat), "ETH", "dust", mul(RAY, 20 ether));
+        vm.expectRevert("Vat/dust");
         vat.frob("ETH", address(this), address(this), address(this), 100 ether, 19 ether);
     }
 
-    function testFailFrobFromAnotherUser() public {
+    function test_failFrobFromAnotherUser() public {
         deploy();
         weth.mint(1 ether);
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 1 ether);
+        vm.expectRevert("Vat/not-allowed-u");
         user1.doFrob(address(vat), "ETH", address(this), address(this), address(this), 0.5 ether, 60 ether);
     }
 
-    function testFailBite() public {
+    function test_failBite() public {
         deploy();
         weth.mint(1 ether);
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 1 ether);
         vat.frob("ETH", address(this), address(this), address(this), 0.5 ether, 100 ether); // Maximun DAI
 
+        vm.expectRevert("Cat/not-unsafe");
         cat.bite("ETH", address(this));
     }
 
@@ -574,7 +591,7 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(vat.dai(address(this)), mul(10 ether, RAY));
         vat.hope(address(pot));
         pot.join(10 ether);
-        
+
         vm.warp(now + 1);
         jug.drip("ETH");
         pot.drip();
@@ -605,7 +622,7 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(art, 15 ether);
     }
 
-    function testFailFork() public {
+    function test_failFork() public {
         deploy();
         weth.mint(1 ether);
         weth.approve(address(ethJoin), uint(-1));
@@ -613,6 +630,7 @@ contract DssDeployTest is DssDeployTestBase {
 
         vat.frob("ETH", address(this), address(this), address(this), 1 ether, 60 ether);
 
+        vm.expectRevert("Vat/not-allowed");
         vat.fork("ETH", address(this), address(user1), 0.25 ether, 15 ether);
     }
 
@@ -628,38 +646,40 @@ contract DssDeployTest is DssDeployTestBase {
         user1.doFork(address(vat), "ETH", address(this), address(user1), 0.25 ether, 15 ether);
     }
 
-    function testFailForkFromOtherUsr() public {
+    function test_failForkFromOtherUsr() public {
         deploy();
         weth.mint(1 ether);
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 1 ether);
 
         vat.frob("ETH", address(this), address(this), address(this), 1 ether, 60 ether);
-
+        vm.expectRevert("Vat/not-allowed");
         user1.doFork(address(vat), "ETH", address(this), address(user1), 0.25 ether, 15 ether);
     }
 
-    function testFailForkUnsafeSrc() public {
+    function test_failForkUnsafeSrc() public {
         deploy();
         weth.mint(1 ether);
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 1 ether);
 
         vat.frob("ETH", address(this), address(this), address(this), 1 ether, 60 ether);
+        vm.expectRevert("Vat/not-allowed");
         vat.fork("ETH", address(this), address(user1), 0.9 ether, 1 ether);
     }
 
-    function testFailForkUnsafeDst() public {
+    function test_failForkUnsafeDst() public {
         deploy();
         weth.mint(1 ether);
         weth.approve(address(ethJoin), uint(-1));
         ethJoin.join(address(this), 1 ether);
 
         vat.frob("ETH", address(this), address(this), address(this), 1 ether, 60 ether);
+        vm.expectRevert("Vat/not-allowed");
         vat.fork("ETH", address(this), address(user1), 0.1 ether, 59 ether);
     }
 
-    function testFailForkDustSrc() public {
+    function test_failForkDustSrc() public {
         deploy();
         weth.mint(100 ether); // Big number just to make sure to avoid unsafe situation
         weth.approve(address(ethJoin), uint(-1));
@@ -669,10 +689,11 @@ contract DssDeployTest is DssDeployTestBase {
         vat.frob("ETH", address(this), address(this), address(this), 100 ether, 60 ether);
 
         user1.doHope(address(vat), address(this));
+        vm.expectRevert("Vat/dust-dst");
         vat.fork("ETH", address(this), address(user1), 50 ether, 19 ether);
     }
 
-    function testFailForkDustDst() public {
+    function test_failForkDustDst() public {
         deploy();
         weth.mint(100 ether); // Big number just to make sure to avoid unsafe situation
         weth.approve(address(ethJoin), uint(-1));
@@ -682,6 +703,7 @@ contract DssDeployTest is DssDeployTestBase {
         vat.frob("ETH", address(this), address(this), address(this), 100 ether, 60 ether);
 
         user1.doHope(address(vat), address(this));
+        vm.expectRevert("Vat/dust-src");
         vat.fork("ETH", address(this), address(user1), 50 ether, 41 ether);
     }
 
@@ -827,6 +849,5 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(colFlip.wards(address(dssDeploy)), 0);
         assertEq(col2Clip.wards(address(dssDeploy)), 0);
         assertEq(usdtClip.wards(address(dssDeploy)), 0);
-
     }
 }
