@@ -344,6 +344,55 @@ contract DssDeployTest is DssDeployTestBase {
         assertEq(vat.gem("COL2", address(col2Clip)), 0);
     }
 
+    function testClipUSDT() public {
+        deploy();
+        assertEq(uint256(usdt.decimals()), uint256(6), "usdt.decimals = 6");
+        assertTrue(address(usdtClip.vow()) == address(vow));
+        assertTrue(address(usdtClip.dog()) == address(dog));
+        this.file(address(dog), "Hole", rad(1000 ether)); // 1000 DAI max on auction
+        this.file(address(dog), "USDT-A", "hole", rad(1000 ether)); // 1000 DAI max on auction
+        this.file(address(dog), "USDT-A", "chop", WAD);
+        usdt.mint(1 ether);
+        col2.mint(1 ether);
+        usdt.approve(address(usdtJoin), uint(-1));
+        col2.approve(address(col2Join), uint(-1));
+
+        usdtJoin.join(address(this), 1 ether);
+        col2Join.join(address(this), 1 ether);
+
+        vat.frob("USDT-A", address(this), address(this), address(this), 1 ether, 20 ether); // Maximun DAI generated
+        pipUSDT.poke(bytes32(uint(30 * 10 ** 18 - 1))); // Decrease price in 1 wei
+        spotter.poke("USDT-A");
+        assertEq(vat.gem("USDT-A", address(usdtClip)), 0, "vat.gem = 0");
+        uint id = dog.bark("USDT-A", address(this), address(this));
+        assertEq(vat.gem("USDT-A", address(usdtClip)), 1 ether, "vat.gem = 1");
+
+        (, uint256 tab, uint256 lot, , , ) = usdtClip.sales(id);
+        assertEq(tab, 20 * RAD, "tab = 20rad");
+        assertEq(lot, 1 ether, "lot = 1ether");
+
+        weth.mint(10 ether);
+        weth.transfer(address(user1), 10 ether);
+        user1.doWethJoin(address(weth), address(ethJoin), address(user1), 10 ether);
+        user1.doFrob(address(vat), "ETH", address(user1), address(user1), address(user1), 10 ether, 1000 ether);
+
+        user1.doHope(address(vat), address(usdtClip));
+
+        assertEq(vat.gem("USDT-A", address(this)), 0, "this = 0");
+        assertEq(vat.gem("USDT-A", address(user1)), 0, "user1 = 0");
+
+        user1.doTake(address(usdtClip), 1, 1 ether, 30 * RAY, address(user1), "");
+
+        (, tab, lot, , , ) = usdtClip.sales(id);
+        assertEq(tab, 0, "tab = 0");
+        assertEq(lot, 0, "lot = 0");
+
+        uint256 amt = 1 ether;
+        assertEq(vat.gem("USDT-A", address(this)), amt / 3 + 1, "this.gem = 1/3 + 1");
+        assertEq(vat.gem("USDT-A", address(user1)), (amt * 2) / 3, "user1.gem = 1*2/3");
+        assertEq(vat.gem("USDT-A", address(usdtClip)), 0, "usdtClip.gem = 0");
+    }
+
     function _flop() internal returns (uint batchId) {
         this.file(address(cat), "ETH", "dunk", rad(200 ether)); // 200 DAI max per batch
         this.file(address(cat), "box", rad(1000 ether)); // 1000 DAI max on auction

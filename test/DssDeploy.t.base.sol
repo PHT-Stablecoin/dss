@@ -491,7 +491,7 @@ contract DssDeployTestBase is Test, ProxyActions {
         // or relative to the USD price?
         // @TODO there is no oracle for the GOV token?
         pipETH.poke(bytes32(uint(300 * 10 ** 18))); // Price 300 DAI = 1 ETH (precision 18)
-        pipUSDT.poke(bytes32(uint(50 * 10 ** 18))); // Price 50 DAI = 1 USDT (precision 18)
+        pipUSDT.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 USDT (precision 18)
         pipCOL.poke(bytes32(uint(45 * 10 ** 18))); // Price 45 DAI = 1 COL (precision 18)
         pipCOL2.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 COL2 (precision 18)
 
@@ -502,7 +502,7 @@ contract DssDeployTestBase is Test, ProxyActions {
         (,col2Clip,) = dssDeploy.ilks("COL2");
 
         this.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
-        this.file(address(spotter), "USDT-A", "mat", uint(1100000000 ether)); // Liquidation ratio 110%
+        this.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         this.file(address(spotter), "COL", "mat", uint(1100000000 ether)); // Liquidation ratio 110%
         this.file(address(spotter), "COL2", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
 
@@ -514,7 +514,7 @@ contract DssDeployTestBase is Test, ProxyActions {
         (,, uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);
         (, , spot, , ) = vat.ilks("USDT-A");
-        assertEq(spot, (50 * RAY * RAY) / 1100000000 ether);
+        assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
         (,, spot,,) = vat.ilks("COL");
         assertEq(spot, 45 * RAY * RAY / 1100000000 ether);
         (,, spot,,) = vat.ilks("COL2");
