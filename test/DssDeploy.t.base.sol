@@ -14,8 +14,8 @@ import {DSValue} from "ds-value/value.sol";
 import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
 
-import "./DssDeploy.sol";
-import {GovActions} from "./govActions.sol";
+import "./helpers/DssDeploy.sol";
+import {GovActions} from "./helpers/govActions.sol";
 
 // Test Tokens
 // Governance Token (MKR)
@@ -49,7 +49,6 @@ contract TestUSDT is DSToken {
 //         _mint(msg.sender, amount);
 //     }
 // }
-
 
 interface Hevm {
     function warp(uint256) external;
@@ -496,10 +495,10 @@ contract DssDeployTestBase is Test, ProxyActions {
         pipCOL2.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 COL2 (precision 18)
 
         // @TODO add / change to ethClip
-        (ethFlip,, ) = dssDeploy.ilks("ETH");
-        (colFlip,,) = dssDeploy.ilks("COL");
+        (ethFlip, , ) = dssDeploy.ilks("ETH");
+        (colFlip, , ) = dssDeploy.ilks("COL");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
-        (,col2Clip,) = dssDeploy.ilks("COL2");
+        (, col2Clip, ) = dssDeploy.ilks("COL2");
 
         this.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         this.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
@@ -511,14 +510,14 @@ contract DssDeployTestBase is Test, ProxyActions {
         spotter.poke("COL");
         spotter.poke("COL2");
 
-        (,, uint spot, , ) = vat.ilks("ETH");
+        (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);
         (, , spot, , ) = vat.ilks("USDT-A");
         assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
-        (,, spot,,) = vat.ilks("COL");
-        assertEq(spot, 45 * RAY * RAY / 1100000000 ether);
-        (,, spot,,) = vat.ilks("COL2");
-        assertEq(spot, 30 * RAY * RAY / 1500000000 ether);
+        (, , spot, , ) = vat.ilks("COL");
+        assertEq(spot, (45 * RAY * RAY) / 1100000000 ether);
+        (, , spot, , ) = vat.ilks("COL2");
+        assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
 
         MockGuard(address(gov.authority())).permit(
             address(flop),

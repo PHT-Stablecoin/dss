@@ -14,281 +14,19 @@ import {DSValue} from "ds-value/value.sol";
 import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
 
-import "./DssDeploy.sol";
-import {GovActions} from "./govActions.sol";
+import {GovActions} from "../test/helpers/govActions.sol";
 
-// Test Tokens
-// Governance Token (MKR)
-contract XINF is ERC20 {
-    address public gov;
-    constructor(uint256 initialSupply) public ERC20("Infinex Token", "XINF") {
-        _mint(msg.sender, initialSupply);
-    }
-
-    function setGov(address _gov) external {
-        require(msg.sender == gov || gov == address(0), "XINF/not-authorized");
-        gov = _gov;
-    }
-}
-
-// Collateral Token (USDT)
-contract TestUSDT is DSToken {
-    constructor() public DSToken("tstUSDT") {
-        decimals = 6;
-        name = "Test USDT";
-    }
-}
-
-contract WETH is DSToken("WETH") {}
-
-// contract TestUSDT is ERC20 {
-//     constructor(uint256 initialSupply) public ERC20("Test USDT", "tstUSDT") {
-//         _mint(msg.sender, initialSupply);
-//     }
-//     function decimals() public view virtual override returns (uint8) {
-//         return 6;
-//     }
-//     function mint(uint256 amount) public {
-//         _mint(msg.sender, amount);
-//     }
-// }
-
-
-interface FlipperLike {
-    function tend(uint, uint, uint) external;
-    function dent(uint, uint, uint) external;
-    function deal(uint) external;
-}
-
-interface ClipperLike {
-    function take(uint, uint, uint, address, bytes calldata) external;
-}
-
-interface HopeLike {
-    function hope(address guy) external;
-}
-
+import "../test/helpers/DssDeploy.sol";
+import {FakeUser} from "../test/helpers/FakeUser.sol";
+import {MockGuard} from "../test/helpers/MockGuard.sol";
+import {ProxyActions} from "../test/helpers/ProxyActions.sol";
+import {WETH} from "../test/helpers/WETH.sol";
+import {TestUSDT} from "../test/helpers/USDT.sol";
+import {XINF} from "../test/helpers/XINF.sol";
 
 // TODO
 
-
-contract FakeUser {
-    function doApprove(address token, address guy) public {
-        DSToken(token).approve(guy);
-    }
-
-    function doDaiJoin(address obj, address urn, uint wad) public {
-        DaiJoin(obj).join(urn, wad);
-    }
-
-    function doDaiExit(address obj, address guy, uint wad) public {
-        DaiJoin(obj).exit(guy, wad);
-    }
-
-    function doWethJoin(address obj, address gem, address urn, uint wad) public {
-        WETH(obj).approve(address(gem), uint(-1));
-        GemJoin(gem).join(urn, wad);
-    }
-
-    function doFrob(address obj, bytes32 ilk, address urn, address gem, address dai, int dink, int dart) public {
-        Vat(obj).frob(ilk, urn, gem, dai, dink, dart);
-    }
-
-    function doFork(address obj, bytes32 ilk, address src, address dst, int dink, int dart) public {
-        Vat(obj).fork(ilk, src, dst, dink, dart);
-    }
-
-    function doHope(address obj, address guy) public {
-        HopeLike(obj).hope(guy);
-    }
-
-    function doTend(address obj, uint id, uint lot, uint bid) public {
-        FlipperLike(obj).tend(id, lot, bid);
-    }
-
-    function doTake(address obj, uint256 id, uint256 amt, uint256 max, address who, bytes calldata data) external {
-        ClipperLike(obj).take(id, amt, max, who, data);
-    }
-
-    function doDent(address obj, uint id, uint lot, uint bid) public {
-        FlipperLike(obj).dent(id, lot, bid);
-    }
-
-    function doDeal(address obj, uint id) public {
-        FlipperLike(obj).deal(id);
-    }
-
-    function doEndFree(address end, bytes32 ilk) public {
-        End(end).free(ilk);
-    }
-
-    function doESMJoin(address gem, address esm, uint256 wad) public {
-        DSToken(gem).approve(esm, uint256(-1));
-        ESM(esm).join(wad);
-    }
-}
-
-contract ProxyActions {
-    DSPause pause;
-    GovActions govActions;
-
-    function rely(address from, address to) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("rely(address,address)", from, to);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function deny(address from, address to) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("deny(address,address)", from, to);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function file(address who, bytes32 what, uint256 data) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("file(address,bytes32,uint256)", who, what, data);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function file(address who, bytes32 ilk, bytes32 what, uint256 data) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("file(address,bytes32,bytes32,uint256)", who, ilk, what, data);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function dripAndFile(address who, bytes32 what, uint256 data) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("dripAndFile(address,bytes32,uint256)", who, what, data);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function dripAndFile(address who, bytes32 ilk, bytes32 what, uint256 data) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature(
-            "dripAndFile(address,bytes32,bytes32,uint256)",
-            who,
-            ilk,
-            what,
-            data
-        );
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function cage(address end) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("cage(address)", end);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function setAuthority(address newAuthority) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("setAuthority(address,address)", pause, newAuthority);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function setDelay(uint newDelay) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature("setDelay(address,uint256)", pause, newDelay);
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-
-    function setAuthorityAndDelay(address newAuthority, uint newDelay) external {
-        address usr = address(govActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSignature(
-            "setAuthorityAndDelay(address,address,uint256)",
-            pause,
-            newAuthority,
-            newDelay
-        );
-        uint eta = now;
-
-        pause.plot(usr, tag, fax, eta);
-        pause.exec(usr, tag, fax, eta);
-    }
-}
-
-// TODO
-contract MockGuard {
-    mapping(address => mapping(address => mapping(bytes4 => bool))) acl;
-
-    function canCall(address src, address dst, bytes4 sig) public view returns (bool) {
-        return acl[src][dst][sig];
-    }
-
-    function permit(address src, address dst, bytes4 sig) public {
-        acl[src][dst][sig] = true;
-    }
-}
-
-contract DssDeployScript is Script, Test, ProxyActions {
-
+contract DssDeployScript is Script, Test {
     VatFab vatFab;
     JugFab jugFab;
     VowFab vowFab;
@@ -309,6 +47,7 @@ contract DssDeployScript is Script, Test, ProxyActions {
     PauseFab pauseFab;
 
     DssDeploy dssDeploy;
+    ProxyActions proxyActions;
 
     DSToken gov;
     DSValue pipETH;
@@ -346,7 +85,6 @@ contract DssDeployScript is Script, Test, ProxyActions {
     Clipper usdtClip;
     Clipper phsClip;
 
-
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
@@ -366,10 +104,15 @@ contract DssDeployScript is Script, Test, ProxyActions {
 
     function run() public {
         vm.startBroadcast();
-        
+
+        address msgSender = msg.sender;
         setUp();
-        deployKeepAuth();
+        deployKeepAuth(msgSender);
         dssDeploy.releaseAuth(address(dssDeploy));
+
+        vm.stopBroadcast();
+
+        console.log("after releaseAuth");
     }
 
     function setUp() public virtual {
@@ -391,7 +134,6 @@ contract DssDeployScript is Script, Test, ProxyActions {
         endFab = new EndFab();
         esmFab = new ESMFab();
         pauseFab = new PauseFab();
-        govActions = new GovActions();
 
         dssDeploy = new DssDeploy();
 
@@ -412,27 +154,29 @@ contract DssDeployScript is Script, Test, ProxyActions {
         );
 
         gov = new DSToken("GOV");
-        gov.setAuthority(DSAuthority(address(new MockGuard())));
+        // TODO
+        authority = new MockGuard();
+        gov.setAuthority(DSAuthority(address(authority)));
         pipETH = new DSValue();
         pipUSDT = new DSValue();
         pipXINF = new DSValue();
-
-        // TODO
-        authority = new MockGuard();
     }
 
     function rad(uint wad) internal pure returns (uint) {
         return wad * 10 ** 27;
     }
 
-    function deployKeepAuth() public {
+    function deployKeepAuth(address _msgSender) public {
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();
         dssDeploy.deployAuctions(address(gov));
         dssDeploy.deployLiquidator();
         dssDeploy.deployEnd();
+        // @TODO set pauseDelay to non-zero?
         dssDeploy.deployPause(0, address(authority));
+
+        // @TODO set config for production?
         dssDeploy.deployESM(address(gov), 10);
 
         vat = dssDeploy.vat();
@@ -449,28 +193,34 @@ contract DssDeployScript is Script, Test, ProxyActions {
         cure = dssDeploy.cure();
         end = dssDeploy.end();
         esm = dssDeploy.esm();
-        pause = dssDeploy.pause();
-        authority.permit(address(this), address(pause), bytes4(keccak256("plot(address,bytes32,bytes,uint256)")));
+        proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
 
+        authority.permit(
+            address(proxyActions),
+            address(dssDeploy.pause()),
+            bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
+        );
 
         // TODO
         // weth = IERC20(MAINNET_WETH_ADDRESS);
-        weth = new WETH();
+        weth = IERC20(address(new WETH()));
         ethJoin = new GemJoin(address(vat), "ETH", address(weth));
         dssDeploy.deployCollateralFlip("ETH", address(ethJoin), address(pipETH));
 
+        console.log("msg.sender", msg.sender);
+
         // TODO
         // usdt = IERC20(MAINNET_USDT_ADDRESS);
-        usdt = new TestUSDT();
+        usdt = IERC20(address(new TestUSDT()));
         usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
-        LinearDecrease calc = calcFab.newLinearDecrease(address(this));
+        LinearDecrease calc = calcFab.newLinearDecrease(_msgSender);
         calc.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calc));
 
         // Set Params
-        this.file(address(vat), bytes32("Line"), uint(10000 * 10 ** 45));
-        this.file(address(vat), bytes32("ETH"), bytes32("line"), uint(10000 * 10 ** 45));
-        this.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(10000 * 10 ** 45));
+        proxyActions.file(address(vat), bytes32("Line"), uint(10000 * 10 ** 45));
+        proxyActions.file(address(vat), bytes32("ETH"), bytes32("line"), uint(10000 * 10 ** 45));
+        proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(10000 * 10 ** 45));
 
         // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
         // or relative to the USD price?
@@ -478,35 +228,47 @@ contract DssDeployScript is Script, Test, ProxyActions {
         pipETH.poke(bytes32(uint(300 * 10 ** 18))); // Price 300 DAI = 1 ETH (precision 18)
         pipUSDT.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 USDT (precision 18)
 
+        console.log("after pipUSDT poke");
+
         // @TODO add / change to ethClip
-        (ethFlip,, ) = dssDeploy.ilks("ETH");
+        (ethFlip, , ) = dssDeploy.ilks("ETH");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
-        this.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
-        this.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
+        proxyActions.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
+        proxyActions.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
 
+        console.log("before poke");
+
+        return;
         spotter.poke("ETH");
         spotter.poke("USDT-A");
+        console.log("after poke");
 
-        (,, uint spot, , ) = vat.ilks("ETH");
+        (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);
         (, , spot, , ) = vat.ilks("USDT-A");
         assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
 
+        console.log("before mint");
 
-        {   
-            MockGuard(address(gov.authority())).permit(
-                address(flop),
-                address(gov),
-                bytes4(keccak256("mint(address,uint256)"))
-            );
-            MockGuard(address(gov.authority())).permit(
-                address(flap),
-                address(gov),
-                bytes4(keccak256("burn(address,uint256)"))
-            );
-        }
+        console.log("flop", address(flop));
+        console.log("flap", address(flap));
+
+        // {
+        //     MockGuard(address(gov.authority())).permit(
+        //         address(flop),
+        //         address(gov),
+        //         bytes4(keccak256("mint(address,uint256)"))
+        //     );
+        //     MockGuard(address(gov.authority())).permit(
+        //         address(flap),
+        //         address(gov),
+        //         bytes4(keccak256("burn(address,uint256)"))
+        //     );
+        // }
 
         gov.mint(100 ether);
+
+        console.log("after mint");
     }
 }

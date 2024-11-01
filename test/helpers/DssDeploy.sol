@@ -41,6 +41,7 @@ import {ESM} from "./esm.sol";
 import {Pot} from "dss/pot.sol";
 import {Spotter} from "dss/spot.sol";
 
+import "forge-std/console.sol";
 contract VatFab {
     function newVat(address owner) public returns (Vat vat) {
         vat = new Vat();
@@ -334,6 +335,7 @@ contract DssDeploy is DSAuth {
         // Deploy
         flap = flapFab.newFlap(address(this), address(vat), gov);
         flop = flopFab.newFlop(address(this), address(vat), gov);
+        console.log("flop", address(flop));
         vow = vowFab.newVow(address(this), address(vat), address(flap), address(flop));
 
         // Internal references set up
@@ -478,6 +480,7 @@ contract DssDeploy is DSAuth {
     }
 
     function releaseAuth(address _whoDeny) public auth {
+        console.log("releaseAuth");
         vat.deny(_whoDeny);
         cat.deny(_whoDeny);
         dog.deny(_whoDeny);
@@ -490,6 +493,7 @@ contract DssDeploy is DSAuth {
         flop.deny(_whoDeny);
         cure.deny(_whoDeny);
         end.deny(_whoDeny);
+        console.log("releaseAuth done");
     }
 
     function releaseAuthFlip(bytes32 ilk) public auth {

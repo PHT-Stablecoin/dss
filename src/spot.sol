@@ -17,6 +17,7 @@
 
 pragma solidity ^0.6.12;
 
+import {console} from "forge-std/console.sol";
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
@@ -31,32 +32,36 @@ interface PipLike {
 
 contract Spotter {
     // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address guy) external auth { wards[guy] = 1;  }
-    function deny(address guy) external auth { wards[guy] = 0; }
-    modifier auth {
+    mapping(address => uint) public wards;
+    function rely(address guy) external auth {
+        wards[guy] = 1;
+    }
+    function deny(address guy) external auth {
+        wards[guy] = 0;
+    }
+    modifier auth() {
         require(wards[msg.sender] == 1, "Spotter/not-authorized");
         _;
     }
 
     // --- Data ---
     struct Ilk {
-        PipLike pip;  // Price Feed
-        uint256 mat;  // Liquidation ratio [ray]
+        PipLike pip; // Price Feed
+        uint256 mat; // Liquidation ratio [ray]
     }
 
-    mapping (bytes32 => Ilk) public ilks;
+    mapping(bytes32 => Ilk) public ilks;
 
-    VatLike public vat;  // CDP Engine
-    uint256 public par;  // ref per dai [ray]
+    VatLike public vat; // CDP Engine
+    uint256 public par; // ref per dai [ray]
 
     uint256 public live;
 
     // --- Events ---
     event Poke(
-      bytes32 ilk,
-      bytes32 val,  // [wad]
-      uint256 spot  // [ray]
+        bytes32 ilk,
+        bytes32 val, // [wad]
+        uint256 spot // [ray]
     );
 
     // --- Init ---
@@ -96,9 +101,15 @@ contract Spotter {
 
     // --- Update value ---
     function poke(bytes32 ilk) external {
+        console.log("Spotter.poke 0", string(abi.encodePacked(ilk)));
         (bytes32 val, bool has) = ilks[ilk].pip.peek();
+        console.log("Spotter.poke 1 val", uint256(val));
+        console.log("Spotter.poke 1 has", has);
+        console.log("ilks[ilk].mat", ilks[ilk].mat);
         uint256 spot = has ? rdiv(rdiv(mul(uint(val), 10 ** 9), par), ilks[ilk].mat) : 0;
+        console.log("Spotter.poke 2");
         vat.file(ilk, "spot", spot);
+        console.log("Spotter.poke 3");
         emit Poke(ilk, val, spot);
     }
 
