@@ -154,9 +154,9 @@ contract CalcFab {
     }
 }
 
-contract SpotFab {
-    function newSpotter(address owner, address vat) public returns (Spotter spotter) {
-        spotter = new Spotter(vat);
+contract ChainlinkSpotFab {
+    function newSpotter(address owner, address vat) public returns (ChainlinkSpotter spotter) {
+        spotter = new ChainlinkSpotter(vat);
         spotter.rely(owner);
         spotter.deny(address(this));
     }
@@ -211,7 +211,7 @@ contract DssDeploy is DSAuth {
     FlipFab public flipFab;
     ClipFab public clipFab;
     CalcFab public calcFab;
-    SpotFab public spotFab;
+    ChainlinkSpotFab public spotFab;
     PotFab public potFab;
     CureFab public cureFab;
     EndFab public endFab;
@@ -271,7 +271,7 @@ contract DssDeploy is DSAuth {
         FlipFab flipFab_,
         ClipFab clipFab_,
         CalcFab calcFab_,
-        SpotFab spotFab_,
+        ChainlinkSpotFab spotFab_,
         PotFab potFab_,
         CureFab cureFab_,
         EndFab endFab_,

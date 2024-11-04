@@ -803,7 +803,7 @@ contract DssDeployTest is DssDeployTestBase {
 
         // dog
         assertEq(dog.wards(address(dssDeploy)), 1, "dssDeploy wards");
-        // assertEq(dog.wards(address(end)), 1, "dssDeploy end wards");
+        assertEq(dog.wards(address(end)), 1, "dssDeploy end wards");
         assertEq(dog.wards(address(pause.proxy())), 1, "pause proxy wards");
 
         // vow

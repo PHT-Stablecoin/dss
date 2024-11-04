@@ -7,7 +7,7 @@ libs = ["lib"]
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
-anvil = "localhost:127.0.0.1:8545"
+anvil = "localhost:8545"
 
 [etherscan]
-sepolia = { key = "${ETHERSCAN_API_KEY}" }
+# sepolia = { key = "${ETHERSCAN_API_KEY}" }

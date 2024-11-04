@@ -24,6 +24,7 @@ import {WETH} from "../test/helpers/WETH.sol";
 import {TestUSDT} from "../test/helpers/USDT.sol";
 import {XINF} from "../test/helpers/XINF.sol";
 
+import {ChainLog} from "../test/helpers/ChainLog.sol";
 // TODO
 
 contract DssDeployScript is Script, Test {
@@ -85,6 +86,8 @@ contract DssDeployScript is Script, Test {
     Clipper usdtClip;
     Clipper phsClip;
 
+    ChainLog clog;
+    
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
@@ -167,6 +170,7 @@ contract DssDeployScript is Script, Test {
     }
 
     function deployKeepAuth(address _msgSender) public {
+        
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();
@@ -195,6 +199,27 @@ contract DssDeployScript is Script, Test {
         esm = dssDeploy.esm();
         proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
 
+
+        /// OnChain Log
+        clog = new ChainLog();
+        {
+            clog.setAddress("MCD_VAT", address(vat));
+            clog.setAddress("MCD_JUG", address(jug));
+            clog.setAddress("MCD_VOW", address(vow));
+            clog.setAddress("MCD_CAT", address(cat));
+            clog.setAddress("MCD_DOG", address(dog));
+            clog.setAddress("MCD_FLAP", address(flap));
+            clog.setAddress("MCD_FLOP", address(flop));
+            clog.setAddress("MCD_DAI", address(dai));
+            clog.setAddress("MCD_DAIJOIN", address(daiJoin));
+            clog.setAddress("MCD_SPOTTER", address(spotter));
+            clog.setAddress("MCD_POT", address(pot));
+            clog.setAddress("MCD_CURE", address(cure));
+            clog.setAddress("MCD_END", address(end));
+            clog.setAddress("MCD_ESM", address(esm));
+            clog.setIPFS("");
+        }
+
         authority.permit(
             address(proxyActions),
             address(dssDeploy.pause()),
@@ -206,8 +231,6 @@ contract DssDeployScript is Script, Test {
         weth = IERC20(address(new WETH()));
         ethJoin = new GemJoin(address(vat), "ETH", address(weth));
         dssDeploy.deployCollateralFlip("ETH", address(ethJoin), address(pipETH));
-
-        console.log("msg.sender", msg.sender);
 
         // TODO
         // usdt = IERC20(MAINNET_USDT_ADDRESS);
@@ -237,9 +260,6 @@ contract DssDeployScript is Script, Test {
         proxyActions.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         proxyActions.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
 
-        console.log("before poke");
-
-        return;
         spotter.poke("ETH");
         spotter.poke("USDT-A");
         console.log("after poke");
@@ -254,18 +274,18 @@ contract DssDeployScript is Script, Test {
         console.log("flop", address(flop));
         console.log("flap", address(flap));
 
-        // {
-        //     MockGuard(address(gov.authority())).permit(
-        //         address(flop),
-        //         address(gov),
-        //         bytes4(keccak256("mint(address,uint256)"))
-        //     );
-        //     MockGuard(address(gov.authority())).permit(
-        //         address(flap),
-        //         address(gov),
-        //         bytes4(keccak256("burn(address,uint256)"))
-        //     );
-        // }
+        {
+            MockGuard(address(gov.authority())).permit(
+                address(flop),
+                address(gov),
+                bytes4(keccak256("mint(address,uint256)"))
+            );
+            MockGuard(address(gov.authority())).permit(
+                address(flap),
+                address(gov),
+                bytes4(keccak256("burn(address,uint256)"))
+            );
+        }
 
         gov.mint(100 ether);
 
