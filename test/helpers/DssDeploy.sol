@@ -40,7 +40,6 @@ import {End} from "dss/end.sol";
 import {ESM} from "./esm.sol";
 import {Pot} from "dss/pot.sol";
 import {Spotter} from "dss/spot.sol";
-import {ChainlinkSpotter} from "dss/chainlink-spot.sol";
 
 contract VatFab {
     function newVat(address owner) public returns (Vat vat) {

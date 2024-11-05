@@ -103,7 +103,6 @@ contract ChainlinkSpotter {
 
     // --- Update value ---
     function poke(bytes32 ilk) external {
-        console.log("ChainlinkSpotter.poke 0", string(abi.encodePacked(ilk)));
         (
             uint80 roundId,
             int256 answer,
@@ -116,6 +115,8 @@ contract ChainlinkSpotter {
         console.log("ChainlinkSpotter.poke roundId", roundId);
         console.log("ilks[ilk].mat", ilks[ilk].mat);
         uint256 spot = roundId > 0 ? rdiv(rdiv(mul(uint(answer), 10 ** 9), par), ilks[ilk].mat) : 0;
+        console.log("ilks[ilk].mat", ilks[ilk].mat);
+
         vat.file(ilk, "spot", spot);
         emit Poke(ilk, val, spot);
     }

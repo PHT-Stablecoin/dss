@@ -17,6 +17,10 @@ import {LinearDecrease} from "dss/abaci.sol";
 import "./helpers/DssDeploy.sol";
 import {GovActions} from "./helpers/govActions.sol";
 
+// Chainlink
+import {MockAggregatorV3} from "./helpers/MockAggregatorV3.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
+
 // Test Tokens
 // Governance Token (MKR)
 contract XINF is ERC20 {
@@ -315,6 +319,9 @@ contract DssDeployTestBase is Test, ProxyActions {
     DSValue pipUSDT;
     DSValue pipPHS;
     DSValue pipXINF;
+    
+    ChainlinkPip pipCOL3;
+    MockAggregatorV3 feedCOL3;
 
     MockGuard authority;
 
@@ -322,6 +329,7 @@ contract DssDeployTestBase is Test, ProxyActions {
     GemJoin ethJoin;
     GemJoin colJoin;
     GemJoin col2Join;
+    GemJoin col3Join;
 
     Vat vat;
     Jug jug;
@@ -348,8 +356,11 @@ contract DssDeployTestBase is Test, ProxyActions {
     TestUSDT usdt;
     DSToken col;
     DSToken col2;
+    DSToken col3;
+
     Flipper colFlip;
     Clipper col2Clip;
+    Clipper col3Clip;
 
     FakeUser user1;
     FakeUser user2;
@@ -419,13 +430,13 @@ contract DssDeployTestBase is Test, ProxyActions {
         pipXINF = new DSValue();
         pipCOL = new DSValue();
         pipCOL2 = new DSValue();
-        authority = new MockGuard();
 
+        feedCOL3 = new MockAggregatorV3();
+        pipCOL3 = new ChainlinkPip(address(feedCOL3));
+
+        authority = new MockGuard();
         user1 = new FakeUser();
         user2 = new FakeUser();
-
-        // hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        // hevm.warp(0);
     }
 
     function rad(uint wad) internal pure returns (uint) {
@@ -479,12 +490,20 @@ contract DssDeployTestBase is Test, ProxyActions {
         calc.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calc));
 
+        col3 = new DSToken("COL3");
+        col3Join = new GemJoin(address(vat), "COL3", address(col3));
+        // LinearDecrease calc = calcFab.newLinearDecrease(address(this));
+        calc.file(bytes32("tau"), 1 hours);
+        dssDeploy.deployCollateralClip("COL3", address(col3Join), address(pipCOL3), address(calc));
+        
+        
         // Set Params
         this.file(address(vat), bytes32("Line"), uint(10000 * 10 ** 45));
         this.file(address(vat), bytes32("ETH"), bytes32("line"), uint(10000 * 10 ** 45));
         this.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(10000 * 10 ** 45));
         this.file(address(vat), bytes32("COL"), bytes32("line"), uint(10000 * 10 ** 45));
         this.file(address(vat), bytes32("COL2"), bytes32("line"), uint(10000 * 10 ** 45));
+        this.file(address(vat), bytes32("COL3"), bytes32("line"), uint(10000 * 10 ** 45));
 
         // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
         // or relative to the USD price?
@@ -493,22 +512,32 @@ contract DssDeployTestBase is Test, ProxyActions {
         pipUSDT.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 USDT (precision 18)
         pipCOL.poke(bytes32(uint(45 * 10 ** 18))); // Price 45 DAI = 1 COL (precision 18)
         pipCOL2.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 COL2 (precision 18)
+        
+        // COL3
+        feedCOL3.file("decimals", uint(6));
+        feedCOL3.file("answer", int(30 * 10 ** 6)); // Price 30 DAI = 1 COL3 (precision 6)
+
 
         // @TODO add / change to ethClip
         (ethFlip, , ) = dssDeploy.ilks("ETH");
         (colFlip, , ) = dssDeploy.ilks("COL");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
         (, col2Clip, ) = dssDeploy.ilks("COL2");
+        (, col3Clip, ) = dssDeploy.ilks("COL3");
+
 
         this.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         this.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         this.file(address(spotter), "COL", "mat", uint(1100000000 ether)); // Liquidation ratio 110%
         this.file(address(spotter), "COL2", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
+        this.file(address(spotter), "COL3", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
+
 
         spotter.poke("ETH");
         spotter.poke("USDT-A");
         spotter.poke("COL");
         spotter.poke("COL2");
+        spotter.poke("COL3");
 
         (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);
@@ -517,6 +546,8 @@ contract DssDeployTestBase is Test, ProxyActions {
         (, , spot, , ) = vat.ilks("COL");
         assertEq(spot, (45 * RAY * RAY) / 1100000000 ether);
         (, , spot, , ) = vat.ilks("COL2");
+        assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
+        (, , spot, , ) = vat.ilks("COL3");
         assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
 
         MockGuard(address(gov.authority())).permit(

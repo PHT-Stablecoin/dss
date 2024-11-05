@@ -287,7 +287,7 @@ contract MockGuard {
 
 
 
-contract DssDeployTestBase is Test, ProxyActions {
+contract DssDeployTestBaseFork is Test, ProxyActions {
     // Fork identifiers
     uint256 mainnetFork;
     uint256 optimismFork;
@@ -322,19 +322,20 @@ contract DssDeployTestBase is Test, ProxyActions {
 
     // Pips
     DSToken gov;
-    AggregatorV3Interface pipETH;
-    AggregatorV3Interface pipCOL;
-    AggregatorV3Interface pipCOL2;
-    AggregatorV3Interface pipUSDT;
-    AggregatorV3Interface pipPHS;
-    AggregatorV3Interface pipXINF;
+    AggregatorV3Interface feedETH;
+    AggregatorV3Interface feedBTC;
+    AggregatorV3Interface feedCNY;
+    AggregatorV3Interface feedUSDT;
+    AggregatorV3Interface feedPHS;
+    AggregatorV3Interface feedXINF;
 
     MockGuard authority;
 
     WETH weth;
     GemJoin ethJoin;
-    GemJoin colJoin;
-    GemJoin col2Join;
+    GemJoin btcJoin;
+    GemJoin cnyJoin;
+    GemJoin usdtJoin;
 
     Vat vat;
     Jug jug;
@@ -344,8 +345,7 @@ contract DssDeployTestBase is Test, ProxyActions {
     Flapper flap;
     Flopper flop;
     Dai dai;
-    GemJoin usdtJoin;
-    GemJoin phsJoin;
+
     DaiJoin daiJoin;
     Spotter spotter;
     Pot pot;
@@ -375,6 +375,12 @@ contract DssDeployTestBase is Test, ProxyActions {
     // Governance Parameters
     uint256 constant INITIAL_XINF_SUPPLY = 1000000 * WAD;
     uint256 constant INITIAL_USDT_SUPPLY = 10000000 * (10 ** 6); // USDT has 6 decimals
+
+    // Chainlink Feeds
+    address constant CHAINLINK_MAINNET_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address constant CHAINLINK_MAINNET_USDT_USD = 0x3E7d1eAB13ad0104d2750B8863b489D65364e32D;
+    address constant CHAINLINK_MAINNET_BTC_USD = 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c;
+    address constant CHAINLINK_MAINNET_CNY_USD = 0xeF8A4aF35cd47424672E3C590aBD37FBB7A7759a;
 
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x);
@@ -431,11 +437,10 @@ contract DssDeployTestBase is Test, ProxyActions {
         gov = new DSToken("GOV");
         gov.setAuthority(DSAuthority(address(new MockGuard())));
         
-        pipETH = new DSValue();
-        pipUSDT = new DSValue();
-        pipXINF = new DSValue();
-        pipCOL = new DSValue();
-        pipCOL2 = new DSValue();
+        feedETH =  AggregatorV3Interface(CHAINLINK_MAINNET_ETH_USD) // ETH/USD Mainnet
+        feedUSDT = AggregatorV3Interface(CHAINLINK_MAINNET_USDT_USD) // USDT/USD Mainnet
+        feedBTC =  AggregatorV3Interface(CHAINLINK_MAINNET_BTC_USD) // BTC/USD Mainnet
+        feedCNY =  AggregatorV3Interface(CHAINLINK_MAINNET_CNY_USD) // CNY/USD Mainnet
         authority = new MockGuard();
 
         user1 = new FakeUser();
