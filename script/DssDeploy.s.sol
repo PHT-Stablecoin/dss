@@ -4,6 +4,8 @@ pragma experimental ABIEncoderV2;
 import "forge-std/Script.sol";
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import {stdJson} from "forge-std/StdJson.sol";
+
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -25,7 +27,10 @@ import {TestUSDT} from "../test/helpers/USDT.sol";
 import {XINF} from "../test/helpers/XINF.sol";
 
 import {ChainLog} from "../test/helpers/ChainLog.sol";
-// TODO
+
+// Chainlink
+import {MockAggregatorV3} from "../test/helpers/MockAggregatorV3.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.sol";
 
 contract DssDeployScript is Script, Test {
     VatFab vatFab;
@@ -55,6 +60,9 @@ contract DssDeployScript is Script, Test {
     DSValue pipUSDT;
     DSValue pipPHS;
     DSValue pipXINF;
+    
+    ChainlinkPip pipCOL3;
+    MockAggregatorV3 feedCOL3;
 
     MockGuard authority;
 
@@ -108,14 +116,27 @@ contract DssDeployScript is Script, Test {
     function run() public {
         vm.startBroadcast();
 
-        address msgSender = msg.sender;
         setUp();
-        deployKeepAuth(msgSender);
+        deployKeepAuth(address(dssDeploy));
+        this.testAuth();
+
+        // Release Auth
         dssDeploy.releaseAuth(address(dssDeploy));
+        dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
+        dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
+        this.testReleasedAuth();
+
+
+        string memory root = vm.projectRoot();
+        string memory path = string(abi.encodePacked(root, "/script/output/1/dssDeploy.artifacts.json"));
+        string memory artifacts = "artifacts";
+        vm.serializeAddress(artifacts, "clog", address(clog));
+        vm.serializeAddress(artifacts, "usdt", address(usdt));
+        vm.serializeAddress(artifacts, "weth", address(weth));
+        string memory output = vm.serializeAddress(artifacts, "dssDeploy", address(dssDeploy));
+        vm.writeJson(output, path);
 
         vm.stopBroadcast();
-
-        console.log("after releaseAuth");
     }
 
     function setUp() public virtual {
@@ -157,12 +178,16 @@ contract DssDeployScript is Script, Test {
         );
 
         gov = new DSToken("GOV");
+
         // TODO
-        authority = new MockGuard();
-        gov.setAuthority(DSAuthority(address(authority)));
+        gov.setAuthority(DSAuthority(address(new MockGuard())));
         pipETH = new DSValue();
         pipUSDT = new DSValue();
         pipXINF = new DSValue();
+        authority = new MockGuard();
+
+        feedCOL3 = new MockAggregatorV3();
+        pipCOL3 = new ChainlinkPip(address(feedCOL3));
     }
 
     function rad(uint wad) internal pure returns (uint) {
@@ -198,7 +223,6 @@ contract DssDeployScript is Script, Test {
         end = dssDeploy.end();
         esm = dssDeploy.esm();
         proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
-
 
         /// OnChain Log
         clog = new ChainLog();
@@ -236,7 +260,7 @@ contract DssDeployScript is Script, Test {
         // usdt = IERC20(MAINNET_USDT_ADDRESS);
         usdt = IERC20(address(new TestUSDT()));
         usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
-        LinearDecrease calc = calcFab.newLinearDecrease(_msgSender);
+        LinearDecrease calc = calcFab.newLinearDecrease(msg.sender);
         calc.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calc));
 
@@ -269,8 +293,6 @@ contract DssDeployScript is Script, Test {
         (, , spot, , ) = vat.ilks("USDT-A");
         assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
 
-        console.log("before mint");
-
         console.log("flop", address(flop));
         console.log("flap", address(flap));
 
@@ -288,7 +310,108 @@ contract DssDeployScript is Script, Test {
         }
 
         gov.mint(100 ether);
+    }
 
-        console.log("after mint");
+    function testAuth() public {
+        // vat
+        assertEq(vat.wards(address(dssDeploy)), 1, "dssDeploy wards");
+        assertEq(vat.wards(address(ethJoin)), 1, "ethJoin wards");
+        assertEq(vat.wards(address(usdtJoin)), 1, "usdtJoin wards");
+        assertEq(vat.wards(address(cat)), 1, "cat wards");
+        assertEq(vat.wards(address(dog)), 1, "dog wards");
+        assertEq(vat.wards(address(usdtClip)), 1, "usdtClip wards");
+        assertEq(vat.wards(address(jug)), 1, "jug wards");
+        assertEq(vat.wards(address(spotter)), 1, "spotter wards");
+        assertEq(vat.wards(address(end)), 1, "end wards");
+        assertEq(vat.wards(address(esm)), 1, "esm wards");
+        assertEq(vat.wards(address(dssDeploy.pause().proxy())), 1, "pause proxy wards");
+
+        // cat
+        assertEq(cat.wards(address(dssDeploy)), 1, "dssDeploy wards");
+        assertEq(cat.wards(address(end)), 1, "end wards");
+        assertEq(cat.wards(address(dssDeploy.pause().proxy())), 1, "pause proxy wards");
+
+        // dog
+        assertEq(dog.wards(address(dssDeploy)), 1, "dssDeploy wards");
+        assertEq(dog.wards(address(end)), 1, "dssDeploy end wards");
+        assertEq(dog.wards(address(dssDeploy.pause().proxy())), 1, "pause proxy wards");
+
+        // vow
+        assertEq(vow.wards(address(dssDeploy)), 1);
+        assertEq(vow.wards(address(cat)), 1, "cat wards");
+        assertEq(vow.wards(address(end)), 1, "end wards");
+        assertEq(vow.wards(address(dssDeploy.pause().proxy())), 1, "pause proxy wards");
+
+        // jug
+        assertEq(jug.wards(address(dssDeploy)), 1, "jug.dssDeploy wards");
+        assertEq(jug.wards(address(dssDeploy.pause().proxy())), 1, "jug.pause proxy wards");
+
+        // pot
+        assertEq(pot.wards(address(dssDeploy)), 1, "pot.dssDeploy wards");
+        assertEq(pot.wards(address(dssDeploy.pause().proxy())), 1, "pot.pause proxy wards");
+
+        // dai
+        assertEq(dai.wards(address(dssDeploy)), 1, "dai.dssDeploy wards");
+
+        // spotter
+        assertEq(spotter.wards(address(dssDeploy)), 1, "spotter.dssDeploy wards");
+        assertEq(spotter.wards(address(dssDeploy.pause().proxy())), 1, "spotter.pause proxy wards");
+
+        // flap
+        assertEq(flap.wards(address(dssDeploy)), 1);
+        assertEq(flap.wards(address(vow)), 1);
+        assertEq(flap.wards(address(dssDeploy.pause().proxy())), 1);
+
+        // flop
+        assertEq(flop.wards(address(dssDeploy)), 1);
+        assertEq(flop.wards(address(vow)), 1);
+        assertEq(flop.wards(address(dssDeploy.pause().proxy())), 1);
+
+        // cure
+        assertEq(cure.wards(address(dssDeploy)), 1);
+        assertEq(cure.wards(address(end)), 1);
+        assertEq(cure.wards(address(dssDeploy.pause().proxy())), 1);
+
+        // end
+        assertEq(end.wards(address(dssDeploy)), 1);
+        assertEq(end.wards(address(esm)), 1);
+        assertEq(end.wards(address(dssDeploy.pause().proxy())), 1);
+
+        // flips
+        assertEq(ethFlip.wards(address(dssDeploy)), 1);
+        assertEq(ethFlip.wards(address(end)), 1);
+        assertEq(ethFlip.wards(address(dssDeploy.pause().proxy())), 1);
+        assertEq(ethFlip.wards(address(esm)), 1);
+
+        // clips
+        assertEq(usdtClip.wards(address(dssDeploy)), 1);
+        assertEq(usdtClip.wards(address(end)), 1);
+        assertEq(usdtClip.wards(address(dssDeploy.pause().proxy())), 1);
+        assertEq(usdtClip.wards(address(esm)), 1);
+
+        // pause
+        assertEq(address(dssDeploy.pause().authority()), address(authority));
+        assertEq(dssDeploy.pause().owner(), address(0));
+
+        // dssDeploy
+        assertEq(address(dssDeploy.authority()), address(0));
+        assertEq(dssDeploy.owner(), msg.sender);
+    }
+
+    function testReleasedAuth() public {
+        assertEq(vat.wards(address(dssDeploy)), 0);
+        assertEq(cat.wards(address(dssDeploy)), 0);
+        assertEq(dog.wards(address(dssDeploy)), 0);
+        assertEq(vow.wards(address(dssDeploy)), 0);
+        assertEq(jug.wards(address(dssDeploy)), 0);
+        assertEq(pot.wards(address(dssDeploy)), 0);
+        assertEq(dai.wards(address(dssDeploy)), 0);
+        assertEq(spotter.wards(address(dssDeploy)), 0);
+        assertEq(flap.wards(address(dssDeploy)), 0);
+        assertEq(flop.wards(address(dssDeploy)), 0);
+        assertEq(cure.wards(address(dssDeploy)), 0);
+        assertEq(end.wards(address(dssDeploy)), 0);
+        assertEq(ethFlip.wards(address(dssDeploy)), 0);
+        assertEq(usdtClip.wards(address(dssDeploy)), 0);
     }
 }
