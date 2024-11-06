@@ -517,7 +517,6 @@ contract DssDeployTestBase is Test, ProxyActions {
         feedCOL3.file("decimals", uint(6));
         feedCOL3.file("answer", int(30 * 10 ** 6)); // Price 30 DAI = 1 COL3 (precision 6)
 
-
         // @TODO add / change to ethClip
         (ethFlip, , ) = dssDeploy.ilks("ETH");
         (colFlip, , ) = dssDeploy.ilks("COL");
@@ -548,7 +547,8 @@ contract DssDeployTestBase is Test, ProxyActions {
         (, , spot, , ) = vat.ilks("COL2");
         assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
         (, , spot, , ) = vat.ilks("COL3");
-        assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
+        console.log("COL3 spot", spot);
+        assertEq(spot, (30 * RAY * RAY) / 1500000000 ether); // we are getting 20000000000000000000000000000 from (30 * RAY * RAY) / 1500000000 ether, but the spot price from chainlink gave us 312500000000000000000000000000000
 
         MockGuard(address(gov.authority())).permit(
             address(flop),

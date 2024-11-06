@@ -126,13 +126,20 @@ contract DssDeployScript is Script, Test {
         dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
         this.testReleasedAuth();
 
-
+        // artifacts
         string memory root = vm.projectRoot();
         string memory path = string(abi.encodePacked(root, "/script/output/1/dssDeploy.artifacts.json"));
         string memory artifacts = "artifacts";
         vm.serializeAddress(artifacts, "clog", address(clog));
         vm.serializeAddress(artifacts, "usdt", address(usdt));
         vm.serializeAddress(artifacts, "weth", address(weth));
+        vm.serializeAddress(artifacts, "spot", address(spotter));
+        vm.serializeAddress(artifacts, "jug", address(jug));
+        vm.serializeAddress(artifacts, "vat", address(vat));
+        vm.serializeAddress(artifacts, "flop", address(flop));
+        vm.serializeAddress(artifacts, "flap", address(flap));
+        vm.serializeAddress(artifacts, "vow", address(vow));
+
         string memory output = vm.serializeAddress(artifacts, "dssDeploy", address(dssDeploy));
         vm.writeJson(output, path);
 
