@@ -45,8 +45,9 @@ contract ChainlinkPip is PipLike {
         }
 
         uint8 decimals = dataFeed.decimals();
-        _answer = bytes32((uint256(answer) * (10 ** 18)) / (10 ** decimals));
+        _answer = bytes32((uint256(answer) * 1e18 / (10 ** uint256(decimals))));
         _has = true;
+
         return (_answer, _has);
     }
 }
