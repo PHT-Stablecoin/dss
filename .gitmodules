@@ -19,3 +19,6 @@
 [submodule "lib/dss-cron"]
 	path = lib/dss-cron
 	url = https://github.com/makerdao/dss-cron
+[submodule "lib/dss-psm"]
+	path = lib/dss-psm
+	url = https://github.com/makerdao/dss-psm
