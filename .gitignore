@@ -372,6 +372,7 @@ forge-artifacts/
 forge-cache/
 .aider*
 out
+script/output/**/*
 
 # Hardhat
 cache_hardhat

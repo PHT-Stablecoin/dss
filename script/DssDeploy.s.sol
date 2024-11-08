@@ -27,12 +27,20 @@ import {TestUSDT} from "../test/helpers/USDT.sol";
 import {XINF} from "../test/helpers/XINF.sol";
 
 import {ChainLog} from "../test/helpers/ChainLog.sol";
+import {DssPsm} from "dss-psm/psm.sol";
 
 // Chainlink
 import {MockAggregatorV3} from "../test/helpers/MockAggregatorV3.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.sol";
 
+// Cron
+
+
+
 contract DssDeployScript is Script, Test {
+
+    using stdJson for string;
+
     VatFab vatFab;
     JugFab jugFab;
     VowFab vowFab;
@@ -95,6 +103,7 @@ contract DssDeployScript is Script, Test {
     Clipper phsClip;
 
     ChainLog clog;
+    DssPsm psm;
     
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -126,22 +135,55 @@ contract DssDeployScript is Script, Test {
         dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
         this.testReleasedAuth();
 
-        // artifacts
-        string memory root = vm.projectRoot();
-        string memory path = string(abi.encodePacked(root, "/script/output/1/dssDeploy.artifacts.json"));
-        string memory artifacts = "artifacts";
-        vm.serializeAddress(artifacts, "clog", address(clog));
-        vm.serializeAddress(artifacts, "usdt", address(usdt));
-        vm.serializeAddress(artifacts, "weth", address(weth));
-        vm.serializeAddress(artifacts, "spot", address(spotter));
-        vm.serializeAddress(artifacts, "jug", address(jug));
-        vm.serializeAddress(artifacts, "vat", address(vat));
-        vm.serializeAddress(artifacts, "flop", address(flop));
-        vm.serializeAddress(artifacts, "flap", address(flap));
-        vm.serializeAddress(artifacts, "vow", address(vow));
 
-        string memory output = vm.serializeAddress(artifacts, "dssDeploy", address(dssDeploy));
-        vm.writeJson(output, path);
+        // ChainLog
+        {
+            clog = new ChainLog();
+            clog.setAddress("MCD_VAT", address(vat));
+            clog.setAddress("MCD_JUG", address(jug));
+            clog.setAddress("MCD_VOW", address(vow));
+            clog.setAddress("MCD_CAT", address(cat));
+            clog.setAddress("MCD_DOG", address(dog));
+            clog.setAddress("MCD_FLAP", address(flap));
+            clog.setAddress("MCD_FLOP", address(flop));
+            clog.setAddress("MCD_DAI", address(dai));
+            clog.setAddress("MCD_DAIJOIN", address(daiJoin));
+            clog.setAddress("MCD_SPOTTER", address(spotter));
+            clog.setAddress("MCD_POT", address(pot));
+            clog.setAddress("MCD_CURE", address(cure));
+            clog.setAddress("MCD_END", address(end));
+            clog.setAddress("MCD_ESM", address(esm));
+
+            // Custom
+            clog.setAddress("MCD_PSM", address(psm));
+            clog.setIPFS("");
+        }
+
+        // artifacts
+        {
+            string memory root = vm.projectRoot();
+            string memory path = string(abi.encodePacked(root, "/script/output/1/dssDeploy.artifacts.json"));
+            
+            string memory artifacts = "artifacts";
+            artifacts.serialize("vat", address(vat));
+            artifacts.serialize("jug", address(jug));
+            artifacts.serialize("vow", address(vow));
+            artifacts.serialize("cat", address(cat));
+            artifacts.serialize("dog", address(dog));
+            artifacts.serialize("flap", address(flap));
+            artifacts.serialize("flop", address(flop));
+            artifacts.serialize("dai", address(dai));
+            artifacts.serialize("daiJoin", address(daiJoin));
+            artifacts.serialize("spotter", address(spotter));
+            artifacts.serialize("pot", address(pot));
+            artifacts.serialize("cure", address(cure));
+            artifacts.serialize("end", address(end));
+            artifacts.serialize("esm", address(esm));
+            aritfacts.serialize("litePsm", address(psm));
+
+            string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
+            json.write(path);
+        }
 
         vm.stopBroadcast();
     }
@@ -231,26 +273,6 @@ contract DssDeployScript is Script, Test {
         esm = dssDeploy.esm();
         proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
 
-        /// OnChain Log
-        clog = new ChainLog();
-        {
-            clog.setAddress("MCD_VAT", address(vat));
-            clog.setAddress("MCD_JUG", address(jug));
-            clog.setAddress("MCD_VOW", address(vow));
-            clog.setAddress("MCD_CAT", address(cat));
-            clog.setAddress("MCD_DOG", address(dog));
-            clog.setAddress("MCD_FLAP", address(flap));
-            clog.setAddress("MCD_FLOP", address(flop));
-            clog.setAddress("MCD_DAI", address(dai));
-            clog.setAddress("MCD_DAIJOIN", address(daiJoin));
-            clog.setAddress("MCD_SPOTTER", address(spotter));
-            clog.setAddress("MCD_POT", address(pot));
-            clog.setAddress("MCD_CURE", address(cure));
-            clog.setAddress("MCD_END", address(end));
-            clog.setAddress("MCD_ESM", address(esm));
-            clog.setIPFS("");
-        }
-
         authority.permit(
             address(proxyActions),
             address(dssDeploy.pause()),
@@ -294,6 +316,8 @@ contract DssDeployScript is Script, Test {
         spotter.poke("ETH");
         spotter.poke("USDT-A");
         console.log("after poke");
+
+        psm = new DssPsm(address(ethJoin), address(daiJoin), address(vow));
 
         (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);
