@@ -19,6 +19,10 @@ https://book.getfoundry.sh/
 
 ```shell
 $ forge build
+$ 
+$ #NODE
+$ npm install
+$ npm run types
 ```
 
 ### Test

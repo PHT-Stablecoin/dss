@@ -8,7 +8,7 @@
     "test": "test"
   },
   "scripts": {
-    "types": "harhdat typechain"
+    "types": "hardhat typechain"
   },
   "repository": {
     "type": "git",
