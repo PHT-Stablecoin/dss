@@ -11,4 +11,3 @@ openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
 chainlink/=lib/chainlink-brownie-contracts/contracts/
 @openzeppelin/=lib/openzeppelin-contracts/
 @chainlink/=lib/chainlink-brownie-contracts
-dss-psm/=lib/dss-psm/src/

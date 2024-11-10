@@ -21,6 +21,9 @@ import {GovActions} from "./helpers/govActions.sol";
 import {MockAggregatorV3} from "./helpers/MockAggregatorV3.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 
+// PSM
+import {DssPsm} from "dss-psm/psm.sol";
+
 // Test Tokens
 // Governance Token (MKR)
 contract XINF is ERC20 {
@@ -365,6 +368,8 @@ contract DssDeployTestBase is Test, ProxyActions {
     FakeUser user1;
     FakeUser user2;
 
+    DssPsm psm;
+
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
@@ -537,6 +542,8 @@ contract DssDeployTestBase is Test, ProxyActions {
         spotter.poke("COL");
         spotter.poke("COL2");
         spotter.poke("COL3");
+
+        psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
 
         (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);

@@ -179,7 +179,7 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("cure", address(cure));
             artifacts.serialize("end", address(end));
             artifacts.serialize("esm", address(esm));
-            aritfacts.serialize("litePsm", address(psm));
+            artifacts.serialize("psm", address(psm));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -317,7 +317,7 @@ contract DssDeployScript is Script, Test {
         spotter.poke("USDT-A");
         console.log("after poke");
 
-        psm = new DssPsm(address(ethJoin), address(daiJoin), address(vow));
+        psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
 
         (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);

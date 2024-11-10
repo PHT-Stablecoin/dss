@@ -14,13 +14,9 @@ const main = async () => {
     const dssEnv = process.env as DssEnv;
     const provider = new ethers.JsonRpcProvider(dssEnv.LOCAL_RPC_URL!)
     const signer = await provider.getSigner()
-    const artifacts = await import("../output/1/dssDeploy.artifacts.json")
+    const artifacts = await import("../output/1/dssDeploy.artifacts.json")    
 
-    const spot = Spot.connect(artifacts.spot, signer)
-    const tx = await spot.poke.send(ethers.encodeBytes32String("ETH"))
-    console.log(tx)
-    const tx2 = await spot.poke.send(ethers.encodeBytes32String("USDT-A"))
-    console.log(tx2)
+    console.log("NO KEEPER NETWORK OR REWARDS")
     
     // TODO: setup triggers and incentives and costs
     // setInterval(async () => {

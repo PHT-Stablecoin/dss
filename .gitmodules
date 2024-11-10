@@ -22,6 +22,6 @@
 [submodule "lib/dss-psm"]
 	path = lib/dss-psm
 	url = https://github.com/makerdao/dss-psm
-[submodule "lib/dss-lite-psm"]
-	path = lib/dss-lite-psm
-	url = https://github.com/makerdao/dss-lite-psm
+# [submodule "lib/dss-lite-psm"]
+# 	path = lib/dss-lite-psm
+# 	url = https://github.com/makerdao/dss-lite-psm
