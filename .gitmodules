@@ -25,3 +25,6 @@
 # [submodule "lib/dss-lite-psm"]
 # 	path = lib/dss-lite-psm
 # 	url = https://github.com/makerdao/dss-lite-psm
+[submodule "lib/dss-auto-line"]
+	path = lib/dss-auto-line
+	url = https://github.com/makerdao/dss-auto-line
