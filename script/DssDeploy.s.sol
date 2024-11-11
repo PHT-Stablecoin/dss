@@ -335,6 +335,8 @@ contract DssDeployScript is Script, Test {
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
         psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
         ilkRegistry = new IlkRegistry(address(end));
+        ilkRegistry.add(address(ethJoin));
+        ilkRegistry.add(address(usdtJoin));
 
         (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);

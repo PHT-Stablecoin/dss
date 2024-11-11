@@ -66,6 +66,7 @@ contract DssJobsDeployScript is Script, Test {
     Sequencer sequencer;
 
     function run() public {
+        vm.startBroadcast();
         string memory root = vm.projectRoot();
 
         // get chainid via asm
@@ -85,7 +86,7 @@ contract DssJobsDeployScript is Script, Test {
         sequencer = new Sequencer();
         sequencer.addNetwork(NET_MAIN, 10);
 
-        // oracleJob = new OracleJob(address(sequencer), artifacts.ilkRegistry)
+        OracleJob oracleJob = new OracleJob(address(sequencer), artifacts.ilkRegistry, artifacts.spotter);
+        vm.stopBroadcast();
     }
-
 }
