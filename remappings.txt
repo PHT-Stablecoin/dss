@@ -11,3 +11,6 @@ openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/
 chainlink/=lib/chainlink-brownie-contracts/contracts/
 @openzeppelin/=lib/openzeppelin-contracts/
 @chainlink/=lib/chainlink-brownie-contracts
+dss-auto-line/=lib/dss-auto-line/src/
+dss-cron/=lib/dss-cron/src/
+dss-ilk-registry/=lib/ilk-registry/src/

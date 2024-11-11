@@ -28,14 +28,15 @@ import {XINF} from "../test/helpers/XINF.sol";
 
 import {ChainLog} from "../test/helpers/ChainLog.sol";
 import {DssPsm} from "dss-psm/psm.sol";
+import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 // Chainlink
 import {MockAggregatorV3} from "../test/helpers/MockAggregatorV3.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.sol";
 
+// Autoline
+import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 // Cron
-
-
 
 contract DssDeployScript is Script, Test {
 
@@ -103,7 +104,9 @@ contract DssDeployScript is Script, Test {
     Clipper phsClip;
 
     ChainLog clog;
+    DssAutoLine autoline;
     DssPsm psm;
+    IlkRegistry ilkRegistry;
     
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -165,6 +168,8 @@ contract DssDeployScript is Script, Test {
             string memory path = string(abi.encodePacked(root, "/script/output/1/dssDeploy.artifacts.json"));
             
             string memory artifacts = "artifacts";
+            artifacts.serialize("clog", address(clog));
+
             artifacts.serialize("vat", address(vat));
             artifacts.serialize("jug", address(jug));
             artifacts.serialize("vow", address(vow));
@@ -179,7 +184,10 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("cure", address(cure));
             artifacts.serialize("end", address(end));
             artifacts.serialize("esm", address(esm));
+
             artifacts.serialize("psm", address(psm));
+            artifacts.serialize("autoline", address(autoline));
+            artifacts.serialize("ilkRegistry", address(ilkRegistry));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -272,6 +280,7 @@ contract DssDeployScript is Script, Test {
         end = dssDeploy.end();
         esm = dssDeploy.esm();
         proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
+        autoline = new DssAutoLine(address(vat));
 
         authority.permit(
             address(proxyActions),
@@ -317,7 +326,9 @@ contract DssDeployScript is Script, Test {
         spotter.poke("USDT-A");
         console.log("after poke");
 
+        //TODO: SETUP GemJoinX (usdtJoin is incorrect)
         psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
+        ilkRegistry = new IlkRegistry(address(end));
 
         (, , uint spot, , ) = vat.ilks("ETH");
         assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);

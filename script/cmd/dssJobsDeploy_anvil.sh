@@ -8,5 +8,9 @@ set -a
 source .env.development
 set +a
 
-# Start Anvil
-anvil --fork-url $MAINNET_RPC_URL
+# Deploy Setup
+forge script ./script/DssJobsDeploy.s.sol:DssJobsDeployScript \
+    --rpc-url=$LOCAL_RPC_URL \
+    --private-key=$PRIVATE_KEY \
+    --contracts=./script/ \
+    --broadcast
