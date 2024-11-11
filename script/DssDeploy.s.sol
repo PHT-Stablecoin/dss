@@ -192,6 +192,13 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("end", address(end));
             artifacts.serialize("esm", address(esm));
 
+            artifacts.serialize("pipETH", address(pipETH));
+            artifacts.serialize("pipUSDT", address(pipUSDT));
+            artifacts.serialize("pipXINF", address(pipXINF));
+            artifacts.serialize("pipCOL3", address(pipCOL3));
+            artifacts.serialize("feedCOL3", address(feedCOL3));
+
+            artifacts.serialize("authority", address(authority));
             artifacts.serialize("psm", address(psm));
             artifacts.serialize("autoline", address(autoline));
             artifacts.serialize("ilkRegistry", address(ilkRegistry));

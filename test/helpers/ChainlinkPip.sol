@@ -2,7 +2,10 @@
 pragma solidity ^0.6.2;
 
 interface PipLike {
-    function peek() external returns (bytes32, bool);
+    function has() external view returns (bool);
+    function peek() external view returns (bytes32, bool);
+    function read() external view returns (bytes32);
+    function poke(bytes32) external;
 }
 
 interface AggregatorV3Interface {
@@ -29,8 +32,22 @@ contract ChainlinkPip is PipLike {
         dataFeed = AggregatorV3Interface(_dataFeed);
     }
 
+    function has() external override view returns (bool _has) {
+        (,_has) = this.peek();
+        return _has;
+    }
+
+    function read() external override view returns (bytes32 _answer) {
+        (_answer,) = this.peek();
+        return _answer;
+    }
+    
+    function poke(bytes32) external override {
+        // Noop
+    }
+
     /// Should convert answer (6 decimals) => answer (18 decimals)
-    function peek() external override returns (bytes32 _answer, bool _has) {
+    function peek() external view override returns (bytes32 _answer, bool _has) {
         (
             /* uint80 roundID */,
             int256 answer,

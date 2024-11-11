@@ -9,8 +9,16 @@ source .env.development
 set +a
 
 # Deploy Setup
+# forge debug ./script/DssJobsDeploy.s.sol:DssJobsDeployScript \
+#     --rpc-url=$LOCAL_RPC_URL \
+#     --contracts=./script/ \
+#     -- --private-key=$PRIVATE_KEY \
+#     # --broadcast
 forge script ./script/DssJobsDeploy.s.sol:DssJobsDeployScript \
     --rpc-url=$LOCAL_RPC_URL \
-    --private-key=$PRIVATE_KEY \
     --contracts=./script/ \
+    --private-key=$PRIVATE_KEY \
     --broadcast
+
+
+    
