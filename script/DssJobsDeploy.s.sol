@@ -67,7 +67,17 @@ contract DssJobsDeployScript is Script, Test {
 
     function run() public {
         string memory root = vm.projectRoot();
-        string memory path = string(abi.encodePacked(root, "/script/output/1/dssDeploy.artifacts.json"));
+
+        // get chainid via asm
+        uint256 chainId;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            chainId := chainid()
+        }
+
+        string memory path = string(
+            abi.encodePacked(root, "/script/output/", vm.toString(chainId), "/dssDeploy.artifacts.json")
+        );
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         artifacts = abi.decode(data, (DssDeployArtifacts));
