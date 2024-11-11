@@ -15,11 +15,16 @@ https://book.getfoundry.sh/
 
 ## Usage
 
-### Build
-
+### Localhost Dev
 ```shell
-$ forge build
-$ 
+$ cp .env.example .env.development # Create Dev Env
+$ ./script/cmd/anvil.sh # Run in seperate shell
+$ ./script/cmd/dssDeploy_anvil.sh # Deploy Sample Dss
+$ cat ./script/output/1/dssDeploy.artifacts.json ## Artifacts deployed here
+```
+
+### Build (For Scripts)
+```shell 
 $ #NODE
 $ npm install
 $ npm run types
