@@ -9,4 +9,5 @@ source .env.development
 set +a
 
 # Start Anvil
-anvil --fork-url $MAINNET_RPC_URL
+# anvil --fork-url $MAINNET_RPC_URL
+anvil

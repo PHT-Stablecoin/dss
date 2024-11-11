@@ -39,7 +39,6 @@ import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 // Cron
 
 contract DssDeployScript is Script, Test {
-
     using stdJson for string;
 
     VatFab vatFab;
@@ -69,7 +68,7 @@ contract DssDeployScript is Script, Test {
     DSValue pipUSDT;
     DSValue pipPHS;
     DSValue pipXINF;
-    
+
     ChainlinkPip pipCOL3;
     MockAggregatorV3 feedCOL3;
 
@@ -107,7 +106,7 @@ contract DssDeployScript is Script, Test {
     DssAutoLine autoline;
     DssPsm psm;
     IlkRegistry ilkRegistry;
-    
+
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
@@ -138,7 +137,6 @@ contract DssDeployScript is Script, Test {
         dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
         this.testReleasedAuth();
 
-
         // ChainLog
         {
             clog = new ChainLog();
@@ -162,11 +160,20 @@ contract DssDeployScript is Script, Test {
             clog.setIPFS("");
         }
 
+        // get chainid via asm
+        uint256 chainId;
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            chainId := chainid()
+        }
+
         // artifacts
         {
             string memory root = vm.projectRoot();
-            string memory path = string(abi.encodePacked(root, "/script/output/1/dssDeploy.artifacts.json"));
-            
+            string memory path = string(
+                abi.encodePacked(root, "/script/output/", vm.toString(chainId), "/dssDeploy.artifacts.json")
+            );
+
             string memory artifacts = "artifacts";
             artifacts.serialize("clog", address(clog));
 
@@ -252,7 +259,6 @@ contract DssDeployScript is Script, Test {
     }
 
     function deployKeepAuth(address _msgSender) public {
-        
         dssDeploy.deployVat();
         dssDeploy.deployDai(99);
         dssDeploy.deployTaxation();

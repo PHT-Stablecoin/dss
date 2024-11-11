@@ -16,12 +16,13 @@ https://book.getfoundry.sh/
 ## Usage
 
 ### Localhost Dev
+
 ```shell
 $ forge install
 $ cp .env.example .env.development # Create Dev Env
 $ ./script/cmd/anvil.sh # Run in seperate shell
 $ ./script/cmd/dssDeploy_anvil.sh # Deploy Sample Dss
-$ cat ./script/output/1/dssDeploy.artifacts.json ## Artifacts deployed here
+$ cat ./script/output/31337/dssDeploy.artifacts.json ## Artifacts deployed here
 ```
 
 ### Build (For Scripts)
