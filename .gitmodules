@@ -31,6 +31,7 @@
 [submodule "lib/ilk-registry"]
 	path = lib/ilk-registry
 	url = https://github.com/makerdao/ilk-registry
+	branch = master
 [submodule "lib/dss-lite-psm"]
 	path = lib/dss-lite-psm
 	url = https://github.com/makerdao/dss-lite-psm

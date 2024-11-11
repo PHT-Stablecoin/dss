@@ -124,6 +124,13 @@ contract DssDeployScript is Script, Test {
         require(y == 0 || (z = x * y) / y == x);
     }
 
+    function chainId() internal view returns (uint256 _chainId) {
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            _chainId := chainid()
+        }
+    }
+
     function run() public {
         vm.startBroadcast();
 
@@ -160,18 +167,11 @@ contract DssDeployScript is Script, Test {
             clog.setIPFS("");
         }
 
-        // get chainid via asm
-        uint256 chainId;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            chainId := chainid()
-        }
-
         // artifacts
         {
             string memory root = vm.projectRoot();
             string memory path = string(
-                abi.encodePacked(root, "/script/output/", vm.toString(chainId), "/dssDeploy.artifacts.json")
+                abi.encodePacked(root, "/script/output/", vm.toString(chainId()), "/dssDeploy.artifacts.json")
             );
 
             string memory artifacts = "artifacts";
@@ -334,7 +334,7 @@ contract DssDeployScript is Script, Test {
 
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
         psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
-        ilkRegistry = new IlkRegistry(address(end));
+        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
         ilkRegistry.add(address(ethJoin));
         ilkRegistry.add(address(usdtJoin));
 
