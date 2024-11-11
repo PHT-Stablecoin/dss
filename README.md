@@ -17,6 +17,7 @@ https://book.getfoundry.sh/
 
 ### Localhost Dev
 ```shell
+$ forge install
 $ cp .env.example .env.development # Create Dev Env
 $ ./script/cmd/anvil.sh # Run in seperate shell
 $ ./script/cmd/dssDeploy_anvil.sh # Deploy Sample Dss
