@@ -129,13 +129,13 @@ contract DssDeployScript is Script, Test {
 
         setUp();
         deployKeepAuth(address(dssDeploy));
-        this.testAuth();
+        testAuth();
 
         // Release Auth
         dssDeploy.releaseAuth(address(dssDeploy));
         dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
         dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
-        this.testReleasedAuth();
+        testReleasedAuth();
 
         // ChainLog
         {
