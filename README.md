@@ -19,17 +19,19 @@ https://book.getfoundry.sh/
 
 ```shell
 $ forge install
+$ npm install
 $ cp .env.example .env.development # Create Dev Env
+$ chmod -R 777 ./script/cmd # Chmod Scripts
 $ ./script/cmd/anvil.sh # Run in seperate shell
 $ ./script/cmd/dssDeploy_anvil.sh # Deploy Sample Dss
 $ cat ./script/output/31337/dssDeploy.artifacts.json ## Artifacts deployed here
+$ ./script/cmd/run_jobs.sh # Run Jobs every 5 seconds
 ```
 
 ### Build (For Scripts)
 ```shell 
 $ #NODE
 $ npm install
-$ npm run types
 ```
 
 ### Test

@@ -8,6 +8,7 @@
     "test": "test"
   },
   "scripts": {
+    "postinstall": "hardhat typechain",
     "types": "hardhat typechain"
   },
   "repository": {

@@ -14,7 +14,8 @@ const main = async () => {
     const dssEnv = process.env as DssEnv;
     const provider = new ethers.JsonRpcProvider(dssEnv.LOCAL_RPC_URL!)
     const signer = await provider.getSigner()
-    const artifacts = await import("../output/1/dssDeploy.artifacts.json")
+    const network = await provider.getNetwork()
+    const artifacts = await import(`../output/${network.chainId}/dssDeploy.artifacts.json`)    
 
     const jug = Jug.connect(artifacts.jug, signer)
     const tx = await jug.drip.send(ethers.encodeBytes32String("ETH"))

@@ -14,7 +14,8 @@ const main = async () => {
     const dssEnv = process.env as DssEnv;
     const provider = new ethers.JsonRpcProvider(dssEnv.LOCAL_RPC_URL!)
     const signer = await provider.getSigner()
-    const artifacts = await import("../output/1/dssDeploy.artifacts.json")    
+    const network = await provider.getNetwork()
+    const artifacts = await import(`../output/${network.chainId}/dssDeploy.artifacts.json`)    
 
     const spot = Spot.connect(artifacts.spotter, signer)
     const tx = await spot.poke.send(ethers.encodeBytes32String("ETH"))
@@ -24,6 +25,7 @@ const main = async () => {
     
     // TODO: setup triggers and incentives and costs
     // setInterval(async () => {
+
     // }, 5 * 1000);
 }
 
