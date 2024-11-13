@@ -2,14 +2,14 @@ import { ethers } from 'ethers';
 import { CronJob } from 'cron';
 
 export class OracleJob {
-  private provider: ethers.providers.JsonRpcProvider;
+  private provider: ethers.JsonRpcProvider;
   private wallet: ethers.Wallet;
   private sequencer: ethers.Contract;
   private oracleJob: ethers.Contract;
   private cronJob: CronJob;
 
   constructor(
-    provider: ethers.providers.JsonRpcProvider,
+    provider: ethers.JsonRpcProvider,
     privateKey: string,
     sequencerAddress: string,
     oracleJobAddress: string,
@@ -48,20 +48,19 @@ export class OracleJob {
   }
 
   async start() {
-    console.log('Starting Oracle keeper...');
-    console.log(`Schedule: ${this.cronJob.nextDate()}`);
+    console.log('==== Starting Oracle keeper... =====');
+    console.log(`Schedule: ${this.cronJob.nextDate()}\n`);
     this.cronJob.start();
   }
 
   private async execute() {
     const now = new Date().toISOString();
-    console.log(`\nExecuting Oracle check at ${now}`);
+    console.log(`\n==== Executing Oracle check at ${now} ====`);
 
     try {
       // Get current network from sequencer
       const network = await this.sequencer.getMaster();
-      console.log("NETWORK", network);
-      if (!network || network === ethers.constants.HashZero) {
+      if (!network || network === ethers.ZeroHash) {
         console.log('No active network');
         return;
       }
@@ -72,15 +71,15 @@ export class OracleJob {
       console.log("Response", response);
 
       if (response[0]) {
-        const [toPoke, spotterIlksToPoke] = ethers.utils.defaultAbiCoder.decode(
+        const [toPoke, spotterIlksToPoke] = ethers.AbiCoder.defaultAbiCoder().decode(
           ['bytes32[]', 'bytes32[]'],
           response[1]
         );
 
         console.log('Workable result:', {
           response,
-          ilksToUpdate: toPoke.map((ilk: string) => ethers.utils.parseBytes32String(ilk)),
-          spotterIlksToUpdate: spotterIlksToPoke.map((ilk: string) => ethers.utils.parseBytes32String(ilk))
+          ilksToUpdate: toPoke.map((ilk: string) => ethers.decodeBytes32String(ilk)),
+          spotterIlksToUpdate: spotterIlksToPoke.map((ilk: string) => ethers.decodeBytes32String(ilk))
         });
 
         // Execute job
@@ -93,9 +92,8 @@ export class OracleJob {
         const receipt = await tx.wait();
         console.log('Oracle job completed, gas used:', receipt.gasUsed.toString());
       } else {
-        console.log('Oracle job not workable:', ethers.utils.toUtf8String(response[1]));
+        console.log('Oracle job not workable:', ethers.toUtf8String(response[1]));
       }
-
     } catch (error) {
       console.error('Error executing Oracle job:', error);
     }
