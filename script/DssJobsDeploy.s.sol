@@ -9,17 +9,11 @@ import {stdJson} from "forge-std/StdJson.sol";
 // Sequencer and Jobs imports
 import { Sequencer } from "dss-cron/Sequencer.sol";
 import { OracleJob } from "dss-cron/OracleJob.sol";
-import { AutoLineJob } from "dss-cron/AutoLineJob.sol";
-import { FlapJob } from "dss-cron/FlapJob.sol";
 import { IJob } from "dss-cron/interfaces/IJob.sol";
 
 interface IlkRegistryLike {
     function list() external view returns (bytes32[] memory);
     function pip(bytes32 ilk) external view returns (address);
-}
-
-interface SpotterLike {
-    function ilks(bytes32) external view returns (address, uint256);
 }
 
 // Separate storage contract for artifacts
