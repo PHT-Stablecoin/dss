@@ -198,6 +198,9 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("pipCOL3", address(pipCOL3));
             artifacts.serialize("feedCOL3", address(feedCOL3));
 
+            artifacts.serialize("ethFlip", address(ethFlip));
+            artifacts.serialize("usdtClip", address(usdtClip));
+
             artifacts.serialize("authority", address(authority));
             artifacts.serialize("psm", address(psm));
             artifacts.serialize("autoline", address(autoline));
@@ -306,7 +309,7 @@ contract DssDeployScript is Script, Test {
         weth = IERC20(address(new WETH()));
         ethJoin = new GemJoin(address(vat), "ETH", address(weth));
         dssDeploy.deployCollateralFlip("ETH", address(ethJoin), address(pipETH));
-
+        
         // TODO
         // usdt = IERC20(MAINNET_USDT_ADDRESS);
         usdt = IERC20(address(new TestUSDT()));
