@@ -18,12 +18,8 @@ interface IlkRegistryLike {
 
 // Separate storage contract for artifacts
 contract DssAddresses {
-    address public authority;
-    address public autoline;
     address public spotter;
     address public ilkRegistry;
-    address public flap;
-    address public vow;
     
     constructor(
         address _spotter,
