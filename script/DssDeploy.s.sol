@@ -22,8 +22,6 @@ import "../test/helpers/DssDeploy.sol";
 import {FakeUser} from "../test/helpers/FakeUser.sol";
 import {MockGuard} from "../test/helpers/MockGuard.sol";
 import {ProxyActions} from "../test/helpers/ProxyActions.sol";
-import {WETH} from "../test/helpers/WETH.sol";
-import {TestUSDT} from "../test/helpers/USDT.sol";
 import {XINF} from "../test/helpers/XINF.sol";
 
 import {ChainLog} from "../test/helpers/ChainLog.sol";
@@ -37,6 +35,23 @@ import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.
 // Autoline
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 // Cron
+
+// Collateral Token (USDT)
+contract TestUSDT is DSToken {
+    constructor() public DSToken("tstUSDT") {
+        decimals = 6;
+        name = "Test USDT";
+    }
+}
+
+// Collateral Token (PHP)
+contract TestPHP is DSToken {
+    constructor() public DSToken("tstPHP") {
+        decimals = 6;
+        name = "Test PHP";
+    }
+}
+
 
 contract DssDeployScript is Script, Test {
     using stdJson for string;
@@ -64,21 +79,20 @@ contract DssDeployScript is Script, Test {
     ProxyActions proxyActions;
 
     DSToken gov;
-    DSValue pipETH;
-    DSValue pipUSDT;
-    DSValue pipPHS;
-    DSValue pipXINF;
+    ChainlinkPip pipPHP;
+    ChainlinkPip pipUSDT;
 
-    ChainlinkPip pipCOL3;
-    MockAggregatorV3 feedCOL3;
+    MockAggregatorV3 feedPHP;
+    MockAggregatorV3 feedUSDT;
 
     MockGuard authority;
 
-    IERC20 weth;
     IERC20 usdt;
+    IERC20 php;
+
+    GemJoin phpJoin;
     GemJoin ethJoin;
-    GemJoin colJoin;
-    GemJoin col2Join;
+    GemJoin usdtJoin;
 
     Vat vat;
     Jug jug;
@@ -88,8 +102,6 @@ contract DssDeployScript is Script, Test {
     Flapper flap;
     Flopper flop;
     Dai dai;
-    GemJoin usdtJoin;
-    GemJoin phsJoin;
     DaiJoin daiJoin;
     Spotter spotter;
     Pot pot;
@@ -97,10 +109,8 @@ contract DssDeployScript is Script, Test {
     End end;
     ESM esm;
 
-    Clipper ethClip;
-    Flipper ethFlip;
     Clipper usdtClip;
-    Clipper phsClip;
+    Clipper phpClip;
 
     ChainLog clog;
     DssAutoLine autoline;
@@ -119,6 +129,9 @@ contract DssDeployScript is Script, Test {
     // TOKENS
     address constant MAINNET_USDT_ADDR = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address constant MAINNET_WETH_ADDR = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+
+    // MARKET (2024-Q3)
+    uint256 constant PHP_USD_PRICE_E18 = 58_676_224_131_699_110_000; //
 
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x);
@@ -140,7 +153,8 @@ contract DssDeployScript is Script, Test {
 
         // Release Auth
         dssDeploy.releaseAuth(address(dssDeploy));
-        dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
+        // dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
+        dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
         dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
         testReleasedAuth();
 
@@ -164,6 +178,8 @@ contract DssDeployScript is Script, Test {
 
             // Custom
             clog.setAddress("MCD_PSM", address(psm));
+            clog.setAddress("MCD_ILKS", address(ilkRegistry));
+
             clog.setIPFS("");
         }
 
@@ -192,13 +208,12 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("end", address(end));
             artifacts.serialize("esm", address(esm));
 
-            artifacts.serialize("pipETH", address(pipETH));
+            artifacts.serialize("pipPHP", address(pipPHP));
             artifacts.serialize("pipUSDT", address(pipUSDT));
-            artifacts.serialize("pipXINF", address(pipXINF));
-            artifacts.serialize("pipCOL3", address(pipCOL3));
-            artifacts.serialize("feedCOL3", address(feedCOL3));
+            artifacts.serialize("feedPHP", address(feedPHP));
+            artifacts.serialize("feedUSDT", address(feedUSDT));
 
-            artifacts.serialize("ethFlip", address(ethFlip));
+            artifacts.serialize("phpClip", address(phpClip));
             artifacts.serialize("usdtClip", address(usdtClip));
 
             artifacts.serialize("authority", address(authority));
@@ -255,13 +270,13 @@ contract DssDeployScript is Script, Test {
 
         // TODO
         gov.setAuthority(DSAuthority(address(new MockGuard())));
-        pipETH = new DSValue();
-        pipUSDT = new DSValue();
-        pipXINF = new DSValue();
         authority = new MockGuard();
 
-        feedCOL3 = new MockAggregatorV3();
-        pipCOL3 = new ChainlinkPip(address(feedCOL3));
+        feedUSDT = new MockAggregatorV3();
+        feedPHP = new MockAggregatorV3();
+
+        pipUSDT = new ChainlinkPip(address(feedUSDT));
+        pipPHP = new ChainlinkPip(address(feedPHP));
     }
 
     function rad(uint wad) internal pure returns (uint) {
@@ -304,57 +319,55 @@ contract DssDeployScript is Script, Test {
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
         );
 
-        // TODO
-        // weth = IERC20(MAINNET_WETH_ADDRESS);
-        weth = IERC20(address(new WETH()));
-        ethJoin = new GemJoin(address(vat), "ETH", address(weth));
-        dssDeploy.deployCollateralFlip("ETH", address(ethJoin), address(pipETH));
-        
-        // TODO
-        // usdt = IERC20(MAINNET_USDT_ADDRESS);
         usdt = IERC20(address(new TestUSDT()));
         usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
-        LinearDecrease calc = calcFab.newLinearDecrease(msg.sender);
-        calc.file(bytes32("tau"), 1 hours);
-        dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calc));
+        LinearDecrease calcUSDT = calcFab.newLinearDecrease(msg.sender);
+        calcUSDT.file(bytes32("tau"), 1 hours);
+        dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
+        
+        php = IERC20(address(new TestPHP()));
+        phpJoin = new GemJoin(address(vat), "PHP-A", address(php));
+        LinearDecrease calcPHP = calcFab.newLinearDecrease(msg.sender);
+        calcPHP.file(bytes32("tau"), 1 hours);
+        dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
+
 
         // Set Params
         proxyActions.file(address(vat), bytes32("Line"), uint(10000 * 10 ** 45));
-        proxyActions.file(address(vat), bytes32("ETH"), bytes32("line"), uint(10000 * 10 ** 45));
+        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(10000 * 10 ** 45));
         proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(10000 * 10 ** 45));
 
         // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
         // or relative to the USD price?
         // @TODO there is no oracle for the GOV token?
-        pipETH.poke(bytes32(uint(300 * 10 ** 18))); // Price 300 DAI = 1 ETH (precision 18)
-        pipUSDT.poke(bytes32(uint(30 * 10 ** 18))); // Price 30 DAI = 1 USDT (precision 18)
 
-        console.log("after pipUSDT poke");
+        feedUSDT.file("decimals", uint(6));
+        feedUSDT.file("answer", int(58 * 10 ** 6)); // Price 58 DAI (PHT) = 1 USDT (precision 6)
+
+        feedPHP.file("decimals", uint(6));
+        feedPHP.file("answer", int(1 * 10 ** 6)); // Price 1 DAI (PHT) = 1 PHP (precision 6)
 
         // @TODO add / change to ethClip
-        (ethFlip, , ) = dssDeploy.ilks("ETH");
+        (, phpClip, ) = dssDeploy.ilks("PHP-A");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
-        proxyActions.file(address(spotter), "ETH", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
+        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
         proxyActions.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
 
-        spotter.poke("ETH");
+        spotter.poke("PHP-A");
         spotter.poke("USDT-A");
-        console.log("after poke");
 
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
-        psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
+        // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
+
         ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
-        ilkRegistry.add(address(ethJoin));
+        ilkRegistry.add(address(phpJoin));
         ilkRegistry.add(address(usdtJoin));
 
-        (, , uint spot, , ) = vat.ilks("ETH");
-        assertEq(spot, (300 * RAY * RAY) / 1500000000 ether);
+        (, , uint spot, , ) = vat.ilks("PHP-A");
+        assertEq(spot, (1 * RAY * RAY) / 1500000000 ether);
         (, , spot, , ) = vat.ilks("USDT-A");
-        assertEq(spot, (30 * RAY * RAY) / 1500000000 ether);
-
-        console.log("flop", address(flop));
-        console.log("flap", address(flap));
+        assertEq(spot, (58 * RAY * RAY) / 1500000000 ether);
 
         {
             MockGuard(address(gov.authority())).permit(
@@ -375,7 +388,7 @@ contract DssDeployScript is Script, Test {
     function testAuth() public {
         // vat
         assertEq(vat.wards(address(dssDeploy)), 1, "dssDeploy wards");
-        assertEq(vat.wards(address(ethJoin)), 1, "ethJoin wards");
+        assertEq(vat.wards(address(phpJoin)), 1, "phpJoin wards");
         assertEq(vat.wards(address(usdtJoin)), 1, "usdtJoin wards");
         assertEq(vat.wards(address(cat)), 1, "cat wards");
         assertEq(vat.wards(address(dog)), 1, "dog wards");
@@ -437,13 +450,12 @@ contract DssDeployScript is Script, Test {
         assertEq(end.wards(address(esm)), 1);
         assertEq(end.wards(address(dssDeploy.pause().proxy())), 1);
 
-        // flips
-        assertEq(ethFlip.wards(address(dssDeploy)), 1);
-        assertEq(ethFlip.wards(address(end)), 1);
-        assertEq(ethFlip.wards(address(dssDeploy.pause().proxy())), 1);
-        assertEq(ethFlip.wards(address(esm)), 1);
-
         // clips
+        assertEq(phpClip.wards(address(dssDeploy)), 1);
+        assertEq(phpClip.wards(address(end)), 1);
+        assertEq(phpClip.wards(address(dssDeploy.pause().proxy())), 1);
+        assertEq(phpClip.wards(address(esm)), 1);
+
         assertEq(usdtClip.wards(address(dssDeploy)), 1);
         assertEq(usdtClip.wards(address(end)), 1);
         assertEq(usdtClip.wards(address(dssDeploy.pause().proxy())), 1);
@@ -471,7 +483,7 @@ contract DssDeployScript is Script, Test {
         assertEq(flop.wards(address(dssDeploy)), 0);
         assertEq(cure.wards(address(dssDeploy)), 0);
         assertEq(end.wards(address(dssDeploy)), 0);
-        assertEq(ethFlip.wards(address(dssDeploy)), 0);
+        assertEq(phpClip.wards(address(dssDeploy)), 0);
         assertEq(usdtClip.wards(address(dssDeploy)), 0);
     }
 }
