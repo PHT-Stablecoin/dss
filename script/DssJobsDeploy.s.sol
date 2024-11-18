@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity <=0.8.13;
 
 import "forge-std/Script.sol";
@@ -38,10 +37,11 @@ contract DssJobsDeployScript is Script, Test {
     
     DssAddresses public addresses;
     Sequencer public sequencer;
+    OracleJob public oracleJob;
 
-    function loadArtifacts() internal {
-        string memory root = vm.projectRoot();
-        string memory path = string(
+    function loadDssArtifacts() internal {
+        string memory root = vm.projectRoot();   
+        string memory dssArtifactsPath = string(
             abi.encodePacked(
                 root, 
                 "/script/output/", 
@@ -49,7 +49,7 @@ contract DssJobsDeployScript is Script, Test {
                 "/dssDeploy.artifacts.json"
             )
         );
-        string memory json = vm.readFile(path);
+        string memory json = vm.readFile(dssArtifactsPath);
         
         // Parse individual addresses from JSON
         address spotter = json.readAddress(".spotter");
@@ -61,9 +61,28 @@ contract DssJobsDeployScript is Script, Test {
         );
     }
 
+    function addAddressesToArtifacts() internal {
+        string memory root = vm.projectRoot();   
+        string memory artifactsPath = string(
+            abi.encodePacked(
+                root, 
+                "/script/output/", 
+                vm.toString(block.chainid), 
+                "/dssJobsDeploy.artifacts.json"
+            )
+        );
+        string memory artifacts = "artifacts";
+        
+        artifacts.serialize("oracleJob", address(oracleJob));
+
+        string memory json = artifacts.serialize("sequencer", address(sequencer));
+        json.write(artifactsPath);
+    }
+
     function deploySequencer() internal {
         sequencer = new Sequencer();
         sequencer.addNetwork(NET_MAIN, NETWORK_WINDOW);
+
         console.log("Sequencer deployed at: %s", address(sequencer));
     }
 
@@ -72,7 +91,7 @@ contract DssJobsDeployScript is Script, Test {
         require(addresses.ilkRegistry() != address(0), "IlkRegistry not configured");
         require(addresses.spotter() != address(0), "Spotter not configured");
         
-        OracleJob oracleJob = new OracleJob(
+        oracleJob = new OracleJob(
             address(sequencer),
             addresses.ilkRegistry(),
             addresses.spotter()
@@ -99,7 +118,7 @@ contract DssJobsDeployScript is Script, Test {
         vm.startBroadcast();
 
         // Load artifacts and deploy sequencer
-        loadArtifacts();
+        loadDssArtifacts();
         deploySequencer();
         
         // Configure jobs
@@ -107,6 +126,9 @@ contract DssJobsDeployScript is Script, Test {
         
         // Verify deployment
         verifyJobs();
+
+        // Add deployed addresses to artifacts
+        addAddressesToArtifacts();
 
         vm.stopBroadcast();
     }
