@@ -34,7 +34,12 @@ import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.
 
 // Autoline
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
-// Cron
+
+// Proxy
+import {DssProxy} from "dss-proxy/DssProxy.sol";
+import {DssProxyRegistry} from "dss-proxy/DssProxyRegistry.sol";
+import {DssProxyActions} from "dss-proxy-actions/DssProxyActions.sol";
+import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 
 // Collateral Token (USDT)
 contract TestUSDT is DSToken {
@@ -51,7 +56,6 @@ contract TestPHP is DSToken {
         name = "Test PHP";
     }
 }
-
 
 contract DssDeployScript is Script, Test {
     using stdJson for string;
@@ -324,13 +328,12 @@ contract DssDeployScript is Script, Test {
         LinearDecrease calcUSDT = calcFab.newLinearDecrease(msg.sender);
         calcUSDT.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
-        
+
         php = IERC20(address(new TestPHP()));
         phpJoin = new GemJoin(address(vat), "PHP-A", address(php));
         LinearDecrease calcPHP = calcFab.newLinearDecrease(msg.sender);
         calcPHP.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
-
 
         // Set Params
         proxyActions.file(address(vat), bytes32("Line"), uint(10000 * 10 ** 45));

@@ -41,3 +41,6 @@
 [submodule "lib/dss-proxy"]
 	path = lib/dss-proxy
 	url = https://github.com/makerdao/dss-proxy
+[submodule "lib/dss-cdp-manager"]
+	path = lib/dss-cdp-manager
+	url = https://github.com/makerdao/dss-cdp-manager
