@@ -2,6 +2,7 @@ dss/=src/
 ds-auth/=lib/ds-token/lib/ds-auth/src/
 ds-math/=lib/ds-token/lib/ds-math/src/
 ds-note/=lib/ds-value/lib/ds-thing/lib/ds-note/src/
+dss-proxy-actions/=lib/dss-proxy-actions/src/
 ds-test/=lib/ds-test/src/
 ds-thing/=lib/ds-value/lib/ds-thing/src/
 ds-token/=lib/ds-token/src/
