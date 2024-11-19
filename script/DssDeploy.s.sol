@@ -36,8 +36,6 @@ import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 
 // Proxy
-import {DssProxy} from "dss-proxy/DssProxy.sol";
-import {DssProxyRegistry} from "dss-proxy/DssProxyRegistry.sol";
 import {DssProxyActions} from "dss-proxy-actions/DssProxyActions.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 
@@ -81,6 +79,8 @@ contract DssDeployScript is Script, Test {
 
     DssDeploy dssDeploy;
     ProxyActions proxyActions;
+    DssProxyActions dssProxyActions;
+    DssCdpManager dssCdpManager;
 
     DSToken gov;
     ChainlinkPip pipPHP;
@@ -183,6 +183,8 @@ contract DssDeployScript is Script, Test {
             // Custom
             clog.setAddress("MCD_PSM", address(psm));
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
+            clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
+            clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
 
             clog.setIPFS("");
         }
@@ -224,6 +226,8 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("psm", address(psm));
             artifacts.serialize("autoline", address(autoline));
             artifacts.serialize("ilkRegistry", address(ilkRegistry));
+            artifacts.serialize("dssProxyActions", address(dssProxyActions));
+            artifacts.serialize("dssCdpManager", address(dssCdpManager));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -316,6 +320,8 @@ contract DssDeployScript is Script, Test {
         esm = dssDeploy.esm();
         proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
         autoline = new DssAutoLine(address(vat));
+        dssProxyActions = new DssProxyActions();
+        dssCdpManager = new DssCdpManager(address(vat));
 
         authority.permit(
             address(proxyActions),
