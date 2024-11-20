@@ -36,6 +36,7 @@ import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 // Proxy
 import {DssProxyActions} from "dss-proxy-actions/DssProxyActions.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
+import {DsrManager} from "dsr-manager/DsrManager.sol";
 
 // Collateral Token (USDT)
 contract TestUSDT is DSToken {
@@ -79,6 +80,8 @@ contract DssDeployTestBasePHT is Test {
     ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
+    DsrManager dsrManager;
+
 
     DSToken gov;
     ChainlinkPip pipPHP;
@@ -232,6 +235,7 @@ contract DssDeployTestBasePHT is Test {
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
         dssCdpManager = new DssCdpManager(address(vat));
+        dsrManager = new DsrManager(address(pot), address(daiJoin));
 
         authority.permit(
             address(proxyActions),
