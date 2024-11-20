@@ -20,10 +20,11 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
+import {StdCheatsSafe} from "forge-std/StdCheats.sol";
+
 import "./DssDeploy.t.base.pht.sol";
 
 contract DssDeployTestPHT is DssDeployTestBasePHT {
-
     function testAuth() public {
         deployKeepAuth(address(dssDeploy));
         checkAuth();
@@ -35,12 +36,28 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         checkReleasedAuth();
     }
 
+    function testDeployProxyActions() public {
+        address registry = StdCheatsSafe.deployCode("lib/dss-proxy/src/DssProxyRegistry.sol:DssProxyRegistry");
+        address proxyActions = StdCheatsSafe.deployCode(
+            "lib/dss-proxy-actions/src/DssProxyActions.sol:DssProxyActions"
+        );
+        address proxyActionsEnd = StdCheatsSafe.deployCode(
+            "lib/dss-proxy-actions/src/DssProxyActions.sol:DssProxyActionsEnd"
+        );
+        address proxyActionsDsr = StdCheatsSafe.deployCode(
+            "lib/dss-proxy-actions/src/DssProxyActions.sol:DssProxyActionsDsr"
+        );
+
+        console.log("registry", registry);
+        // console.log("proxyActions", proxyActions);
+    }
+
     /**
      * Test: liquidate Vault by paying PHT and receiving the collateral (PHP)
      * - Min collateral ratio 105%
      * - simulate price drop to make collateral ratio of Vault to 103%
      * - show where the surplus 3% is going (Vow contract)
-    **/
+     **/
     function testLiquidation() public {
         deployKeepAuth(address(dssDeploy));
 
@@ -52,7 +69,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         phpJoin.join(address(this), 2 ether);
         assertEq(php.balanceOf(address(this)), 0);
         assertEq(vat.gem("PHP-A", address(this)), 2 ether);
-        
+
         // Set Min Liquidiation Ratio = 105%
         proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
         spotter.poke("PHP-A");
@@ -72,8 +89,6 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
 
         // TODO: show amount liquidated
     }
-
-
 
     function checkAuth() internal {
         // vat
@@ -175,6 +190,5 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         assertEq(end.wards(address(dssDeploy)), 0, "end auth not released");
         assertEq(phpClip.wards(address(dssDeploy)), 0, "phpClip auth not released");
         assertEq(usdtClip.wards(address(dssDeploy)), 0, "usdtClip auth not released");
-
     }
 }
