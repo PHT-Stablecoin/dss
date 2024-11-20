@@ -44,3 +44,6 @@
 [submodule "lib/dss-cdp-manager"]
 	path = lib/dss-cdp-manager
 	url = https://github.com/makerdao/dss-cdp-manager
+[submodule "lib/dsr-manager"]
+	path = lib/dsr-manager
+	url = https://github.com/makerdao/dsr-manager

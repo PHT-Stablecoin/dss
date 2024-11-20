@@ -5,6 +5,7 @@ ds-note/=lib/ds-value/lib/ds-thing/lib/ds-note/src/
 dss-proxy/=lib/dss-proxy/src/
 dss-proxy-actions/=lib/dss-proxy-actions/src/
 dss-cdp-manager/=lib/dss-cdp-manager/src/
+dsr-manager/=lib/dsr-manager/src/
 ds-test/=lib/ds-test/src/
 ds-thing/=lib/ds-value/lib/ds-thing/src/
 ds-token/=lib/ds-token/src/
