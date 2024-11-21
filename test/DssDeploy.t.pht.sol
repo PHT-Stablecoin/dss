@@ -609,7 +609,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 address(dssCdpManager),
                 uint(cdp),
                 toInt(2 ether), // dink
-                toInt(2 ether) // dart
+                toInt(1 ether) // dart
             ));
 
         assertEq(php.balanceOf(address(proxy)), 1 ether);
