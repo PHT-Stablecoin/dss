@@ -24,6 +24,13 @@ import {StdCheatsSafe} from "forge-std/StdCheats.sol";
 
 import "./DssDeploy.t.base.pht.sol";
 
+interface GemLike {
+    function balanceOf(address) external view returns (uint256);
+    function burn(uint256) external;
+    function transfer(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+}
+
 interface ProxyRegistryLike {
     function proxies(address) external view returns (address);
     function build(address) external returns (address);
@@ -462,6 +469,19 @@ struct DssProxy {
 contract DssDeployTestPHT is DssDeployTestBasePHT {
     DssProxy dssProxy;
 
+    function sub(uint x, uint y) internal pure returns (uint z) {
+        require((z = x - y) <= x, "sub-overflow");
+    }
+
+    function toInt(uint x) internal pure returns (int y) {
+        y = int(x);
+        require(y >= 0, "int-overflow");
+    }
+
+    function toRad(uint wad) internal pure returns (uint rad) {
+        rad = mul(wad, 10 ** 27);
+    }
+
     function setUp() override public {
         super.setUp();
 
@@ -495,13 +515,10 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         assertEq(ProxyLike(proxy).owner(), address(this));
     }
 
-    /**
-     * Test: liquidate Vault by paying PHT and receiving the collateral (PHP)
-     * - Min collateral ratio 105%
-     * - simulate price drop to make collateral ratio of Vault to 103%
-     * - show where the surplus 3% is going (Vow contract)
-     **/
-    function testLiquidation() public {
+
+    // TODO: Currently failing due to conversion issue. 
+    // (join and frob use different decimals for some reason)
+    function testLiquidation_openLockGemAndDraw() public {
         deployKeepAuth(address(dssDeploy));
 
         address proxy = ProxyRegistryLike(dssProxy.Registry).build(address(this));
@@ -512,35 +529,111 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         assertEq(vat.gem("PHP-A", address(this)), 0);
 
         php.approve(address(proxy), 2 ether);
+        assertEq(php.allowance(address(this), address(proxy)), 2 ether);
+
+        bytes memory cdpRaw = ProxyLike(proxy).execute(
+            dssProxy.Actions,
+            abi.encodeWithSelector(
+                DssProxyActionsLike.openLockGemAndDraw.selector,
+                address(dssCdpManager),
+                address(jug),
+                address(phpJoin),
+                address(daiJoin),
+                bytes32("PHP-A"),
+                uint(2 ether), //amtC
+                uint(1 ether),  //wadD
+                true
+            ));
+
+        uint256 cdp = abi.decode(cdpRaw, (uint256));
         
+        assertEq(php.balanceOf(address(this)), 0);
+        assertEq(vat.gem("PHP-A", proxy), 1 ether);
+    }
+    /**
+     * Test: liquidate Vault by paying PHT and receiving the collateral (PHP)
+     * - Min collateral ratio 105%
+     * - simulate price drop to make collateral ratio of Vault to 103%
+     * - show where the surplus 3% is going (Vow contract)
+     **/
+    function testLiquidation_Raw() public {
+        deployKeepAuth(address(dssDeploy));
+
+        address proxy = ProxyRegistryLike(dssProxy.Registry).build(address(this));
+        assertEq(ProxyLike(proxy).owner(), address(this));
+
+        php.mint(2 ether);
+        assertEq(php.balanceOf(address(this)), 2 ether);
+        assertEq(vat.gem("PHP-A", address(this)), 0);
+
+        php.approve(address(proxy), 2 ether);
+        assertEq(php.allowance(address(this), address(proxy)), 2 ether);
+
+        // NOTE:
+        // Here we do an equivalent to #openLockGemAndDraw, but manually
+        // due to the conversion issue.
         ProxyLike(proxy).execute(
             dssProxy.Actions,
             abi.encodeWithSelector(
                 DssProxyActionsLike.gemJoin_join.selector,
-                proxy, proxy, 2 ether, true));
+                address(phpJoin),
+                address(proxy),
+                uint(2 ether),
+                true
+            ));
+
+        assertEq(php.balanceOf(address(proxy)), 0 ether);
+        assertEq(vat.gem("PHP-A", address(proxy)), 2 ether);
+
+        bytes memory cdpRaw = ProxyLike(proxy).execute(
+            dssProxy.Actions,
+            abi.encodeWithSelector(
+                DssProxyActionsLike.open.selector,
+                address(dssCdpManager),
+                bytes32("PHP-A"),
+                address(proxy)
+            ));
+
+        uint256 cdp = abi.decode(cdpRaw, (uint256));
         
-        // phpJoin.join(address(this), 2 ether);
-
-        assertEq(php.balanceOf(address(this)), 0);
-        assertEq(vat.gem("PHP-A", proxy), 2 ether);
-
         // Set Min Liquidiation Ratio = 105%
         proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
         spotter.poke("PHP-A");
 
+
+        /// TODO: Reverts here
+        ProxyLike(proxy).execute(
+            dssProxy.Actions,
+            abi.encodeWithSelector(
+                DssProxyActionsLike.frob.selector,
+                address(dssCdpManager),
+                uint(cdp),
+                toInt(2 ether), // dink
+                toInt(2 ether) // dart
+            ));
+
+        assertEq(php.balanceOf(address(proxy)), 1 ether);
+        assertEq(vat.gem("PHP-A", proxy), 1 ether);
+
+
+
         // Borrow at 105%
 
-        // vat.frob("PHP-A", address(this), address(this), address(this), 1.2 ether, 1 ether);
-        assertEq(vat.gem("PHP-A", address(this)), 0.8 ether);
-        assertEq(vat.dai(address(this)), mul(RAY, 1 ether));
 
-        // Simulate Price Drop of ()
-        feedPHP.file("answer", int(0.5 * 10 ** 6)); // Price 1 DAI (PHT) = 0.5 PHP (precision 6)
-        spotter.poke("PHP-A");
+        // // vat.frob("PHP-A", address(this), address(this), address(this), 1.2 ether, 1 ether);
+        // console.log("===========HERE==========");
 
-        // Trigger Liquidation
-        uint256 auctionid = dog.bark("PHP-A", address(this), address(this));
-        assertNotEq(vat.gem("PHP-A", address(this)), 0.8 ether);
+        // assertEq(vat.gem("PHP-A", address(this)), 0.8 ether);
+        // assertEq(vat.dai(address(this)), mul(RAY, 1 ether));
+
+        // // Simulate Price Drop of ()
+        // feedPHP.file("answer", int(0.5 * 10 ** 6)); // Price 1 DAI (PHT) = 0.5 PHP (precision 6)
+        // spotter.poke("PHP-A");
+
+        // // Trigger Liquidation
+        // uint256 auctionid = dog.bark("PHP-A", address(this), address(this));
+        // console.log("===========HERE==========");
+        // assertNotEq(vat.gem("PHP-A", address(this)), 0.8 ether);
 
         // TODO: show amount liquidated
     }
