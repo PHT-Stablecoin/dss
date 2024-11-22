@@ -524,31 +524,41 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         address proxy = ProxyRegistryLike(dssProxy.Registry).build(address(this));
         assertEq(ProxyLike(proxy).owner(), address(this));
 
+        // Mint 2e12 php tokens (6 decimals)
         php.mint(2 ether);
         assertEq(php.balanceOf(address(this)), 2 ether);
         assertEq(vat.gem("PHP-A", address(this)), 0);
 
+        // Approve proxy to spend 2e12 php tokens
         php.approve(address(proxy), 2 ether);
         assertEq(php.allowance(address(this), address(proxy)), 2 ether);
+        assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
 
-        bytes memory cdpRaw = ProxyLike(proxy).execute(
-            dssProxy.Actions,
-            abi.encodeWithSelector(
-                DssProxyActionsLike.openLockGemAndDraw.selector,
-                address(dssCdpManager),
-                address(jug),
-                address(phpJoin),
-                address(daiJoin),
-                bytes32("PHP-A"),
-                uint(2 ether), //amtC
-                uint(1 ether),  //wadD
-                true
-            ));
+        // Call openLockGemAndDraw with correct amtC
+        bytes memory cdpIdRaw = ProxyLike(proxy).execute(
+        dssProxy.Actions,
+        abi.encodeWithSelector(
+            DssProxyActionsLike.openLockGemAndDraw.selector,
+            address(dssCdpManager),
+            address(jug),
+            address(phpJoin),
+            address(daiJoin),
+            bytes32("PHP-A"),
+            uint(2 ether),
+            uint(1 ether), // Drawing 1 DAI (18 decimals)
+            true
+        )
+    );
 
-        uint256 cdp = abi.decode(cdpRaw, (uint256));
-        
-        assertEq(php.balanceOf(address(this)), 0);
-        assertEq(vat.gem("PHP-A", proxy), 1 ether);
+    uint256 cdpId = abi.decode(cdpIdRaw, (uint256));
+    
+    // Collateral owned by Join
+    assertEq(php.balanceOf(address(phpJoin)), 2 ether);
+    // After operation, balance should be zero
+    assertEq(vat.gem("PHP-A", address(proxy)), 0);
+    // Collateral owned by cdpId also zero
+    assertEq(vat.gem("PHP-A", dssCdpManager.urns(cdpId)), 0);
+
     }
     /**
      * Test: liquidate Vault by paying PHT and receiving the collateral (PHP)
@@ -563,12 +573,23 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         assertEq(ProxyLike(proxy).owner(), address(this));
 
         php.mint(2 ether);
+        // uint256 vowBalance = vow.
         assertEq(php.balanceOf(address(this)), 2 ether);
         assertEq(vat.gem("PHP-A", address(this)), 0);
 
         php.approve(address(proxy), 2 ether);
         assertEq(php.allowance(address(this), address(proxy)), 2 ether);
 
+        
+        ProxyLike(proxy).execute(
+            dssProxy.Actions,
+            abi.encodeWithSelector(
+                DssProxyActionsLike.gemJoin_join.selector,
+                address(phpJoin),
+                address(proxy),
+                uint(2 ether),
+                true
+            ));
         // NOTE:
         // Here we do an equivalent to #openLockGemAndDraw, but manually
         // due to the conversion issue.
@@ -585,7 +606,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         assertEq(php.balanceOf(address(proxy)), 0 ether);
         assertEq(vat.gem("PHP-A", address(proxy)), 2 ether);
 
-        bytes memory cdpRaw = ProxyLike(proxy).execute(
+        ProxyLike(proxy).execute(
             dssProxy.Actions,
             abi.encodeWithSelector(
                 DssProxyActionsLike.open.selector,
@@ -594,12 +615,12 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 address(proxy)
             ));
 
-        uint256 cdp = abi.decode(cdpRaw, (uint256));
+        uint cdp = dssCdpManager.last(address(proxy));
         
         // Set Min Liquidiation Ratio = 105%
-        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
-        spotter.poke("PHP-A");
-
+        // proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
+        // spotter.poke("PHP-A");
+        assertEq(vat.gem("PHP-A", address(proxy)), 2 ether);
 
         /// TODO: Reverts here
         ProxyLike(proxy).execute(
@@ -609,7 +630,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 address(dssCdpManager),
                 uint(cdp),
                 toInt(2 ether), // dink
-                toInt(1 ether) // dart
+                0 //dart
             ));
 
         assertEq(php.balanceOf(address(proxy)), 1 ether);

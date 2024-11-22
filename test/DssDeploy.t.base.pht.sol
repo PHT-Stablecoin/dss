@@ -37,6 +37,7 @@ import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 import {DssProxyActions} from "dss-proxy-actions/DssProxyActions.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
+import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
 // Collateral Token (USDT)
 contract TestUSDT is DSToken {
@@ -95,9 +96,9 @@ contract DssDeployTestBasePHT is Test {
     TestUSDT usdt;
     TestPHP php;
 
-    GemJoin phpJoin;
+    GemJoin5 phpJoin;
     GemJoin ethJoin;
-    GemJoin usdtJoin;
+    GemJoin5 usdtJoin;
 
     Vat vat;
     Jug jug;
@@ -244,13 +245,13 @@ contract DssDeployTestBasePHT is Test {
         );
 
         usdt = new TestUSDT();
-        usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
+        usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
         LinearDecrease calcUSDT = calcFab.newLinearDecrease(address(this));
         calcUSDT.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
 
         php = new TestPHP();
-        phpJoin = new GemJoin(address(vat), "PHP-A", address(php));
+        phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
         LinearDecrease calcPHP = calcFab.newLinearDecrease(address(this));
         calcPHP.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
