@@ -523,15 +523,19 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
 
         address proxy = ProxyRegistryLike(dssProxy.Registry).build(address(this));
         assertEq(ProxyLike(proxy).owner(), address(this));
+    
+        // Set Min Liquidiation Ratio = 105%
+        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
+        spotter.poke("PHP-A");
 
         // Mint 2e12 php tokens (6 decimals)
-        php.mint(2 ether);
-        assertEq(php.balanceOf(address(this)), 2 ether);
+        php.mint(1.20e6);
+        assertEq(php.balanceOf(address(this)), 1.20e6);
         assertEq(vat.gem("PHP-A", address(this)), 0);
 
         // Approve proxy to spend 2e12 php tokens
-        php.approve(address(proxy), 2 ether);
-        assertEq(php.allowance(address(this), address(proxy)), 2 ether);
+        php.approve(address(proxy), 1.20e6);
+        assertEq(php.allowance(address(this), address(proxy)), 1.20e6);
         assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
 
         // Call openLockGemAndDraw with correct amtC
@@ -544,20 +548,30 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             address(phpJoin),
             address(daiJoin),
             bytes32("PHP-A"),
-            uint(2 ether),
-            uint(1 ether), // Drawing 1 DAI (18 decimals)
+            uint(1.06e6),
+            uint(1e18), // Drawing 1 DAI (18 decimals)
             true
-        )
-    );
+        ));
 
-    uint256 cdpId = abi.decode(cdpIdRaw, (uint256));
-    
-    // Collateral owned by Join
-    assertEq(php.balanceOf(address(phpJoin)), 2 ether);
-    // After operation, balance should be zero
-    assertEq(vat.gem("PHP-A", address(proxy)), 0);
-    // Collateral owned by cdpId also zero
-    assertEq(vat.gem("PHP-A", dssCdpManager.urns(cdpId)), 0);
+        uint256 cdpId = abi.decode(cdpIdRaw, (uint256));
+        
+        // Collateral owned by Join
+        assertEq(php.balanceOf(address(phpJoin)), 1.06e6);
+        // After operation, balance should be zero
+        assertEq(vat.gem("PHP-A", address(proxy)), 0);
+        // Collateral owned by cdpId also zero
+        assertEq(vat.gem("PHP-A", dssCdpManager.urns(cdpId)), 0);
+        // Dai (PHT) is transferred to proxy
+        assertEq(dai.balanceOf(address(this)), 1e18);
+
+        // Set Min Liquidiation Ratio = 103%
+        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1030000000 ether));
+        // Trigger a liquidation
+        spotter.poke("PHP-A");
+
+        dog.bark("PHP-A", address(proxy), address(0));
+        
+        
 
     }
     /**
@@ -617,9 +631,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
 
         uint cdp = dssCdpManager.last(address(proxy));
         
-        // Set Min Liquidiation Ratio = 105%
-        // proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
-        // spotter.poke("PHP-A");
+
         assertEq(vat.gem("PHP-A", address(proxy)), 2 ether);
 
         /// TODO: Reverts here
