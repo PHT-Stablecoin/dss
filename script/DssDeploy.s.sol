@@ -38,6 +38,8 @@ import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 // Proxy
 import {DssProxyActions} from "dss-proxy-actions/DssProxyActions.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
+import {DsrManager} from "dsr-manager/DsrManager.sol";
+import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
 // Collateral Token (USDT)
 contract TestUSDT is DSToken {
@@ -81,6 +83,7 @@ contract DssDeployScript is Script, Test {
     ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
+    DsrManager dsrManager;
 
     DSToken gov;
     ChainlinkPip pipPHP;
@@ -94,9 +97,9 @@ contract DssDeployScript is Script, Test {
     IERC20 usdt;
     IERC20 php;
 
-    GemJoin phpJoin;
+    GemJoin5 phpJoin;
     GemJoin ethJoin;
-    GemJoin usdtJoin;
+    GemJoin5 usdtJoin;
 
     Vat vat;
     Jug jug;
@@ -185,6 +188,7 @@ contract DssDeployScript is Script, Test {
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
+            clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
 
             clog.setIPFS("");
         }
@@ -228,6 +232,7 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("ilkRegistry", address(ilkRegistry));
             artifacts.serialize("dssProxyActions", address(dssProxyActions));
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
+            artifacts.serialize("dsrManager", address(dsrManager));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -322,6 +327,7 @@ contract DssDeployScript is Script, Test {
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
         dssCdpManager = new DssCdpManager(address(vat));
+        dsrManager = new DsrManager(address(pot), address(daiJoin));
 
         authority.permit(
             address(proxyActions),
@@ -330,13 +336,13 @@ contract DssDeployScript is Script, Test {
         );
 
         usdt = IERC20(address(new TestUSDT()));
-        usdtJoin = new GemJoin(address(vat), "USDT-A", address(usdt));
+        usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
         LinearDecrease calcUSDT = calcFab.newLinearDecrease(msg.sender);
         calcUSDT.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
 
         php = IERC20(address(new TestPHP()));
-        phpJoin = new GemJoin(address(vat), "PHP-A", address(php));
+        phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
         LinearDecrease calcPHP = calcFab.newLinearDecrease(msg.sender);
         calcPHP.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
@@ -378,6 +384,17 @@ contract DssDeployScript is Script, Test {
         (, , spot, , ) = vat.ilks("USDT-A");
         assertEq(spot, (58 * RAY * RAY) / 1500000000 ether);
 
+        // {
+        //     // TODO: Set Liquidation/Auction Rules (Dog)
+        //     dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+        //     dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
+        //     dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+
+        //     dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+        //     dog.file("USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
+        //     dog.file("USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+        // }
+        
         {
             MockGuard(address(gov.authority())).permit(
                 address(flop),
