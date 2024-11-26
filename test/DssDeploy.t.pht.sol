@@ -502,51 +502,57 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
      **/
     function testLiquidation_openLockGemAndDraw() public {
         deployKeepAuth(address(dssDeploy));
-        // checkAuth();
+        checkAuth();
 
-        // Set global and per-collateral liquidation limits
-        vm.startPrank(address(dssDeploy));
-        dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
-        dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
-        dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-        vm.stopPrank();
+        {
+            // Set global and per-collateral liquidation limits
+            vm.startPrank(address(dssDeploy));
+            dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+            dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
+            dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+            phpClip.file("buf", 1.20e27); // Set a 20% increase in auctions (RAY)
+            vm.stopPrank();
+        }
 
         address proxy = ProxyRegistryLike(dssProxy.Registry).build(address(this));
         assertEq(ProxyLike(proxy).owner(), address(this));
 
-        // Set Min Liquidiation Ratio = 105%
-        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
-        spotter.poke("PHP-A");
+        {
+            // Set Min Liquidiation Ratio = 105%
+            proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
+            spotter.poke("PHP-A");
 
-        // Mint 2e12 php tokens (6 decimals)
-        php.mint(1.20e6);
-        assertEq(php.balanceOf(address(this)), 1.20e6);
-        assertEq(vat.gem("PHP-A", address(this)), 0);
+            // Mint 2e12 php tokens (6 decimals)
+            php.mint(1.20e6);
+            assertEq(php.balanceOf(address(this)), 1.20e6);
+            assertEq(vat.gem("PHP-A", address(this)), 0);
 
-        // Approve proxy to spend 2e12 php tokens
-        php.approve(address(proxy), 1.20e6);
-        assertEq(php.allowance(address(this), address(proxy)), 1.20e6);
-        assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
+            // Approve proxy to spend 2e12 php tokens
+            php.approve(address(proxy), 1.20e6);
+            assertEq(php.allowance(address(this), address(proxy)), 1.20e6);
+            assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
+        }
 
         // Call openLockGemAndDraw with correct amtC
-        bytes memory cdpIdRaw = ProxyLike(proxy).execute(
-            dssProxy.Actions,
-            abi.encodeWithSelector(
-                DssProxyActionsLike.openLockGemAndDraw.selector,
-                address(dssCdpManager),
-                address(jug),
-                address(phpJoin),
-                address(daiJoin),
-                bytes32("PHP-A"),
-                uint(1.06e6),
-                uint(1e18), // Drawing 1 DAI (18 decimals)
-                true
-            )
-        );
-
-        uint256 cdpId = abi.decode(cdpIdRaw, (uint256));
+        uint256 cdpId = abi.decode(
+            ProxyLike(proxy).execute(
+                dssProxy.Actions,
+                abi.encodeWithSelector(
+                    DssProxyActionsLike.openLockGemAndDraw.selector,
+                    address(dssCdpManager),
+                    address(jug),
+                    address(phpJoin),
+                    address(daiJoin),
+                    bytes32("PHP-A"),
+                    uint(1.06e6),
+                    uint(1e18), // Drawing 1 DAI (18 decimals)
+                    true
+                )
+            ),
+            (uint256));
 
         {
+
             // Collateral owned by Join
             assertEq(php.balanceOf(address(phpJoin)), 1.06e6);
             // After operation, balance should be zero
@@ -555,6 +561,9 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             assertEq(vat.gem("PHP-A", dssCdpManager.urns(cdpId)), 0);
             // Dai (PHT) is transferred to proxy
             assertEq(dai.balanceOf(address(this)), 1e18);
+            // Gem ownership in urnhandler
+            assertEq(vat.gem("PHP-A", address(this)), 0);
+
         }
 
         {
@@ -566,6 +575,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         }
 
         {
+
             (uint256 ink, uint256 art) = vat.urns("PHP-A", dssCdpManager.urns(cdpId));
             (, uint256 rate, uint256 spot, , uint256 dust) = vat.ilks("PHP-A");
 
@@ -582,48 +592,100 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             console.log("ink*spot", ink * spot);
             console.log("art*rate", art * rate);
         }
-
-        // Run Auction on Liquidation owned by UrnHandler
-        uint256 auctionId = dog.bark("PHP-A", dssCdpManager.urns(cdpId), address(0));
+        
+        //0x555344432d4100000000000000000
+        //0x555344432d410000000000000000000000000000000000000000000000000000
+        //15000000000000000000000000000000000000000000000000
         {
+
+            // Run Auction on Liquidation owned by UrnHandler
+            uint256 auctionId = dog.bark("PHP-A", dssCdpManager.urns(cdpId), address(0));
+
             // Check Clip Auction is Created
             (uint256 pos, uint256 tab, uint256 lot, address usr, uint96 tic, uint256 top) = phpClip.sales(auctionId);
-            (address clip, uint chop, uint hole, uint dirt) = dog.ilks("PHP-A");
 
-            console.log("phpClip.sales(auctionId).pos", pos);
-            console.log("phpClip.sales(auctionId).tab", tab);
-            console.log("phpClip.sales(auctionId).lot", lot);
-            console.log(uint256(tic));
-            console.logAddress(usr);
+            {
+                console.log("phpClip.sales(auctionId).pos", pos);
+                console.log("phpClip.sales(auctionId).tab", tab);
+                console.log("phpClip.sales(auctionId).lot", lot);
+                console.log(uint256(tic));
+                console.logAddress(usr);
 
-            assertEq(usr, dssCdpManager.urns(cdpId));
-            assertEq(tab, (chop * RAD) / WAD);
-            assertEq(lot, 1.06e18); //wad
+                ( /* clip */, uint chop, uint hole,) = dog.ilks("PHP-A");
 
-            /// TODO: Keeper Action as Auction Member
+                assertEq(usr, dssCdpManager.urns(cdpId));
+                assertEq(tab, (chop * RAD) / WAD);
+                assertEq(lot, 1.06e18); //wad
+            }
+            
+            // Record collateral in the urn before liquidation
+            (uint256 urnInkBefore, ) = vat.urns("PHP-A", dssCdpManager.urns(cdpId));
+            console.log("Urn collateral before liquidation (WAD units):", urnInkBefore);
+
+            // Record the vow's DAI balance after liquidation
+            uint256 vowSinBefore = vat.sin(address(vow));
+            console.log("Vow Sin balance before auction (RAD units):", vowSinBefore);
+
+            uint256 vowDaiBefore = vat.dai(address(vow));
+            console.log("Vow DAI balance before auction (RAD units):", vowDaiBefore);
+            
+            /// Keeper Action as Auction Member
             /// (See dss-cron/src/LiquidatorJob.sol)
             vm.startPrank(address(dssDeploy));
+            {
 
-            // Create internal DAI using suck
-            vat.suck(address(vat), address(dssDeploy), 2e18);
+                // Create internal DAI using suck
+                // Calculate the amount owed (owe) before calling vat.suck
+                // slice = lot: Assuming time elapsed is zero
+                // price = top: Full amount of collateral
+                // buf ; Initial auction price increase;
+                vat.suck(
+                    address(vat),
+                    address(dssDeploy), 
+                    mul(lot, top) // owe = slice * price
+                );
+                // Give permission to clipper
+                if (vat.can(address(dssDeploy), address(phpClip)) != 1) {
+                    vat.hope(address(phpClip));
+                }
+                // Give permission to vow
+                if (vat.can(address(dssDeploy), address(vow)) != 1) {
+                    vat.hope(address(vow));
+                }
 
-            // Give permission to clipper
-            vat.hope(address(phpClip));
+                bytes memory empty;
+                phpClip.take(
+                    auctionId, //id
+                    uint(-1), //amt
+                    top, //max
+                    address(dssDeploy),
+                    empty
+                );
 
-            uint256 balance = vat.dai(address(dssDeploy));
-            console.log("Vat DAI balance:", balance);
-            assertGt(balance, 0);
-
-            bytes memory empty;
-            phpClip.take(
-                auctionId, //id
-                lot, //amt
-                top, //max
-                address(dssDeploy),
-                empty
-            );
+                console.log("Bought collateral (WAD)", vat.gem("PHP-A", address(dssDeploy)));
+            }
 
             vm.stopPrank();
+
+            {
+                // Record collateral in the urn after auction
+                (uint256 urnInkAfter, ) = vat.urns("PHP-A", dssCdpManager.urns(cdpId));
+                console.log("Urn collateral after auction (WAD units):", urnInkAfter);
+
+                // Record the vow's DAI balance after liquidation
+                console.log("Vow DAI balance after auction (RAD units):", vat.sin(address(vow)));
+                console.log("Vow DAI balance after auction (RAD units):", vat.dai(address(vow)));
+            
+                uint256 daiCollectedByVow = vat.dai(address(vow)) - vowDaiBefore;
+                assertEq(daiCollectedByVow, 1.13e45);
+                uint256 sinIncreased = vat.sin(address(vow)) - vowSinBefore;
+                assertEq(sinIncreased, 0, "Sin has not increased");
+                uint256 surplus = daiCollectedByVow - sinIncreased;
+
+                console.log("DAI collected by Vow (RAD units):", daiCollectedByVow);
+                console.log("System debt increased (RAD units):", sinIncreased);
+                console.log("Surplus from liquidation penalty (RAD units):", surplus);
+            }
         }
     }
 
@@ -709,7 +771,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
 
         // dssDeploy
         assertEq(address(dssDeploy.authority()), address(0));
-        assertEq(dssDeploy.owner(), msg.sender);
+        assertEq(dssDeploy.owner(), address(this));
     }
 
     function checkReleasedAuth() internal {
