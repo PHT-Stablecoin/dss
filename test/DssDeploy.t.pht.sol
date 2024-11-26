@@ -680,11 +680,11 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 assertEq(daiCollectedByVow, 1.13e45);
                 uint256 sinIncreased = vat.sin(address(vow)) - vowSinBefore;
                 assertEq(sinIncreased, 0, "Sin has not increased");
-                uint256 surplus = daiCollectedByVow - sinIncreased;
+                uint256 surplus = daiCollectedByVow - 1e45;
 
                 console.log("DAI collected by Vow (RAD units):", daiCollectedByVow);
                 console.log("System debt increased (RAD units):", sinIncreased);
-                console.log("Surplus from liquidation penalty (RAD units):", surplus);
+                console.log("Surplus with liquidation penalty (RAD units):", surplus);
             }
         }
     }
