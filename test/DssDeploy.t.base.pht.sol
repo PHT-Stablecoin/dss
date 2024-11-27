@@ -39,21 +39,7 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
-// Collateral Token (USDT)
-contract TestUSDT is DSToken {
-    constructor() public DSToken("tstUSDT") {
-        decimals = 6;
-        name = "Test USDT";
-    }
-}
-
-// Collateral Token (PHP)
-contract TestPHP is DSToken {
-    constructor() public DSToken("tstPHP") {
-        decimals = 6;
-        name = "Test PHP";
-    }
-}
+import {TokenFactory} from "../script/factories/TokenFactory.sol";
 
 contract DssDeployTestBasePHT is Test {
     using stdJson for string;
@@ -83,7 +69,6 @@ contract DssDeployTestBasePHT is Test {
     DssCdpManager dssCdpManager;
     DsrManager dsrManager;
 
-
     DSToken gov;
     ChainlinkPip pipPHP;
     ChainlinkPip pipUSDT;
@@ -92,6 +77,9 @@ contract DssDeployTestBasePHT is Test {
     MockAggregatorV3 feedUSDT;
 
     MockGuard authority;
+
+    // Token Factor
+    TokenFactory tokenFactory;
 
     TestUSDT usdt;
     TestPHP php;
@@ -172,6 +160,9 @@ contract DssDeployTestBasePHT is Test {
 
         dssDeploy = new DssDeploy();
 
+        // Token Factory
+        tokenFactory = new TokenFactory();
+
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
         dssDeploy.addFabs2(
@@ -244,13 +235,16 @@ contract DssDeployTestBasePHT is Test {
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
         );
 
-        usdt = new TestUSDT();
+        // Token Factory
+        usdt = tokenFactory.createConfigurableToken("tstUSDT", "Test USDT", 6, 0); // maxSupply = 0 => unlimited supply
+        // usdt = new TestUSDT();
         usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
         LinearDecrease calcUSDT = calcFab.newLinearDecrease(address(this));
         calcUSDT.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
 
-        php = new TestPHP();
+        php = tokenFactory.createConfigurableToken("tstPHP", "Test PHP", 6, 0);
+        // php = new TestPHP();
         phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
         LinearDecrease calcPHP = calcFab.newLinearDecrease(address(this));
         calcPHP.file(bytes32("tau"), 1 hours);

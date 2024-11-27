@@ -41,21 +41,8 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
-// Collateral Token (USDT)
-contract TestUSDT is DSToken {
-    constructor() public DSToken("tstUSDT") {
-        decimals = 6;
-        name = "Test USDT";
-    }
-}
-
-// Collateral Token (PHP)
-contract TestPHP is DSToken {
-    constructor() public DSToken("tstPHP") {
-        decimals = 6;
-        name = "Test PHP";
-    }
-}
+// Token Factory
+import {TokenFactory} from "./factories/TokenFactory.sol";
 
 contract DssDeployScript is Script, Test {
     using stdJson for string;
@@ -94,8 +81,11 @@ contract DssDeployScript is Script, Test {
 
     MockGuard authority;
 
-    IERC20 usdt;
-    IERC20 php;
+    // Token Factory
+    TokenFactory tokenFactory;
+
+    DSToken usdt;
+    DSToken php;
 
     GemJoin5 phpJoin;
     GemJoin ethJoin;
@@ -189,6 +179,7 @@ contract DssDeployScript is Script, Test {
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
+            clog.setAddress("MCD_TOKEN_FACTORY", address(tokenFactory));
 
             clog.setIPFS("");
         }
@@ -233,6 +224,7 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("dssProxyActions", address(dssProxyActions));
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
+            artifacts.serialize("tokenFactory", address(tokenFactory));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -262,6 +254,9 @@ contract DssDeployScript is Script, Test {
         pauseFab = new PauseFab();
 
         dssDeploy = new DssDeploy();
+
+        // Token Factory
+        tokenFactory = new TokenFactory();
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
@@ -335,13 +330,17 @@ contract DssDeployScript is Script, Test {
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
         );
 
-        usdt = IERC20(address(new TestUSDT()));
+        // Token Factory
+        usdt = DSToken(tokenFactory.createConfigurableToken("tstUSDT", "Test USDT", 6, 0)); // maxSupply = 0 => unlimited supply
+        // usdt = new TestUSDT();
         usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
         LinearDecrease calcUSDT = calcFab.newLinearDecrease(msg.sender);
         calcUSDT.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
 
-        php = IERC20(address(new TestPHP()));
+        // Token Factory
+        php = DSToken(tokenFactory.createConfigurableToken("tstPHP", "Test PHP", 6, 0));
+        // php = new TestPHP();
         phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
         LinearDecrease calcPHP = calcFab.newLinearDecrease(msg.sender);
         calcPHP.file(bytes32("tau"), 1 hours);
@@ -394,7 +393,7 @@ contract DssDeployScript is Script, Test {
         //     dog.file("USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
         //     dog.file("USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
         // }
-        
+
         {
             MockGuard(address(gov.authority())).permit(
                 address(flop),
