@@ -41,14 +41,125 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
-// Collateral Type Factory
-import {CollateralTypeFactory} from "./factories/CollateralTypeFactory.sol";
+import {ConfigurableDSToken} from "./factories/ConfigurableDSToken.sol";
 
-// Token Factory
-import {TokenFactory} from "./factories/TokenFactory.sol";
+interface GemLike {
+    function balanceOf(address) external view returns (uint256);
+    function burn(uint256) external;
+    function transfer(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+}
 
-// Price Feed Factory
-import {PriceFeedFactory} from "./factories/PriceFeedFactory.sol";
+interface GemJoinLike {
+    function dec() external returns (uint);
+    function gem() external returns (GemLike);
+    function join(address, uint) external payable;
+    function exit(address, uint) external;
+}
+
+interface PipLike {
+    function peek() external returns (bytes32, bool);
+}
+
+contract DssDeployExt is DssDeploy {
+
+    struct TokenInfo {
+        bytes32 ilk;
+        uint256 line;
+        uint256 tau; // Default: 1 hours
+        uint256 mat; // Liquidation Ratio
+        uint256 hole; // Gem-limit
+        uint256 chop; // Liquidation-penalty
+        uint256 buf; // Initial Auction Increase
+        int initialPrice; // Feed Price (6 Decimals)
+        uint8 tokenDecimals;
+        uint8 feedDecimals;
+    }
+    address internal ext;
+
+    function setExt(address _ext) auth public {
+        ext = _ext;
+    }
+
+    function addCollateral(
+        address token,
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
+        TokenInfo memory tokenInfo
+    ) public auth returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip)
+ {  
+    (bool r, bytes memory data) = ext.delegatecall(msg.data);
+    return abi.decode(data, (GemJoinLike, MockAggregatorV3, ChainlinkPip));
+ }
+}
+
+contract DssDeployUtil {
+    struct TokenInfo {
+        bytes32 ilk;
+        uint256 line;
+        uint256 tau; // Default: 1 hours
+        uint256 mat; // Liquidation Ratio
+        uint256 hole; // Gem-limit
+        uint256 chop; // Liquidation-penalty
+        uint256 buf; // Initial Auction Increase
+        int initialPrice; // Feed Price (6 Decimals)
+        uint8 tokenDecimals;
+        uint8 feedDecimals;
+    }
+
+    function addCollateral(
+        address token,
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
+        TokenInfo memory tokenInfo
+    ) public returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip) {
+        require(tokenInfo.tokenDecimals <= 18, "token-factory-max-decimals");
+        require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+
+        DssDeploy dssDeploy = DssDeploy(address(this));
+        address owner = dssDeploy.owner();
+        
+
+        _feed = new MockAggregatorV3();
+        _feed.file("decimals", uint(tokenInfo.feedDecimals));
+        _feed.file("answer", tokenInfo.initialPrice); // Feed Price);
+        _feed.setOwner(owner);
+        _pip = new ChainlinkPip(address(_feed));
+
+        if (tokenInfo.tokenDecimals <= 6) {
+            _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), tokenInfo.ilk, token)));
+        } else {
+            _join = GemJoinLike(address(new GemJoin(address(dssDeploy.vat()), tokenInfo.ilk, token)));
+        }
+
+        {
+
+            LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
+
+            _calc.file(bytes32("tau"), tokenInfo.tau);
+            _calc.rely(owner);
+            _calc.deny(address(this));
+            dssDeploy.deployCollateralClip(tokenInfo.ilk, address(_join), address(_pip), address(_calc));
+        }
+
+        {
+            proxyActions.file(address(dssDeploy.vat()), tokenInfo.ilk, bytes32("line"), tokenInfo.line);
+            proxyActions.file(address(dssDeploy.spotter()), tokenInfo.ilk, bytes32("mat"), tokenInfo.mat);
+        }
+
+        {
+            
+            dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole());
+            dssDeploy.dog().file(tokenInfo.ilk, "hole", tokenInfo.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+            dssDeploy.dog().file(tokenInfo.ilk, "chop", tokenInfo.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+            (,Clipper clip,) = dssDeploy.ilks(tokenInfo.ilk);
+            clip.file("buf", tokenInfo.buf); // Set a 20% increase in auctions (RAY)
+        }
+
+        ilkRegistry.add(address(_join));
+        dssDeploy.spotter().poke(tokenInfo.ilk);
+    }
+}
 
 contract DssDeployScript is Script, Test {
     using stdJson for string;
@@ -72,7 +183,7 @@ contract DssDeployScript is Script, Test {
     ESMFab esmFab;
     PauseFab pauseFab;
 
-    DssDeploy dssDeploy;
+    DssDeployExt dssDeploy;
     ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
@@ -86,12 +197,6 @@ contract DssDeployScript is Script, Test {
     MockAggregatorV3 feedUSDT;
 
     MockGuard authority;
-
-    CollateralTypeFactory collateralTypeFactory;
-
-    // Token Factory
-    TokenFactory tokenFactory;
-    PriceFeedFactory priceFeedFactory;
 
     DSToken usdt;
     DSToken php;
@@ -157,12 +262,12 @@ contract DssDeployScript is Script, Test {
         deployKeepAuth(address(dssDeploy));
         testAuth();
 
-        // Release Auth
-        dssDeploy.releaseAuth(address(dssDeploy));
+        // TODO: Release Auth
+        // dssDeploy.releaseAuth(address(dssDeploy));
         // dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
-        dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
-        dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
-        testReleasedAuth();
+        // dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
+        // dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
+        // testReleasedAuth();
 
         // ChainLog
         {
@@ -188,9 +293,6 @@ contract DssDeployScript is Script, Test {
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
-            clog.setAddress("MCD_COLLATERAL_TYPE_FACTORY", address(collateralTypeFactory));
-            clog.setAddress("MCD_TOKEN_FACTORY", address(tokenFactory));
-            clog.setAddress("MCD_PRICE_FEED_FACTORY", address(priceFeedFactory));
 
             clog.setIPFS("");
         }
@@ -235,9 +337,6 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("dssProxyActions", address(dssProxyActions));
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
-            artifacts.serialize("collateralTypeFactory", address(collateralTypeFactory));
-            artifacts.serialize("tokenFactory", address(tokenFactory));
-            artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -266,22 +365,8 @@ contract DssDeployScript is Script, Test {
         esmFab = new ESMFab();
         pauseFab = new PauseFab();
 
-        dssDeploy = new DssDeploy();
-
-        // Token Factory
-        tokenFactory = new TokenFactory();
-        priceFeedFactory = new PriceFeedFactory();
-
-        // Collateral Type Factory
-        collateralTypeFactory = new CollateralTypeFactory(
-            address(vatFab),
-            address(spotFab),
-            address(jugFab),
-            address(proxyActions),
-            address(ilkRegistry),
-            address(tokenFactory),
-            address(priceFeedFactory)
-        );
+        dssDeploy = new DssDeployExt();
+        dssDeploy.setExt(address(new DssDeployUtil()));
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
@@ -357,7 +442,7 @@ contract DssDeployScript is Script, Test {
         );
 
         // Token Factory
-        usdt = DSToken(tokenFactory.createConfigurableToken("tstUSDT", "Test USDT", 6, 0)); // maxSupply = 0 => unlimited supply
+        usdt = DSToken(address(new ConfigurableDSToken("tstUSDT", "Test USDT", 6, 0))); // maxSupply = 0 => unlimited supply
         // usdt = new TestUSDT();
         usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
         LinearDecrease calcUSDT = calcFab.newLinearDecrease(msg.sender);
@@ -365,7 +450,7 @@ contract DssDeployScript is Script, Test {
         dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
 
         // Token Factory
-        php = DSToken(tokenFactory.createConfigurableToken("tstPHP", "Test PHP", 6, 0));
+        php = DSToken(address(new ConfigurableDSToken("tstPHP", "Test PHP", 6, 0)));
         // php = new TestPHP();
         phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
         LinearDecrease calcPHP = calcFab.newLinearDecrease(msg.sender);
@@ -403,6 +488,7 @@ contract DssDeployScript is Script, Test {
         ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
         ilkRegistry.add(address(phpJoin));
         ilkRegistry.add(address(usdtJoin));
+        ilkRegistry.rely(address(dssDeploy));
 
         (, , uint spot, , ) = vat.ilks("PHP-A");
         assertEq(spot, (1 * RAY * RAY) / 1050000000 ether);

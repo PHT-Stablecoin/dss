@@ -39,7 +39,6 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
-import {TokenFactory} from "../script/factories/TokenFactory.sol";
 import {ConfigurableDSToken} from "../script/factories/ConfigurableDSToken.sol";
 
 interface GemLike {
@@ -60,47 +59,107 @@ interface PipLike {
     function peek() external returns (bytes32, bool);
 }
 
-contract DssTokenExt is DssDeploy {
+
+contract DssDeployExt is DssDeploy {
+
     struct TokenInfo {
         bytes32 ilk;
         uint256 line;
         uint256 tau; // Default: 1 hours
-        int answer; // Feed Price (6 Decimals)
         uint256 mat; // Liquidation Ratio
-        uint8 decimals;
+        uint256 hole; // Gem-limit
+        uint256 chop; // Liquidation-penalty
+        uint256 buf; // Initial Auction Increase
+        int initialPrice; // Feed Price (6 Decimals)
+        uint8 tokenDecimals;
+        uint8 feedDecimals;
+    }
+    address internal ext;
+
+    function setExt(address _ext) auth public {
+        ext = _ext;
     }
 
-    function init(
+    function addCollateral(
         address token,
-        address proxyActions,
-        address ilkRegistry,
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
+        TokenInfo memory tokenInfo
+    ) public auth returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip)
+ {  
+    (bool r, bytes memory data) = ext.delegatecall(msg.data);
+    return abi.decode(data, (GemJoinLike, MockAggregatorV3, ChainlinkPip));
+ }
+}
+
+contract DssDeployUtil {
+    struct TokenInfo {
+        bytes32 ilk;
+        uint256 line;
+        uint256 tau; // Default: 1 hours
+        uint256 mat; // Liquidation Ratio
+        uint256 hole; // Gem-limit
+        uint256 chop; // Liquidation-penalty
+        uint256 buf; // Initial Auction Increase
+        int initialPrice; // Feed Price (6 Decimals)
+        uint8 tokenDecimals;
+        uint8 feedDecimals;
+    }
+
+    function addCollateral(
+        address token,
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
         TokenInfo memory tokenInfo
     ) public returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip) {
-        require(tokenInfo.decimals <= 18, "token-factory-max-decimals");
+        require(tokenInfo.tokenDecimals <= 18, "token-factory-max-decimals");
+        require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+
+        DssDeploy dssDeploy = DssDeploy(address(this));
+        address owner = dssDeploy.owner();
+        
 
         _feed = new MockAggregatorV3();
-        _feed.file("decimals", uint(6));
-        _feed.file("answer", tokenInfo.answer); // Feed Price);
-
+        _feed.file("decimals", uint(tokenInfo.feedDecimals));
+        _feed.file("answer", tokenInfo.initialPrice); // Feed Price);
+        _feed.setOwner(owner);
         _pip = new ChainlinkPip(address(_feed));
 
-        if (tokenInfo.decimals <= 6) {
-            _join = GemJoinLike(address(new GemJoin5(address(vat), tokenInfo.ilk, token)));
+        if (tokenInfo.tokenDecimals <= 6) {
+            _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), tokenInfo.ilk, token)));
         } else {
-            _join = GemJoinLike(address(new GemJoin(address(vat), tokenInfo.ilk, token)));
+            _join = GemJoinLike(address(new GemJoin(address(dssDeploy.vat()), tokenInfo.ilk, token)));
         }
 
-        LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
-        _calc.file(bytes32("tau"), tokenInfo.tau);
-        deployCollateralClip(tokenInfo.ilk, address(_join), address(_pip), address(_calc));
+        {
 
-        ProxyActions(proxyActions).file(address(vat), tokenInfo.ilk, bytes32("line"), tokenInfo.line);
+            LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
 
-        ProxyActions(proxyActions).file(address(spotter), tokenInfo.ilk, bytes32("mat"), tokenInfo.mat);
+            _calc.file(bytes32("tau"), tokenInfo.tau);
+            _calc.rely(owner);
+            _calc.deny(address(this));
+            dssDeploy.deployCollateralClip(tokenInfo.ilk, address(_join), address(_pip), address(_calc));
+        }
 
-        IlkRegistry(ilkRegistry).add(address(_join));
+        {
+            proxyActions.file(address(dssDeploy.vat()), tokenInfo.ilk, bytes32("line"), tokenInfo.line);
+            proxyActions.file(address(dssDeploy.spotter()), tokenInfo.ilk, bytes32("mat"), tokenInfo.mat);
+        }
+
+        {
+            
+            dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole());
+            dssDeploy.dog().file(tokenInfo.ilk, "hole", tokenInfo.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+            dssDeploy.dog().file(tokenInfo.ilk, "chop", tokenInfo.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+            (,Clipper clip,) = dssDeploy.ilks(tokenInfo.ilk);
+            clip.file("buf", tokenInfo.buf); // Set a 20% increase in auctions (RAY)
+        }
+
+        ilkRegistry.add(address(_join));
+        dssDeploy.spotter().poke(tokenInfo.ilk);
     }
 }
+
 
 contract DssDeployTestBasePHT is Test {
     using stdJson for string;
@@ -124,7 +183,9 @@ contract DssDeployTestBasePHT is Test {
     ESMFab esmFab;
     PauseFab pauseFab;
 
-    DssTokenExt dssDeploy;
+    DssDeployExt dssDeploy;
+    DssDeployUtil dssDeployUtil;
+
     ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
@@ -139,14 +200,10 @@ contract DssDeployTestBasePHT is Test {
 
     MockGuard authority;
 
-    // Token Factor
-    TokenFactory tokenFactory;
-    DssTokenExt dssTokenInit;
-
     DSToken usdt;
     DSToken php;
 
-    GemJoin5 phpJoin;
+    GemJoinLike phpJoin;
     GemJoin ethJoin;
     GemJoinLike usdtJoin;
 
@@ -220,11 +277,8 @@ contract DssDeployTestBasePHT is Test {
         esmFab = new ESMFab();
         pauseFab = new PauseFab();
 
-        dssDeploy = new DssTokenExt();
-
-        // Token Factory
-        tokenFactory = new TokenFactory();
-        dssTokenInit = new DssTokenExt();
+        dssDeploy = new DssDeployExt();
+        dssDeploy.setExt(address(new DssDeployUtil()));
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
@@ -298,69 +352,57 @@ contract DssDeployTestBasePHT is Test {
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
         );
 
-        // Token Factory
-        // usdt = tokenFactory.createConfigurableToken("tstUSDT", "Test USDT", 6, 0); // maxSupply = 0 => unlimited supply
+        // SetupIlkRegistry
+        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
+        ilkRegistry.rely(address(dssDeploy));
+
         usdt = DSToken(address(new ConfigurableDSToken("tstUSDT", "Test USDT", 6, 0))); // maxSupply = 0 => unlimited supply
-        // usdt = new DSToken("tstUSDT", "Test USDT", 6, 0);
-
-        (usdtJoin, feedUSDT, pipUSDT) = dssDeploy.init(
+        (usdtJoin, feedUSDT, pipUSDT) = dssDeploy.addCollateral(
             address(usdt),
-            address(proxyActions),
-            address(ilkRegistry),
-            DssTokenExt.TokenInfo(
-                "USDT-A", // ilk
-                uint(10000 * 10 ** 45), // line
-                1 hours, // tau
-                int(1 * 10 ** 6), // answer: Feed Price
-                uint(1500000000 ether), // mat: Liquidation Ratio (150%),
-                6 // decimals
-            )
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.TokenInfo({
+                ilk: "USDT-A",
+                line: uint(10000 * 10 ** 45), 
+                tau: 1 hours,
+                mat: uint(1500000000 ether), // mat: Liquidation Ratio (150%),
+                hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27,  // Set a 20% increase in auctions (RAY)
+                initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
+                feedDecimals: 6, // decimals
+                tokenDecimals: 6 // decimals
+            })
         );
-        spotter.poke("USDT-A");
-
-        // usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
-        // LinearDecrease calcUSDT = calcFab.newLinearDecrease(address(this));
-        // calcUSDT.file(bytes32("tau"), 1 hours);
-        // dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
-
-        php = DSToken(address(new ConfigurableDSToken("tstPHP", "Test PHP", 6, 0)));
-        // php = new DSTokenMax("tstPHP", "Test PHP", 6, 0);
-        phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
-        LinearDecrease calcPHP = calcFab.newLinearDecrease(address(this));
-        calcPHP.file(bytes32("tau"), 1 hours);
-        dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
-
-        // Set Params
-        proxyActions.file(address(vat), bytes32("Line"), uint(10000 * 10 ** 45));
-        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(10000 * 10 ** 45));
-        // proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(10000 * 10 ** 45));
-
-        // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
-        // or relative to the USD price?
-        // @TODO there is no oracle for the GOV token?
-
-        feedUSDT.file("decimals", uint(6));
-        // feedUSDT.file("answer", int(58 * 10 ** 6)); // Price 58 DAI (PHT) = 1 USDT (precision 6)
-
-        feedPHP.file("decimals", uint(6));
-        feedPHP.file("answer", int(1 * 10 ** 6)); // Price 1 DAI (PHT) = 1 PHP (precision 6)
-
-        // @TODO add / change to ethClip
-        (, phpClip, ) = dssDeploy.ilks("PHP-A");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
-        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
-        // proxyActions.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
-
-        spotter.poke("PHP-A");
-        // spotter.poke("USDT-A");
+        php = DSToken(address(new ConfigurableDSToken("tstPHP", "Test PHP", 6, 0)));
+        (phpJoin, feedPHP, pipPHP) = dssDeploy.addCollateral(
+            address(php),
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.TokenInfo({
+                ilk: "PHP-A",
+                line: uint(10000 * 10 ** 45),
+                tau: 1 hours,
+                mat: uint(1500000000 ether), // Liquidation Ratio (150%),
+                hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27,  // Set a 20% increase in auctions (RAY)
+                initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
+                feedDecimals: 6, // decimals
+                tokenDecimals: 6 // decimals
+            })
+        );
+        (, phpClip, ) = dssDeploy.ilks("PHP-A");
+        
+        // Set global limit to 10 million DAI (RAD units)
+        proxyActions.file(address(dog), "Hole", 10_000_000 * RAD);
+         // Set Debt Ceiling (10_000 DAI)
+        proxyActions.file(address(vat), bytes32("Line"), uint(10000 * RAD));
 
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
-
-        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
-        ilkRegistry.add(address(phpJoin));
-        // ilkRegistry.add(address(usdtJoin));
 
         (, , uint spot, , ) = vat.ilks("PHP-A");
         assertEq(spot, (1 * RAY * RAY) / 1500000000 ether);
