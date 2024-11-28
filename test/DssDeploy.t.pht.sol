@@ -24,12 +24,13 @@ import {StdCheatsSafe} from "forge-std/StdCheats.sol";
 
 import "./DssDeploy.t.base.pht.sol";
 
-interface GemLike {
-    function balanceOf(address) external view returns (uint256);
-    function burn(uint256) external;
-    function transfer(address, uint256) external returns (bool);
-    function transferFrom(address, address, uint256) external returns (bool);
-}
+// Declared already inside DssDeploy.t.base.pht.sol
+// interface GemLike {
+//     function balanceOf(address) external view returns (uint256);
+//     function burn(uint256) external;
+//     function transfer(address, uint256) external returns (bool);
+//     function transferFrom(address, address, uint256) external returns (bool);
+// }
 
 interface ProxyRegistryLike {
     function proxies(address) external view returns (address);
@@ -549,10 +550,10 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                     true
                 )
             ),
-            (uint256));
+            (uint256)
+        );
 
         {
-
             // Collateral owned by Join
             assertEq(php.balanceOf(address(phpJoin)), 1.06e6);
             // After operation, balance should be zero
@@ -563,7 +564,6 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             assertEq(dai.balanceOf(address(this)), 1e18);
             // Gem ownership in urnhandler
             assertEq(vat.gem("PHP-A", address(this)), 0);
-
         }
 
         {
@@ -575,7 +575,6 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
         }
 
         {
-
             (uint256 ink, uint256 art) = vat.urns("PHP-A", dssCdpManager.urns(cdpId));
             (, uint256 rate, uint256 spot, , uint256 dust) = vat.ilks("PHP-A");
 
@@ -592,12 +591,11 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             console.log("ink*spot", ink * spot);
             console.log("art*rate", art * rate);
         }
-        
+
         //0x555344432d4100000000000000000
         //0x555344432d410000000000000000000000000000000000000000000000000000
         //15000000000000000000000000000000000000000000000000
         {
-
             // Run Auction on Liquidation owned by UrnHandler
             uint256 auctionId = dog.bark("PHP-A", dssCdpManager.urns(cdpId), address(0));
 
@@ -611,13 +609,13 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 console.log(uint256(tic));
                 console.logAddress(usr);
 
-                ( /* clip */, uint chop, uint hole,) = dog.ilks("PHP-A");
+                (, /* clip */ uint chop, uint hole, ) = dog.ilks("PHP-A");
 
                 assertEq(usr, dssCdpManager.urns(cdpId));
                 assertEq(tab, (chop * RAD) / WAD);
                 assertEq(lot, 1.06e18); //wad
             }
-            
+
             // Record collateral in the urn before liquidation
             (uint256 urnInkBefore, ) = vat.urns("PHP-A", dssCdpManager.urns(cdpId));
             console.log("Urn collateral before liquidation (WAD units):", urnInkBefore);
@@ -628,12 +626,11 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
 
             uint256 vowDaiBefore = vat.dai(address(vow));
             console.log("Vow DAI balance before auction (RAD units):", vowDaiBefore);
-            
+
             /// Keeper Action as Auction Member
             /// (See dss-cron/src/LiquidatorJob.sol)
             vm.startPrank(address(dssDeploy));
             {
-
                 // Create internal DAI using suck
                 // Calculate the amount owed (owe) before calling vat.suck
                 // slice = lot: Assuming time elapsed is zero
@@ -641,7 +638,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 // buf ; Initial auction price increase;
                 vat.suck(
                     address(vat),
-                    address(dssDeploy), 
+                    address(dssDeploy),
                     mul(lot, top) // owe = slice * price
                 );
                 // Give permission to clipper
@@ -675,7 +672,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 // Record the vow's DAI balance after liquidation
                 console.log("Vow DAI balance after auction (RAD units):", vat.sin(address(vow)));
                 console.log("Vow DAI balance after auction (RAD units):", vat.dai(address(vow)));
-            
+
                 uint256 daiCollectedByVow = vat.dai(address(vow)) - vowDaiBefore;
                 assertEq(daiCollectedByVow, 1.13e45);
                 uint256 sinIncreased = vat.sin(address(vow)) - vowSinBefore;

@@ -42,7 +42,6 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {TokenFactory} from "../script/factories/TokenFactory.sol";
 import {ConfigurableDSToken} from "../script/factories/ConfigurableDSToken.sol";
 
-
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
     function burn(uint256) external;
@@ -62,7 +61,6 @@ interface PipLike {
 }
 
 contract DssTokenExt is DssDeploy {
-    
     struct TokenInfo {
         bytes32 ilk;
         uint256 line;
@@ -78,7 +76,6 @@ contract DssTokenExt is DssDeploy {
         address ilkRegistry,
         TokenInfo memory tokenInfo
     ) public returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip) {
-
         require(tokenInfo.decimals <= 18, "token-factory-max-decimals");
 
         _feed = new MockAggregatorV3();
@@ -97,24 +94,12 @@ contract DssTokenExt is DssDeploy {
         _calc.file(bytes32("tau"), tokenInfo.tau);
         deployCollateralClip(tokenInfo.ilk, address(_join), address(_pip), address(_calc));
 
-        ProxyActions(proxyActions).file(
-            address(vat),
-            tokenInfo.ilk,
-            bytes32("line"),
-            tokenInfo.line
-        );
+        ProxyActions(proxyActions).file(address(vat), tokenInfo.ilk, bytes32("line"), tokenInfo.line);
 
-        ProxyActions(proxyActions).file(
-            address(spotter),
-            tokenInfo.ilk,
-            bytes32("mat"),
-            tokenInfo.mat
-        );
+        ProxyActions(proxyActions).file(address(spotter), tokenInfo.ilk, bytes32("mat"), tokenInfo.mat);
 
         IlkRegistry(ilkRegistry).add(address(_join));
-
     }
-    
 }
 
 contract DssDeployTestBasePHT is Test {
@@ -329,7 +314,8 @@ contract DssDeployTestBasePHT is Test {
                 int(1 * 10 ** 6), // answer: Feed Price
                 uint(1500000000 ether), // mat: Liquidation Ratio (150%),
                 6 // decimals
-            ));
+            )
+        );
         spotter.poke("USDT-A");
 
         // usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));

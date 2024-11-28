@@ -44,6 +44,9 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 // Token Factory
 import {TokenFactory} from "./factories/TokenFactory.sol";
 
+// Price Feed Factory
+import {PriceFeedFactory} from "./factories/PriceFeedFactory.sol";
+
 contract DssDeployScript is Script, Test {
     using stdJson for string;
 
@@ -83,6 +86,7 @@ contract DssDeployScript is Script, Test {
 
     // Token Factory
     TokenFactory tokenFactory;
+    PriceFeedFactory priceFeedFactory;
 
     DSToken usdt;
     DSToken php;
@@ -180,6 +184,7 @@ contract DssDeployScript is Script, Test {
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
             clog.setAddress("MCD_TOKEN_FACTORY", address(tokenFactory));
+            clog.setAddress("MCD_PRICE_FEED_FACTORY", address(priceFeedFactory));
 
             clog.setIPFS("");
         }
@@ -225,6 +230,7 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
             artifacts.serialize("tokenFactory", address(tokenFactory));
+            artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -257,6 +263,7 @@ contract DssDeployScript is Script, Test {
 
         // Token Factory
         tokenFactory = new TokenFactory();
+        priceFeedFactory = new PriceFeedFactory();
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
