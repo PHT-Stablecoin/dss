@@ -347,10 +347,10 @@ contract DssDeployScript is Script, Test {
         calcPHP.file(bytes32("tau"), 1 hours);
         dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
 
-        // Set Params
-        proxyActions.file(address(vat), bytes32("Line"), uint(10000 * 10 ** 45));
-        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(10000 * 10 ** 45));
-        proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(10000 * 10 ** 45));
+        // Set Params for debt ceiling
+        proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * 10 ** 45)); // 10M PHT
+        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(5_000_000 * 10 ** 45)); // 5M
+        proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(5_000_000 * 10 ** 45)); // 5M
 
         // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
         // or relative to the USD price?
@@ -366,8 +366,8 @@ contract DssDeployScript is Script, Test {
         (, phpClip, ) = dssDeploy.ilks("PHP-A");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
-        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
-        proxyActions.file(address(spotter), "USDT-A", "mat", uint(1500000000 ether)); // Liquidation ratio 150%
+        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
+        proxyActions.file(address(spotter), "USDT-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
 
         spotter.poke("PHP-A");
         spotter.poke("USDT-A");
@@ -380,9 +380,9 @@ contract DssDeployScript is Script, Test {
         ilkRegistry.add(address(usdtJoin));
 
         (, , uint spot, , ) = vat.ilks("PHP-A");
-        assertEq(spot, (1 * RAY * RAY) / 1500000000 ether);
+        assertEq(spot, (1 * RAY * RAY) / 1050000000 ether);
         (, , spot, , ) = vat.ilks("USDT-A");
-        assertEq(spot, (58 * RAY * RAY) / 1500000000 ether);
+        assertEq(spot, (58 * RAY * RAY) / 1050000000 ether);
 
         // {
         //     // TODO: Set Liquidation/Auction Rules (Dog)
@@ -394,7 +394,20 @@ contract DssDeployScript is Script, Test {
         //     dog.file("USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
         //     dog.file("USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
         // }
-        
+
+        // (uint256 duty, ) = jug.ilks("PHP-A");
+        // console.log("PHP-A duty before:", duty);
+
+        // proxyActions.file(
+        //     address(jug),
+        //     "PHP-A",
+        //     "duty",
+        //     uint256(1.06e27) // 1.06e27 RAY
+        // );
+
+        // jug.file("PHP-A", "duty", 1.06e27); // 6% annual rate = 1.06 RAY
+        // jug.file("USDT-A", "duty", 1.06e27); // 6% annual rate = 1.06 RAY
+
         {
             MockGuard(address(gov.authority())).permit(
                 address(flop),
