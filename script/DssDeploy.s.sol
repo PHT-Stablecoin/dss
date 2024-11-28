@@ -41,6 +41,9 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
+// Collateral Type Factory
+import {CollateralTypeFactory} from "./factories/CollateralTypeFactory.sol";
+
 // Token Factory
 import {TokenFactory} from "./factories/TokenFactory.sol";
 
@@ -83,6 +86,8 @@ contract DssDeployScript is Script, Test {
     MockAggregatorV3 feedUSDT;
 
     MockGuard authority;
+
+    CollateralTypeFactory collateralTypeFactory;
 
     // Token Factory
     TokenFactory tokenFactory;
@@ -183,6 +188,7 @@ contract DssDeployScript is Script, Test {
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
+            clog.setAddress("MCD_COLLATERAL_TYPE_FACTORY", address(collateralTypeFactory));
             clog.setAddress("MCD_TOKEN_FACTORY", address(tokenFactory));
             clog.setAddress("MCD_PRICE_FEED_FACTORY", address(priceFeedFactory));
 
@@ -229,6 +235,7 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("dssProxyActions", address(dssProxyActions));
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
+            artifacts.serialize("collateralTypeFactory", address(collateralTypeFactory));
             artifacts.serialize("tokenFactory", address(tokenFactory));
             artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
 
@@ -265,6 +272,17 @@ contract DssDeployScript is Script, Test {
         tokenFactory = new TokenFactory();
         priceFeedFactory = new PriceFeedFactory();
 
+        // Collateral Type Factory
+        collateralTypeFactory = new CollateralTypeFactory(
+            address(vatFab),
+            address(spotFab),
+            address(jugFab),
+            address(proxyActions),
+            address(ilkRegistry),
+            address(tokenFactory),
+            address(priceFeedFactory)
+        );
+
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
         dssDeploy.addFabs2(
@@ -287,6 +305,7 @@ contract DssDeployScript is Script, Test {
         gov.setAuthority(DSAuthority(address(new MockGuard())));
         authority = new MockGuard();
 
+        // todo: replace this with collateral type factory for tests
         feedUSDT = new MockAggregatorV3();
         feedPHP = new MockAggregatorV3();
 

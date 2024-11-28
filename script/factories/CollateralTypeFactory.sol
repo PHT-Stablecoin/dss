@@ -1,4 +1,5 @@
 pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
 
 import {DSAuth} from "ds-auth/auth.sol";
 import {Vat} from "dss/vat.sol";
@@ -11,6 +12,13 @@ import {GemJoin} from "dss/join.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {TokenFactory} from "./TokenFactory.sol";
 import {PriceFeedFactory} from "./PriceFeedFactory.sol";
+
+interface GemLike {
+    function balanceOf(address) external view returns (uint256);
+    function burn(uint256) external;
+    function transfer(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+}
 
 interface GemJoinLike {
     function dec() external returns (uint);
@@ -38,16 +46,19 @@ contract CollateralTypeFactory is DSAuth {
         string name;
         uint8 decimals;
         uint256 maxSupply;
-        bool isStandardToken; // If true, creates DSToken, if false creates ConfigurableDSToken
+        // bool isStandardToken; // If true, creates DSToken, if false creates ConfigurableDSToken
         // Price feed parameters
         int256 initialPrice; // Initial price in price feed decimals
-        string priceDescription; // Description for the price feed: USDT/PHP
         // Risk parameters
-        bytes32 ilk; // Collateral identifier (e.g., "ETH-A")
         uint256 debtCeiling; // Maximum debt ceiling (in DAI)
         uint256 liquidationFee; //
         uint256 liquidationRatio; // Minimum collateralization ratio (e.g., 150% = 1.5 * WAD)
         uint256 stabilityFee; // Yearly stability fee (e.g., 2% = 1.02 * WAD)
+        bool isSelfManageToken;
+        address tokenAddress;
+        // Price feed params
+        bool isSelfManagePriceFeed;
+        address priceFeedAddress;
     }
 
     // Collateral tracking
@@ -89,27 +100,31 @@ contract CollateralTypeFactory is DSAuth {
         priceFeedFactory = PriceFeedFactory(_priceFeedFactory);
     }
 
-    function createCollaterlType(
+    function createCollateralType(
         CollateralParams memory params
     ) external auth returns (CollateralInfo memory collateralAddresses) {
-        require(!collaterals[params.ilk].exists, "CollateralTypeFactory/ilk-exists");
+        // require(!collaterals[params.ilk].exists, "CollateralTypeFactory/ilk-exists");
 
         address token;
-        if (params.isStandardToken) {
-            // No max supply check for this token; just a standard ds token
-            token = tokenFactory.createStandardToken(params.symbol, params.name);
+        if (!params.isSelfManageToken) {
+            token = params.tokenAddress;
         } else {
             token = tokenFactory.createConfigurableToken(params.symbol, params.name, params.decimals, params.maxSupply);
         }
 
+        if (!params.isSelfManagePriceFeed) {
+            revert("CollateralTypeFactory/chain-link-price-feed-not-supported");
+        }
+
         (address aggregator, address pip) = priceFeedFactory.createPriceFeed(
-            params.decimals,
+            8, // Fixed decimals
             params.initialPrice,
-            params.priceDescription
+            "Self Manage Price Feed"
         );
 
-        join GemJoinLike;
-        string memory ilk = string(abi.encodePacked(params.symbol, "-A")); // PHP-A / USDC-A
+        GemJoinLike join;
+        string memory ilkString = string(abi.encodePacked(params.symbol, "-A")); // PHP-A / USDC-A
+        bytes32 ilk = keccak256(bytes(ilkString));
         if (params.decimals <= 6) {
             join = GemJoinLike(address(new GemJoin5(address(vat), ilk, token)));
         } else {
@@ -122,6 +137,7 @@ contract CollateralTypeFactory is DSAuth {
         proxyActions.file(address(vat), ilk, bytes32("line"), params.debtCeiling);
         // Liquidation ratio
         proxyActions.file(address(spotter), ilk, bytes32("mat"), params.liquidationRatio);
+        // todo: stability/liq penalty
         // Ilk registry
         ilkRegistry.add(address(join));
     }

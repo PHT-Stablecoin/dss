@@ -1,4 +1,5 @@
 pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
 
 import {PriceFeedAggregator} from "./PriceFeedAggregator.sol";
 import {ChainlinkPip} from "../../test/helpers/ChainlinkPip.sol";
@@ -19,19 +20,20 @@ contract PriceFeedFactory is DSAuth {
     function createPriceFeed(
         uint8 decimals,
         int initialAnswer,
-        string description
-    ) external auth returns (address feedAddress, address chainlinkPip) {
+        string memory description
+    ) external auth returns (address feedAddress, address chainlinkPipAddress) {
         PriceFeedAggregator feed = new PriceFeedAggregator();
         feedAddress = address(feed);
 
         // Price feed decimals and initial price
-        feed.file("decimals", decimals);
+        // feed.file("decimals", decimals);
 
-        if (initialAnswer > 0) {
-            feed.file("answer", initialAnswer);
-        }
+        // if (initialAnswer > 0) {
+        //     feed.file("answer", initialAnswer);
+        // }
 
-        chainlinkPip = new ChainlinkPip(feedAddress);
+        ChainlinkPip chainlinkPip = new ChainlinkPip(feedAddress);
+        chainlinkPipAddress = address(chainlinkPip);
 
         feedRegistry[feedAddress] = PriceFeedInfo({
             feedAddress: feedAddress,
