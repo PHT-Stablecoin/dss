@@ -64,15 +64,17 @@ interface PipLike {
 contract DssDeployExt is DssDeploy {
     struct TokenInfo {
         bytes32 ilk;
-        uint256 line;
+        uint256 line; // Ilk Debt ceiling [RAD]
+        uint256 dust; // Ilk Urn Debt floor [RAD]
         uint256 tau; // Default: 1 hours
-        uint256 mat; // Liquidation Ratio
-        uint256 hole; // Gem-limit
-        uint256 chop; // Liquidation-penalty
-        uint256 buf; // Initial Auction Increase
+        uint256 mat; // Liquidation Ratio [RAY]
+        uint256 hole; // Gem-limit [RAD]
+        uint256 chop; // Liquidation-penalty [WAD]
+        uint256 buf; // Initial Auction Increase [RAY]
+        uint256 duty; // Jug: ilk fee [RAY]
         int initialPrice; // Feed Price (6 Decimals)
-        uint8 tokenDecimals;
-        uint8 feedDecimals;
+        uint8 tokenDecimals; // >=18 Decimals only
+        uint8 feedDecimals; // Default: (6 Decimals)
     }
     address internal ext;
 
@@ -94,15 +96,17 @@ contract DssDeployExt is DssDeploy {
 contract DssDeployUtil {
     struct TokenInfo {
         bytes32 ilk;
-        uint256 line;
+        uint256 line; // Ilk Debt ceiling [RAD]
+        uint256 dust; // Ilk Urn Debt floor [RAD]
         uint256 tau; // Default: 1 hours
-        uint256 mat; // Liquidation Ratio
-        uint256 hole; // Gem-limit
-        uint256 chop; // Liquidation-penalty
-        uint256 buf; // Initial Auction Increase
+        uint256 mat; // Liquidation Ratio [RAY]
+        uint256 hole; // Gem-limit [RAD]
+        uint256 chop; // Liquidation-penalty [WAD]
+        uint256 buf; // Initial Auction Increase [RAY]
+        uint256 duty; // Jug: ilk fee [RAY]
         int initialPrice; // Feed Price (6 Decimals)
-        uint8 tokenDecimals;
-        uint8 feedDecimals;
+        uint8 tokenDecimals; // >=18 Decimals only
+        uint8 feedDecimals; // Default: (6 Decimals)
     }
 
     function addCollateral(
@@ -122,6 +126,7 @@ contract DssDeployUtil {
         _feed.file("answer", tokenInfo.initialPrice); // Feed Price);
         _feed.setOwner(owner);
         _pip = new ChainlinkPip(address(_feed));
+        
 
         if (tokenInfo.tokenDecimals <= 6) {
             _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), tokenInfo.ilk, token)));
@@ -131,7 +136,6 @@ contract DssDeployUtil {
 
         {
             LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
-
             _calc.file(bytes32("tau"), tokenInfo.tau);
             _calc.rely(owner);
             _calc.deny(address(this));
@@ -140,15 +144,26 @@ contract DssDeployUtil {
 
         {
             proxyActions.file(address(dssDeploy.vat()), tokenInfo.ilk, bytes32("line"), tokenInfo.line);
+            proxyActions.file(address(dssDeploy.vat()), tokenInfo.ilk, bytes32("dust"), tokenInfo.dust);
             proxyActions.file(address(dssDeploy.spotter()), tokenInfo.ilk, bytes32("mat"), tokenInfo.mat);
         }
 
+
         {
-            dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole());
             dssDeploy.dog().file(tokenInfo.ilk, "hole", tokenInfo.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+            dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole()); // Increase global limit
             dssDeploy.dog().file(tokenInfo.ilk, "chop", tokenInfo.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        }
+
+        {
             (, Clipper clip, ) = dssDeploy.ilks(tokenInfo.ilk);
             clip.file("buf", tokenInfo.buf); // Set a 20% increase in auctions (RAY)
+        }
+        
+        {
+            // Set Ilk Fees
+            proxyActions.file(address(dssDeploy.jug()),tokenInfo.ilk,"duty", tokenInfo.duty); // 6% duty fee;
+            dssDeploy.jug().drip(tokenInfo.ilk);
         }
 
         ilkRegistry.add(address(_join));
@@ -492,29 +507,27 @@ contract DssDeployScript is Script, Test {
         (, , spot, , ) = vat.ilks("USDT-A");
         assertEq(spot, (58 * RAY * RAY) / 1050000000 ether);
 
-        // {
-        //     // TODO: Set Liquidation/Auction Rules (Dog)
-        //     dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
-        //     dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
-        //     dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        {
+            // Set Liquidation/Auction Rules (Dog)
+            proxyActions.file(address(dog), "Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
 
-        //     dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
-        //     dog.file("USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
-        //     dog.file("USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
-        // }
+            proxyActions.file(address(dog), "PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
+            proxyActions.file(address(dog), "PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
 
-        // (uint256 duty, ) = jug.ilks("PHP-A");
-        // console.log("PHP-A duty before:", duty);
+            proxyActions.file(address(dog), "USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
+            proxyActions.file(address(dog), "USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+        }
 
-        // proxyActions.file(
-        //     address(jug),
-        //     "PHP-A",
-        //     "duty",
-        //     uint256(1.06e27) // 1.06e27 RAY
-        // );
-
-        // jug.file("PHP-A", "duty", 1.06e27); // 6% annual rate = 1.06 RAY
-        // jug.file("USDT-A", "duty", 1.06e27); // 6% annual rate = 1.06 RAY
+        {
+            // Set Ilk Fees
+            proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee 
+            proxyActions.file(address(jug),"USDT-A","duty", 1.06e27); // 6% duty fee;
+            proxyActions.file(address(jug),"PHP-A","duty", 1.06e27); // 6% duty fee;
+            
+            /// Run initial drip
+            jug.drip("USDT-A");
+            jug.drip("PHP-A");
+        }
 
         {
             MockGuard(address(gov.authority())).permit(

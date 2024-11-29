@@ -62,15 +62,17 @@ interface PipLike {
 contract DssDeployExt is DssDeploy {
     struct TokenInfo {
         bytes32 ilk;
-        uint256 line;
+        uint256 line; // Ilk Debt ceiling [RAD]
+        uint256 dust; // Ilk Urn Debt floor [RAD]
         uint256 tau; // Default: 1 hours
-        uint256 mat; // Liquidation Ratio
-        uint256 hole; // Gem-limit
-        uint256 chop; // Liquidation-penalty
-        uint256 buf; // Initial Auction Increase
+        uint256 mat; // Liquidation Ratio [RAY]
+        uint256 hole; // Gem-limit [RAD]
+        uint256 chop; // Liquidation-penalty [WAD]
+        uint256 buf; // Initial Auction Increase [RAY]
+        uint256 duty; // Jug: ilk fee [RAY]
         int initialPrice; // Feed Price (6 Decimals)
-        uint8 tokenDecimals;
-        uint8 feedDecimals;
+        uint8 tokenDecimals; // >=18 Decimals only
+        uint8 feedDecimals; // Default: (6 Decimals)
     }
     address internal ext;
 
@@ -92,15 +94,17 @@ contract DssDeployExt is DssDeploy {
 contract DssDeployUtil {
     struct TokenInfo {
         bytes32 ilk;
-        uint256 line;
+        uint256 line; // Ilk Debt ceiling [RAD]
+        uint256 dust; // Ilk Urn Debt floor [RAD]
         uint256 tau; // Default: 1 hours
-        uint256 mat; // Liquidation Ratio
-        uint256 hole; // Gem-limit
-        uint256 chop; // Liquidation-penalty
-        uint256 buf; // Initial Auction Increase
+        uint256 mat; // Liquidation Ratio [RAY]
+        uint256 hole; // Gem-limit [RAD]
+        uint256 chop; // Liquidation-penalty [WAD]
+        uint256 buf; // Initial Auction Increase [RAY]
+        uint256 duty; // Jug: ilk fee [RAY]
         int initialPrice; // Feed Price (6 Decimals)
-        uint8 tokenDecimals;
-        uint8 feedDecimals;
+        uint8 tokenDecimals; // >=18 Decimals only
+        uint8 feedDecimals; // Default: (6 Decimals)
     }
 
     function addCollateral(
@@ -120,6 +124,7 @@ contract DssDeployUtil {
         _feed.file("answer", tokenInfo.initialPrice); // Feed Price);
         _feed.setOwner(owner);
         _pip = new ChainlinkPip(address(_feed));
+        
 
         if (tokenInfo.tokenDecimals <= 6) {
             _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), tokenInfo.ilk, token)));
@@ -129,7 +134,6 @@ contract DssDeployUtil {
 
         {
             LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
-
             _calc.file(bytes32("tau"), tokenInfo.tau);
             _calc.rely(owner);
             _calc.deny(address(this));
@@ -138,15 +142,26 @@ contract DssDeployUtil {
 
         {
             proxyActions.file(address(dssDeploy.vat()), tokenInfo.ilk, bytes32("line"), tokenInfo.line);
+            proxyActions.file(address(dssDeploy.vat()), tokenInfo.ilk, bytes32("dust"), tokenInfo.dust);
             proxyActions.file(address(dssDeploy.spotter()), tokenInfo.ilk, bytes32("mat"), tokenInfo.mat);
         }
 
+
         {
-            dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole());
             dssDeploy.dog().file(tokenInfo.ilk, "hole", tokenInfo.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+            dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole()); // Increase global limit
             dssDeploy.dog().file(tokenInfo.ilk, "chop", tokenInfo.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        }
+
+        {
             (, Clipper clip, ) = dssDeploy.ilks(tokenInfo.ilk);
             clip.file("buf", tokenInfo.buf); // Set a 20% increase in auctions (RAY)
+        }
+        
+        {
+            // Set Ilk Fees
+            proxyActions.file(address(dssDeploy.jug()),tokenInfo.ilk,"duty", tokenInfo.duty); // 6% duty fee;
+            dssDeploy.jug().drip(tokenInfo.ilk);
         }
 
         ilkRegistry.add(address(_join));
@@ -357,11 +372,14 @@ contract DssDeployTestBasePHT is Test {
             DssDeployExt.TokenInfo({
                 ilk: "USDT-A",
                 line: uint(10000 * 10 ** 45),
+                dust: uint(0),
+
                 tau: 1 hours,
                 mat: uint(1500000000 ether), // mat: Liquidation Ratio (150%),
                 hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.06e27, // 6% duty
                 initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
                 feedDecimals: 6, // decimals
                 tokenDecimals: 6 // decimals
@@ -377,11 +395,13 @@ contract DssDeployTestBasePHT is Test {
             DssDeployExt.TokenInfo({
                 ilk: "PHP-A",
                 line: uint(10000 * 10 ** 45),
+                dust: uint(0), 
                 tau: 1 hours,
                 mat: uint(1500000000 ether), // Liquidation Ratio (150%),
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.06e27, // 6% duty
                 initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
                 feedDecimals: 6, // decimals
                 tokenDecimals: 6 // decimals
@@ -393,6 +413,8 @@ contract DssDeployTestBasePHT is Test {
         proxyActions.file(address(dog), "Hole", 10_000_000 * RAD);
         // Set Debt Ceiling (10_000 DAI)
         proxyActions.file(address(vat), bytes32("Line"), uint(10000 * RAD));
+        // Set Global Base Fee
+        proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee 
 
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
