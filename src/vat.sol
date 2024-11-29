@@ -156,7 +156,14 @@ contract Vat {
     }
 
     // --- CDP Manipulation ---
-    function frob(bytes32 i, address u, address v, address w, int dink, int dart) external {
+    function frob(
+        bytes32 i,
+        address u,
+        address v,
+        address w,
+        int dink,
+        int dart
+    ) external {
         // system is live
         require(live == 1, "Vat/not-live");
 
@@ -183,12 +190,24 @@ contract Vat {
         console.log("Line", Line);
 
         // either debt has decreased, or debt ceilings are not exceeded
-        require(either(dart <= 0, both(_mul(ilk.Art, ilk.rate) <= ilk.line, debt <= Line)), "Vat/ceiling-exceeded");
+        require(
+            either(
+                dart <= 0,
+                both(_mul(ilk.Art, ilk.rate) <= ilk.line, debt <= Line)
+            ),
+            "Vat/ceiling-exceeded"
+        );
         // urn is either less risky than before, or it is safe
-        require(either(both(dart <= 0, dink >= 0), tab <= _mul(urn.ink, ilk.spot)), "Vat/not-safe");
+        require(
+            either(both(dart <= 0, dink >= 0), tab <= _mul(urn.ink, ilk.spot)),
+            "Vat/not-safe"
+        );
 
         // urn is either more safe, or the owner consents
-        require(either(both(dart <= 0, dink >= 0), wish(u, msg.sender)), "Vat/not-allowed-u");
+        require(
+            either(both(dart <= 0, dink >= 0), wish(u, msg.sender)),
+            "Vat/not-allowed-u"
+        );
         // collateral src consents
         require(either(dink <= 0, wish(v, msg.sender)), "Vat/not-allowed-v");
         // debt dst consents
@@ -204,7 +223,13 @@ contract Vat {
         ilks[i] = ilk;
     }
     // --- CDP Fungibility ---
-    function fork(bytes32 ilk, address src, address dst, int dink, int dart) external {
+    function fork(
+        bytes32 ilk,
+        address src,
+        address dst,
+        int dink,
+        int dart
+    ) external {
         Urn storage u = urns[ilk][src];
         Urn storage v = urns[ilk][dst];
         Ilk storage i = ilks[ilk];
@@ -218,7 +243,10 @@ contract Vat {
         uint vtab = _mul(v.art, i.rate);
 
         // both sides consent
-        require(both(wish(src, msg.sender), wish(dst, msg.sender)), "Vat/not-allowed");
+        require(
+            both(wish(src, msg.sender), wish(dst, msg.sender)),
+            "Vat/not-allowed"
+        );
 
         // both sides safe
         require(utab <= _mul(u.ink, i.spot), "Vat/not-safe-src");
@@ -229,7 +257,14 @@ contract Vat {
         require(either(vtab >= i.dust, v.art == 0), "Vat/dust-dst");
     }
     // --- CDP Confiscation ---
-    function grab(bytes32 i, address u, address v, address w, int dink, int dart) external auth {
+    function grab(
+        bytes32 i,
+        address u,
+        address v,
+        address w,
+        int dink,
+        int dart
+    ) external auth {
         Urn storage urn = urns[i][u];
         Ilk storage ilk = ilks[i];
 

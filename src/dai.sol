@@ -25,28 +25,24 @@ pragma solidity ^0.6.12;
 
 contract Dai {
     // --- Auth ---
-    mapping(address => uint) public wards;
-    function rely(address guy) external auth {
-        wards[guy] = 1;
-    }
-    function deny(address guy) external auth {
-        wards[guy] = 0;
-    }
-    modifier auth() {
+    mapping (address => uint) public wards;
+    function rely(address guy) external auth { wards[guy] = 1; }
+    function deny(address guy) external auth { wards[guy] = 0; }
+    modifier auth {
         require(wards[msg.sender] == 1, "Dai/not-authorized");
         _;
     }
 
     // --- ERC20 Data ---
-    string public constant name = "PHT Stablecoin";
-    string public constant symbol = "PHT";
-    string public constant version = "1";
-    uint8 public constant decimals = 18;
+    string  public constant name     = "Dai Stablecoin";
+    string  public constant symbol   = "DAI";
+    string  public constant version  = "1";
+    uint8   public constant decimals = 18;
     uint256 public totalSupply;
 
-    mapping(address => uint) public balanceOf;
-    mapping(address => mapping(address => uint)) public allowance;
-    mapping(address => uint) public nonces;
+    mapping (address => uint)                      public balanceOf;
+    mapping (address => mapping (address => uint)) public allowance;
+    mapping (address => uint)                      public nonces;
 
     event Approval(address indexed src, address indexed guy, uint wad);
     event Transfer(address indexed src, address indexed dst, uint wad);
@@ -66,22 +62,22 @@ contract Dai {
 
     constructor(uint256 chainId_) public {
         wards[msg.sender] = 1;
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes(name)),
-                keccak256(bytes(version)),
-                chainId_,
-                address(this)
-            )
-        );
+        DOMAIN_SEPARATOR = keccak256(abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256(bytes(name)),
+            keccak256(bytes(version)),
+            chainId_,
+            address(this)
+        ));
     }
 
     // --- Token ---
     function transfer(address dst, uint wad) external returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
-    function transferFrom(address src, address dst, uint wad) public returns (bool) {
+    function transferFrom(address src, address dst, uint wad)
+        public returns (bool)
+    {
         require(balanceOf[src] >= wad, "Dai/insufficient-balance");
         if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
             require(allowance[src][msg.sender] >= wad, "Dai/insufficient-allowance");
@@ -94,7 +90,7 @@ contract Dai {
     }
     function mint(address usr, uint wad) external auth {
         balanceOf[usr] = add(balanceOf[usr], wad);
-        totalSupply = add(totalSupply, wad);
+        totalSupply    = add(totalSupply, wad);
         emit Transfer(address(0), usr, wad);
     }
     function burn(address usr, uint wad) external {
@@ -104,7 +100,7 @@ contract Dai {
             allowance[usr][msg.sender] = sub(allowance[usr][msg.sender], wad);
         }
         balanceOf[usr] = sub(balanceOf[usr], wad);
-        totalSupply = sub(totalSupply, wad);
+        totalSupply    = sub(totalSupply, wad);
         emit Transfer(usr, address(0), wad);
     }
     function approve(address usr, uint wad) external returns (bool) {
@@ -125,23 +121,20 @@ contract Dai {
     }
 
     // --- Approve by signature ---
-    function permit(
-        address holder,
-        address spender,
-        uint256 nonce,
-        uint256 expiry,
-        bool allowed,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external {
-        bytes32 digest = keccak256(
-            abi.encodePacked(
+    function permit(address holder, address spender, uint256 nonce, uint256 expiry,
+                    bool allowed, uint8 v, bytes32 r, bytes32 s) external
+    {
+        bytes32 digest =
+            keccak256(abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
-                keccak256(abi.encode(PERMIT_TYPEHASH, holder, spender, nonce, expiry, allowed))
-            )
-        );
+                keccak256(abi.encode(PERMIT_TYPEHASH,
+                                     holder,
+                                     spender,
+                                     nonce,
+                                     expiry,
+                                     allowed))
+        ));
 
         require(holder != address(0), "Dai/invalid-address-0");
         require(holder == ecrecover(digest, v, r, s), "Dai/invalid-permit");
