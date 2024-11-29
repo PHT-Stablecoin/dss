@@ -62,7 +62,6 @@ interface PipLike {
 }
 
 contract DssDeployExt is DssDeploy {
-
     struct TokenInfo {
         bytes32 ilk;
         uint256 line;
@@ -77,7 +76,7 @@ contract DssDeployExt is DssDeploy {
     }
     address internal ext;
 
-    function setExt(address _ext) auth public {
+    function setExt(address _ext) public auth {
         ext = _ext;
     }
 
@@ -86,11 +85,10 @@ contract DssDeployExt is DssDeploy {
         ProxyActions proxyActions,
         IlkRegistry ilkRegistry,
         TokenInfo memory tokenInfo
-    ) public auth returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip)
- {  
-    (bool r, bytes memory data) = ext.delegatecall(msg.data);
-    return abi.decode(data, (GemJoinLike, MockAggregatorV3, ChainlinkPip));
- }
+    ) public auth returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip) {
+        (bool r, bytes memory data) = ext.delegatecall(msg.data);
+        return abi.decode(data, (GemJoinLike, MockAggregatorV3, ChainlinkPip));
+    }
 }
 
 contract DssDeployUtil {
@@ -118,7 +116,6 @@ contract DssDeployUtil {
 
         DssDeploy dssDeploy = DssDeploy(address(this));
         address owner = dssDeploy.owner();
-        
 
         _feed = new MockAggregatorV3();
         _feed.file("decimals", uint(tokenInfo.feedDecimals));
@@ -133,7 +130,6 @@ contract DssDeployUtil {
         }
 
         {
-
             LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
 
             _calc.file(bytes32("tau"), tokenInfo.tau);
@@ -148,11 +144,10 @@ contract DssDeployUtil {
         }
 
         {
-            
             dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole());
             dssDeploy.dog().file(tokenInfo.ilk, "hole", tokenInfo.hole); // Set PHP-A limit to 5 million DAI (RAD units)
             dssDeploy.dog().file(tokenInfo.ilk, "chop", tokenInfo.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-            (,Clipper clip,) = dssDeploy.ilks(tokenInfo.ilk);
+            (, Clipper clip, ) = dssDeploy.ilks(tokenInfo.ilk);
             clip.file("buf", tokenInfo.buf); // Set a 20% increase in auctions (RAY)
         }
 
@@ -290,6 +285,7 @@ contract DssDeployScript is Script, Test {
             // Custom
             clog.setAddress("MCD_PSM", address(psm));
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
+            clog.setAddress("MCD_PROXY_ACTIONS", address(proxyActions));
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
@@ -334,6 +330,7 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("psm", address(psm));
             artifacts.serialize("autoline", address(autoline));
             artifacts.serialize("ilkRegistry", address(ilkRegistry));
+            artifacts.serialize("proxyActions", address(proxyActions));
             artifacts.serialize("dssProxyActions", address(dssProxyActions));
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));

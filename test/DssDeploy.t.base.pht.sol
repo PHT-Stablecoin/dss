@@ -59,9 +59,7 @@ interface PipLike {
     function peek() external returns (bytes32, bool);
 }
 
-
 contract DssDeployExt is DssDeploy {
-
     struct TokenInfo {
         bytes32 ilk;
         uint256 line;
@@ -76,7 +74,7 @@ contract DssDeployExt is DssDeploy {
     }
     address internal ext;
 
-    function setExt(address _ext) auth public {
+    function setExt(address _ext) public auth {
         ext = _ext;
     }
 
@@ -85,11 +83,10 @@ contract DssDeployExt is DssDeploy {
         ProxyActions proxyActions,
         IlkRegistry ilkRegistry,
         TokenInfo memory tokenInfo
-    ) public auth returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip)
- {  
-    (bool r, bytes memory data) = ext.delegatecall(msg.data);
-    return abi.decode(data, (GemJoinLike, MockAggregatorV3, ChainlinkPip));
- }
+    ) public auth returns (GemJoinLike _join, MockAggregatorV3 _feed, ChainlinkPip _pip) {
+        (bool r, bytes memory data) = ext.delegatecall(msg.data);
+        return abi.decode(data, (GemJoinLike, MockAggregatorV3, ChainlinkPip));
+    }
 }
 
 contract DssDeployUtil {
@@ -117,7 +114,6 @@ contract DssDeployUtil {
 
         DssDeploy dssDeploy = DssDeploy(address(this));
         address owner = dssDeploy.owner();
-        
 
         _feed = new MockAggregatorV3();
         _feed.file("decimals", uint(tokenInfo.feedDecimals));
@@ -132,7 +128,6 @@ contract DssDeployUtil {
         }
 
         {
-
             LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
 
             _calc.file(bytes32("tau"), tokenInfo.tau);
@@ -147,11 +142,10 @@ contract DssDeployUtil {
         }
 
         {
-            
             dssDeploy.dog().file("Hole", tokenInfo.hole + dssDeploy.dog().Hole());
             dssDeploy.dog().file(tokenInfo.ilk, "hole", tokenInfo.hole); // Set PHP-A limit to 5 million DAI (RAD units)
             dssDeploy.dog().file(tokenInfo.ilk, "chop", tokenInfo.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-            (,Clipper clip,) = dssDeploy.ilks(tokenInfo.ilk);
+            (, Clipper clip, ) = dssDeploy.ilks(tokenInfo.ilk);
             clip.file("buf", tokenInfo.buf); // Set a 20% increase in auctions (RAY)
         }
 
@@ -159,7 +153,6 @@ contract DssDeployUtil {
         dssDeploy.spotter().poke(tokenInfo.ilk);
     }
 }
-
 
 contract DssDeployTestBasePHT is Test {
     using stdJson for string;
@@ -363,12 +356,12 @@ contract DssDeployTestBasePHT is Test {
             ilkRegistry,
             DssDeployExt.TokenInfo({
                 ilk: "USDT-A",
-                line: uint(10000 * 10 ** 45), 
+                line: uint(10000 * 10 ** 45),
                 tau: 1 hours,
                 mat: uint(1500000000 ether), // mat: Liquidation Ratio (150%),
                 hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
-                buf: 1.20e27,  // Set a 20% increase in auctions (RAY)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
                 initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
                 feedDecimals: 6, // decimals
                 tokenDecimals: 6 // decimals
@@ -388,17 +381,17 @@ contract DssDeployTestBasePHT is Test {
                 mat: uint(1500000000 ether), // Liquidation Ratio (150%),
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-                buf: 1.20e27,  // Set a 20% increase in auctions (RAY)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
                 initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
                 feedDecimals: 6, // decimals
                 tokenDecimals: 6 // decimals
             })
         );
         (, phpClip, ) = dssDeploy.ilks("PHP-A");
-        
+
         // Set global limit to 10 million DAI (RAD units)
         proxyActions.file(address(dog), "Hole", 10_000_000 * RAD);
-         // Set Debt Ceiling (10_000 DAI)
+        // Set Debt Ceiling (10_000 DAI)
         proxyActions.file(address(vat), bytes32("Line"), uint(10000 * RAD));
 
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
