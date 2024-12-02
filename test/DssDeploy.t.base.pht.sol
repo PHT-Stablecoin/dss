@@ -27,7 +27,10 @@ import {DssPsm} from "dss-psm/psm.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 // Chainlink
-import {MockAggregatorV3} from "../test/helpers/MockAggregatorV3.sol";
+
+// Chainlink
+import {PriceFeedFactory, PriceFeedAggregator} from "../script/factory/PriceFeedFactory.sol";
+import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../script/factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.sol";
 
 // Autoline
@@ -39,7 +42,7 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
-import {ConfigurableDSToken} from "../script/factories/ConfigurableDSToken.sol";
+import {ConfigurableDSToken} from "../script/factory/ConfigurableDSToken.sol";
 
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
@@ -59,6 +62,7 @@ interface PipLike {
     function peek() external returns (bytes32, bool);
 }
 
+
 contract DssDeployExt is DssDeploy {
 
     struct TokenParams {
@@ -73,10 +77,18 @@ contract DssDeployExt is DssDeploy {
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
-        // address numeratorFeed;
-        // bool invertNumerator;
-        // address denominatorFeed;
-        // bool invertDenominator;
+        address numeratorFeed; // (optional)
+        bool invertNumerator;
+        address denominatorFeed;
+        bool invertDenominator;
+        string feedDescription;
+    }
+
+    struct AdapterFeedParams {
+        address numeratorFeed; // (optional)
+        bool invertNumerator;
+        address denominatorFeed;
+        bool invertDenominator;
     }
 
     struct IlkParams {
@@ -96,16 +108,27 @@ contract DssDeployExt is DssDeploy {
     function setExt(address _ext) public auth {
         ext = _ext;
     }
-
+    
     function addCollateral(
         ProxyActions proxyActions,
         IlkRegistry ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
-    ) public auth returns (GemJoinLike _join, MockAggregatorV3 _feed, address _token, ChainlinkPip _pip) {
+    ) public auth returns (GemJoinLike _join, PriceFeedAggregator _feed, address _token, ChainlinkPip _pip) {
         (bool r, bytes memory data) = ext.delegatecall(msg.data);
-        return abi.decode(data, (GemJoinLike, MockAggregatorV3, address, ChainlinkPip));
+        return abi.decode(data, (GemJoinLike, PriceFeedAggregator, address, ChainlinkPip));
+    }
+
+    function addCollateral(
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
+        IlkParams memory ilkParams,
+        TokenParams memory tokenParams,
+        AdapterFeedParams memory adapterFeedParams
+    ) public auth returns (GemJoinLike _join, PriceJoinFeedAggregator _feed, address _token, ChainlinkPip _pip) {
+        (bool r, bytes memory data) = ext.delegatecall(msg.data);
+        return abi.decode(data, (GemJoinLike, PriceJoinFeedAggregator, address, ChainlinkPip));
     }
 }
 
@@ -123,7 +146,11 @@ contract DssDeployUtil {
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
-
+        address numeratorFeed; // (optional)
+        bool invertNumerator;
+        address denominatorFeed;
+        bool invertDenominator;
+        string feedDescription;
     }
 
     struct IlkParams {
@@ -138,13 +165,24 @@ contract DssDeployUtil {
         uint256 duty; // Jug: ilk fee [RAY]
     }
 
+    PriceFeedFactory public feedFactory;
+    PriceJoinFeedFactory public joinFeedFactory;
+
+    constructor(
+        PriceFeedFactory _feedFactory,
+        PriceJoinFeedFactory _joinFeedFactory
+    ) public {
+        joinFeedFactory = _joinFeedFactory;
+        feedFactory = _feedFactory;
+    }
+
     function addCollateral(
         ProxyActions proxyActions,
         IlkRegistry ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
-    ) public returns (GemJoinLike _join, MockAggregatorV3 _feed, address _token, ChainlinkPip _pip) {
+    ) public returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         require(tokenParams.decimals <= 18, "token-factory-max-decimals");
         require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
 
@@ -162,15 +200,31 @@ contract DssDeployUtil {
             _token = address(newToken);
         }
 
-        _feed = MockAggregatorV3(feedParams.feed);
+        _feed = AggregatorV3Interface(feedParams.feed);
         if (address(_feed) == address(0)) {
-            _feed = new MockAggregatorV3();
-            _feed.file("decimals", uint(feedParams.decimals));
-            _feed.file("answer", feedParams.initialPrice); // Feed Price);
-            _feed.setOwner(owner);
+            if ( feedParams.numeratorFeed != address(0)) {
+                (PriceJoinFeedAggregator feed, ChainlinkPip _pip) = joinFeedFactory.create(
+                    feedParams.numeratorFeed,
+                    feedParams.denominatorFeed,
+                    feedParams.invertNumerator,
+                    feedParams.invertDenominator,
+                    feedParams.feedDescription
+                );
+                feed.setOwner(owner);
+                _feed = AggregatorV3Interface(address(feed));
+            } else {
+                (PriceFeedAggregator feed, ChainlinkPip _pip) = feedFactory.create(
+                    feedParams.decimals,
+                    feedParams.initialPrice,
+                    ""
+                );
+                feed.setOwner(owner);
+                _feed = AggregatorV3Interface(address(feed));
+            }
+        } else {
+            _pip = new ChainlinkPip(address(_feed));
         }
 
-        _pip = new ChainlinkPip(address(_feed));
         
         if (tokenParams.decimals <= 6) {
             _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token)));
@@ -249,8 +303,8 @@ contract DssDeployTestBasePHT is Test {
     ChainlinkPip pipPHP;
     ChainlinkPip pipUSDT;
 
-    MockAggregatorV3 feedPHP;
-    MockAggregatorV3 feedUSDT;
+    PriceFeedAggregator feedPHP;
+    PriceFeedAggregator feedUSDT;
 
     MockGuard authority;
 
@@ -332,7 +386,10 @@ contract DssDeployTestBasePHT is Test {
         pauseFab = new PauseFab();
 
         dssDeploy = new DssDeployExt();
-        dssDeploy.setExt(address(new DssDeployUtil()));
+        dssDeploy.setExt(address(new DssDeployUtil(
+            new PriceFeedFactory(),
+            new PriceJoinFeedFactory()
+        )));
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
@@ -356,8 +413,8 @@ contract DssDeployTestBasePHT is Test {
         gov.setAuthority(DSAuthority(address(new MockGuard())));
         authority = new MockGuard();
 
-        feedUSDT = new MockAggregatorV3();
-        feedPHP = new MockAggregatorV3();
+        feedUSDT = new PriceFeedAggregator();
+        feedPHP = new PriceFeedAggregator();
 
         pipUSDT = new ChainlinkPip(address(feedUSDT));
         pipPHP = new ChainlinkPip(address(feedPHP));
@@ -436,7 +493,12 @@ contract DssDeployTestBasePHT is Test {
             DssDeployExt.FeedParams({
                 feed: address(0),
                 decimals: 6,
-                initialPrice: int(58 * 10 ** 6) // Price 58 DAI (PHT) = 1 USDT (precision 6)
+                initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
             })
         );
         usdt = DSToken(usdtAddr);
@@ -469,7 +531,12 @@ contract DssDeployTestBasePHT is Test {
             DssDeployExt.FeedParams({
                 feed: address(0),
                 decimals: 6,
-                initialPrice: int(1 * 10 ** 6) // Price 1 DAI (PHT) = 1 PHP (precision 6)
+                initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
             })
         );
         php = DSToken(phpAddr);

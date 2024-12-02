@@ -17,36 +17,28 @@ contract PriceFeedFactory is DSAuth {
 
     event PriceFeedCreated(address indexed feed, string description, uint8 decimals, address indexed creator);
 
-    function createPriceFeed(
+    function create(
         uint8 decimals,
         int initialAnswer,
         string memory description
-    ) external auth returns (address feedAddress, address chainlinkPipAddress) {
-        PriceFeedAggregator feed = new PriceFeedAggregator();
-        feedAddress = address(feed);
+    ) external auth returns (PriceFeedAggregator feed, ChainlinkPip chainlinkPip) {
+        feed = new PriceFeedAggregator();
+        chainlinkPip = new ChainlinkPip(address(feed));
 
-        // Price feed decimals and initial price
-        // feed.file("decimals", decimals);
-
-        // if (initialAnswer > 0) {
-        //     feed.file("answer", initialAnswer);
-        // }
-
-        ChainlinkPip chainlinkPip = new ChainlinkPip(feedAddress);
-        chainlinkPipAddress = address(chainlinkPip);
-
-        feedRegistry[feedAddress] = PriceFeedInfo({
-            feedAddress: feedAddress,
+        feedRegistry[address(feed)] = PriceFeedInfo({
+            feedAddress: address(feed),
             description: description,
             decimals: decimals,
             exists: true
         });
-
+        
+        feed.file("decimals", uint(decimals));
+        feed.file("answer", initialAnswer);
         // Transfer feed ownership to caller
         feed.rely(msg.sender);
         feed.deny(address(this));
 
-        emit PriceFeedCreated(feedAddress, description, decimals, msg.sender);
+        emit PriceFeedCreated(address(feed), description, decimals, msg.sender);
     }
 
     function getFeedInfo(address feed) external view returns (PriceFeedInfo memory info) {
