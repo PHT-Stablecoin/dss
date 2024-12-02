@@ -21,7 +21,7 @@ contract PriceFeedFactory is DSAuth {
         uint8 decimals,
         int initialAnswer,
         string memory description
-    ) external auth returns (PriceFeedAggregator feed, ChainlinkPip chainlinkPip) {
+    ) external returns (PriceFeedAggregator feed, ChainlinkPip chainlinkPip) {
         feed = new PriceFeedAggregator();
         chainlinkPip = new ChainlinkPip(address(feed));
 
@@ -35,8 +35,7 @@ contract PriceFeedFactory is DSAuth {
         feed.file("decimals", uint(decimals));
         feed.file("answer", initialAnswer);
         // Transfer feed ownership to caller
-        feed.rely(msg.sender);
-        feed.deny(address(this));
+        feed.setOwner(msg.sender);
 
         emit PriceFeedCreated(address(feed), description, decimals, msg.sender);
     }

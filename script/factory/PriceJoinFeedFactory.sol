@@ -31,7 +31,7 @@ contract PriceJoinFeedFactory is DSAuth {
         bool invertNumerator,
         bool invertDenominator,
         string memory description
-    ) external auth returns (PriceJoinFeedAggregator feed, ChainlinkPip chainlinkPip) {
+    ) external returns (PriceJoinFeedAggregator feed, ChainlinkPip chainlinkPip) {
         feed = new PriceJoinFeedAggregator(
             numeratorFeed,
             denominatorFeed,
@@ -51,8 +51,7 @@ contract PriceJoinFeedFactory is DSAuth {
         });
 
         // Transfer feed ownership to caller
-        feed.rely(msg.sender);
-        feed.deny(address(this));
+        feed.setOwner(msg.sender);
 
         emit PriceFeedJoinCreated(
             numeratorFeed,

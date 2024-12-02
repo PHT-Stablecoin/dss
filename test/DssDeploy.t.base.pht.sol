@@ -74,20 +74,24 @@ contract DssDeployExt is DssDeploy {
     }
 
     struct FeedParams {
+        PriceFeedFactory factory;
+        PriceJoinFeedFactory joinFactory;
+
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
         address numeratorFeed; // (optional)
-        bool invertNumerator;
         address denominatorFeed;
+        bool invertNumerator;
         bool invertDenominator;
         string feedDescription;
     }
 
     struct AdapterFeedParams {
+        PriceJoinFeedFactory factory;
         address numeratorFeed; // (optional)
-        bool invertNumerator;
         address denominatorFeed;
+        bool invertNumerator;
         bool invertDenominator;
     }
 
@@ -143,14 +147,25 @@ contract DssDeployUtil {
     }
 
     struct FeedParams {
+        PriceFeedFactory factory;
+        PriceJoinFeedFactory joinFactory;
+
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
         address numeratorFeed; // (optional)
-        bool invertNumerator;
         address denominatorFeed;
+        bool invertNumerator;
         bool invertDenominator;
         string feedDescription;
+    }
+
+    struct AdapterFeedParams {
+        PriceJoinFeedFactory factory;
+        address numeratorFeed; // (optional)
+        address denominatorFeed;
+        bool invertNumerator;
+        bool invertDenominator;
     }
 
     struct IlkParams {
@@ -163,17 +178,6 @@ contract DssDeployUtil {
         uint256 chop; // Liquidation-penalty [WAD]
         uint256 buf; // Initial Auction Increase [RAY]
         uint256 duty; // Jug: ilk fee [RAY]
-    }
-
-    PriceFeedFactory public feedFactory;
-    PriceJoinFeedFactory public joinFeedFactory;
-
-    constructor(
-        PriceFeedFactory _feedFactory,
-        PriceJoinFeedFactory _joinFeedFactory
-    ) public {
-        joinFeedFactory = _joinFeedFactory;
-        feedFactory = _feedFactory;
     }
 
     function addCollateral(
@@ -203,7 +207,8 @@ contract DssDeployUtil {
         _feed = AggregatorV3Interface(feedParams.feed);
         if (address(_feed) == address(0)) {
             if ( feedParams.numeratorFeed != address(0)) {
-                (PriceJoinFeedAggregator feed, ChainlinkPip _pip) = joinFeedFactory.create(
+                PriceJoinFeedAggregator feed;
+                (feed, _pip) = feedParams.joinFactory.create(
                     feedParams.numeratorFeed,
                     feedParams.denominatorFeed,
                     feedParams.invertNumerator,
@@ -213,7 +218,8 @@ contract DssDeployUtil {
                 feed.setOwner(owner);
                 _feed = AggregatorV3Interface(address(feed));
             } else {
-                (PriceFeedAggregator feed, ChainlinkPip _pip) = feedFactory.create(
+                PriceFeedAggregator feed;
+                (feed, _pip) = feedParams.factory.create(
                     feedParams.decimals,
                     feedParams.initialPrice,
                     ""
@@ -386,10 +392,7 @@ contract DssDeployTestBasePHT is Test {
         pauseFab = new PauseFab();
 
         dssDeploy = new DssDeployExt();
-        dssDeploy.setExt(address(new DssDeployUtil(
-            new PriceFeedFactory(),
-            new PriceJoinFeedFactory()
-        )));
+        dssDeploy.setExt(address(new DssDeployUtil()));
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
@@ -457,6 +460,9 @@ contract DssDeployTestBasePHT is Test {
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
 
+        PriceFeedFactory feedFactory = new PriceFeedFactory();
+        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
+
         authority.permit(
             address(proxyActions),
             address(dssDeploy.pause()),
@@ -491,6 +497,8 @@ contract DssDeployTestBasePHT is Test {
                 maxSupply: 0
             }),
             DssDeployExt.FeedParams({
+                factory: feedFactory,
+                joinFactory: joinFeedFactory,
                 feed: address(0),
                 decimals: 6,
                 initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
@@ -529,6 +537,8 @@ contract DssDeployTestBasePHT is Test {
                 maxSupply: 0
             }),
             DssDeployExt.FeedParams({
+                factory: feedFactory,
+                joinFactory: joinFeedFactory,
                 feed: address(0),
                 decimals: 6,
                 initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)

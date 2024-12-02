@@ -73,20 +73,24 @@ contract DssDeployExt is DssDeploy {
     }
 
     struct FeedParams {
+        PriceFeedFactory factory;
+        PriceJoinFeedFactory joinFactory;
+
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
         address numeratorFeed; // (optional)
-        bool invertNumerator;
         address denominatorFeed;
+        bool invertNumerator;
         bool invertDenominator;
         string feedDescription;
     }
 
     struct AdapterFeedParams {
+        PriceJoinFeedFactory factory;
         address numeratorFeed; // (optional)
-        bool invertNumerator;
         address denominatorFeed;
+        bool invertNumerator;
         bool invertDenominator;
     }
 
@@ -142,14 +146,25 @@ contract DssDeployUtil {
     }
 
     struct FeedParams {
+        PriceFeedFactory factory;
+        PriceJoinFeedFactory joinFactory;
+
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
         address numeratorFeed; // (optional)
-        bool invertNumerator;
         address denominatorFeed;
+        bool invertNumerator;
         bool invertDenominator;
         string feedDescription;
+    }
+
+    struct AdapterFeedParams {
+        PriceJoinFeedFactory factory;
+        address numeratorFeed; // (optional)
+        address denominatorFeed;
+        bool invertNumerator;
+        bool invertDenominator;
     }
 
     struct IlkParams {
@@ -162,17 +177,6 @@ contract DssDeployUtil {
         uint256 chop; // Liquidation-penalty [WAD]
         uint256 buf; // Initial Auction Increase [RAY]
         uint256 duty; // Jug: ilk fee [RAY]
-    }
-
-    PriceFeedFactory public feedFactory;
-    PriceJoinFeedFactory public joinFeedFactory;
-
-    constructor(
-        PriceFeedFactory _feedFactory,
-        PriceJoinFeedFactory _joinFeedFactory
-    ) public {
-        joinFeedFactory = _joinFeedFactory;
-        feedFactory = _feedFactory;
     }
 
     function addCollateral(
@@ -202,7 +206,8 @@ contract DssDeployUtil {
         _feed = AggregatorV3Interface(feedParams.feed);
         if (address(_feed) == address(0)) {
             if ( feedParams.numeratorFeed != address(0)) {
-                (PriceJoinFeedAggregator feed, ChainlinkPip _pip) = joinFeedFactory.create(
+                PriceJoinFeedAggregator feed;
+                (feed, _pip) = feedParams.joinFactory.create(
                     feedParams.numeratorFeed,
                     feedParams.denominatorFeed,
                     feedParams.invertNumerator,
@@ -212,7 +217,8 @@ contract DssDeployUtil {
                 feed.setOwner(owner);
                 _feed = AggregatorV3Interface(address(feed));
             } else {
-                (PriceFeedAggregator feed, ChainlinkPip _pip) = feedFactory.create(
+                PriceFeedAggregator feed;
+                (feed, _pip) = feedParams.factory.create(
                     feedParams.decimals,
                     feedParams.initialPrice,
                     ""
@@ -476,10 +482,7 @@ contract DssDeployScript is Script, Test {
 
 
         dssDeploy = new DssDeployExt();
-        dssDeploy.setExt(address(new DssDeployUtil(
-            new PriceFeedFactory(),
-            new PriceJoinFeedFactory()
-        )));
+        dssDeploy.setExt(address(new DssDeployUtil()));
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
