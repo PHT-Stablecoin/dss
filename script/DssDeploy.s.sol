@@ -203,7 +203,7 @@ contract DssDeployUtil {
         
         {
             // Set Ilk Fees
-            proxyActions.file(address(dssDeploy.jug()),ilkParams.ilk,"duty", ilkParams.duty); // 6% duty fee;
+            dssDeploy.jug().file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
             dssDeploy.jug().drip(ilkParams.ilk);
         }
 
