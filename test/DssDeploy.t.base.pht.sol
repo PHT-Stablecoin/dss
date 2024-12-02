@@ -73,6 +73,10 @@ contract DssDeployExt is DssDeploy {
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
+        // address numeratorFeed;
+        // bool invertNumerator;
+        // address denominatorFeed;
+        // bool invertDenominator;
     }
 
     struct IlkParams {
@@ -119,6 +123,7 @@ contract DssDeployUtil {
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
+
     }
 
     struct IlkParams {
@@ -201,7 +206,7 @@ contract DssDeployUtil {
         
         {
             // Set Ilk Fees
-            proxyActions.file(address(dssDeploy.jug()),ilkParams.ilk,"duty", ilkParams.duty); // 6% duty fee;
+            dssDeploy.jug().file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
             dssDeploy.jug().drip(ilkParams.ilk);
         }
 
