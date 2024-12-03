@@ -3,20 +3,23 @@ pragma solidity >=0.6.12;
 import {DSThing} from "ds-thing/thing.sol";
 
 interface AggregatorV3Interface {
-  function decimals() external view returns (uint8);
+    function decimals() external view returns (uint8);
 
-  function description() external view returns (string memory);
+    function description() external view returns (string memory);
 
-  function version() external view returns (uint256);
+    function version() external view returns (uint256);
 
-  function getRoundData(
-    uint80 _roundId
-  ) external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function getRoundData(
+        uint80 _roundId
+    )
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 
-  function latestRoundData()
-    external
-    view
-    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
 contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
@@ -36,8 +39,8 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
         wards[guy] = 0;
     }
 
-    string public override description = ""; // XSGD/PHP-PHP/USD
-    uint8 public override decimals = 6;
+    string public override description = ""; // XSGD/USD-PHP/USD
+    uint8 public override decimals = 8;
     uint256 public override version = 0;
 
     // --- Init ---
@@ -48,15 +51,14 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
         bool _invertDenominator,
         string memory _description
     ) public {
+        require(_numeratorFeed != address(0), "PriceJoinFeedAggregator/null-address");
+        require(_denominatorFeed != address(0), "PriceJoinFeedAggregator/null-address");
+
         wards[msg.sender] = 1;
 
         numeratorFeed = AggregatorV3Interface(_numeratorFeed);
         denominatorFeed = AggregatorV3Interface(_denominatorFeed);
-        decimals = numeratorFeed.decimals();
-        require(
-            decimals == denominatorFeed.decimals(),
-            "PriceJoinFeedAggregator/constructor-invalid-decimals");
-        
+
         invertNumerator = _invertNumerator;
         invertDenominator = _invertDenominator;
         description = _description;
@@ -100,8 +102,12 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
         return _getAnswer();
     }
 
-    function _getAnswer() internal view returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound) {
-      (
+    function _getAnswer()
+        internal
+        view
+        returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
+    {
+        (
             uint80 _numRoundId,
             int256 _numAnswer,
             uint256 _numStartedAt,
@@ -122,8 +128,8 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
             int256 adjustedNumAnswer = invertNumerator ? _calculateInverse(_numAnswer) : _numAnswer;
             int256 adjustedDenomAnswer = invertDenominator ? _calculateInverse(_denomAnswer) : _denomAnswer;
 
-            // Calculate final answer maintaining 6 decimal precision
-            _answer = (adjustedNumAnswer * 1e6) / adjustedDenomAnswer;
+            // Calculate final answer maintaining 8 decimal precision
+            _answer = (adjustedNumAnswer * 1e8) / adjustedDenomAnswer;
         }
 
         // Checks the most recent/latest information bet 2 feeds
@@ -134,6 +140,6 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
     }
 
     function _calculateInverse(int256 price) internal pure returns (int256) {
-      return (1e12) / price; // Using 1e12 (1e6 * 1e6) for 6 decimals precision
+        return (1e16) / price; // Using 1e16 (1e8 * 1e8) for 8 decimals precision
     }
 }
