@@ -86,14 +86,6 @@ contract DssDeployExt is DssDeploy {
         string feedDescription;
     }
 
-    struct AdapterFeedParams {
-        PriceJoinFeedFactory factory;
-        address numeratorFeed; // (optional)
-        address denominatorFeed;
-        bool invertNumerator;
-        bool invertDenominator;
-    }
-
     struct IlkParams {
         bytes32 ilk;
         uint256 line; // Ilk Debt ceiling [RAD]
@@ -118,20 +110,9 @@ contract DssDeployExt is DssDeploy {
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
-    ) public auth returns (GemJoinLike _join, PriceFeedAggregator _feed, address _token, ChainlinkPip _pip) {
+    ) public auth returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         (bool r, bytes memory data) = ext.delegatecall(msg.data);
-        return abi.decode(data, (GemJoinLike, PriceFeedAggregator, address, ChainlinkPip));
-    }
-
-    function addCollateral(
-        ProxyActions proxyActions,
-        IlkRegistry ilkRegistry,
-        IlkParams memory ilkParams,
-        TokenParams memory tokenParams,
-        AdapterFeedParams memory adapterFeedParams
-    ) public auth returns (GemJoinLike _join, PriceJoinFeedAggregator _feed, address _token, ChainlinkPip _pip) {
-        (bool r, bytes memory data) = ext.delegatecall(msg.data);
-        return abi.decode(data, (GemJoinLike, PriceJoinFeedAggregator, address, ChainlinkPip));
+        return abi.decode(data, (GemJoinLike, AggregatorV3Interface, address, ChainlinkPip));
     }
 }
 
@@ -157,14 +138,6 @@ contract DssDeployUtil {
         bool invertNumerator;
         bool invertDenominator;
         string feedDescription;
-    }
-
-    struct AdapterFeedParams {
-        PriceJoinFeedFactory factory;
-        address numeratorFeed; // (optional)
-        address denominatorFeed;
-        bool invertNumerator;
-        bool invertDenominator;
     }
 
     struct IlkParams {
@@ -305,6 +278,9 @@ contract DssDeployScript is Script, Test {
     DSToken gov;
     ChainlinkPip pipPHP;
     ChainlinkPip pipUSDT;
+
+    PriceFeedFactory priceFeedFactory;
+    PriceJoinFeedFactory priceJoinFeedFactory;
 
     PriceFeedAggregator feedPHP;
     PriceFeedAggregator feedUSDT;
@@ -453,6 +429,9 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
 
+            artifacts.serialize("priceFeedFactory", priceFeedFactory);
+            artifacts.serialize("priceJoinFeedFactory", priceJoinFeedFactory);
+
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
         }
@@ -480,6 +459,8 @@ contract DssDeployScript is Script, Test {
         esmFab = new ESMFab();
         pauseFab = new PauseFab();
 
+        priceFeedFactory = new PriceFeedFactory();
+        priceJoinFeedFactory = new PriceJoinFeedFactory();
 
         dssDeploy = new DssDeployExt();
         dssDeploy.setExt(address(new DssDeployUtil()));
