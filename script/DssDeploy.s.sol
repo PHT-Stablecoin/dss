@@ -515,6 +515,9 @@ contract DssDeployScript is Script, Test {
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
 
+        PriceFeedFactory feedFactory = new PriceFeedFactory();
+        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
+
         authority.permit(
             address(proxyActions),
             address(dssDeploy.pause()),
@@ -605,16 +608,16 @@ contract DssDeployScript is Script, Test {
         (, phpClip, ) = dssDeploy.ilks("PHP-A");
 
         {
-            // Set Params for debt ceiling
-            proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
             // Set Liquidation/Auction Rules (Dog)
             proxyActions.file(address(dog), "Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+            // Set Params for debt ceiling
+            proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
             // Set Global Base Fee
-            proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee
+            proxyActions.file(address(jug), "base", annualRateToPerSecondRay(1.02e27)); // 2% base global fee
 
             /// Run initial drip
-            jug.drip("USDT-A");
-            jug.drip("PHP-A");
+            // jug.drip("USDT-A");
+            // jug.drip("PHP-A");
 
             spotter.poke("PHP-A");
             spotter.poke("USDT-A");
@@ -642,6 +645,14 @@ contract DssDeployScript is Script, Test {
         }
 
         gov.mint(100 ether);
+    }
+
+    function annualRateToPerSecondRay(uint256 annualRate) public pure returns (uint256) {
+        uint256 SECONDS_PER_YEAR = 365 * 24 * 3600;
+        int256 r = int256(annualRate - 1e18);
+        int256 perSecondRay = int256(1e27) + (r * 1e27)/(int256(1e18)*int256(SECONDS_PER_YEAR));
+        if (perSecondRay < 0) revert("Invalid annualRate");
+        return uint256(perSecondRay);
     }
 
     function testAuth() public {
