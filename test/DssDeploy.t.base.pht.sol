@@ -223,7 +223,7 @@ contract DssDeployUtil {
             _pip = new ChainlinkPip(address(_feed));
         }
 
-        if (tokenParams.decimals <= 6) {
+        if (tokenParams.decimals < 18) {
             _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token)));
         } else {
             _join = GemJoinLike(address(new GemJoin(address(dssDeploy.vat()), ilkParams.ilk, _token)));

@@ -196,7 +196,7 @@ contract DssDeployUtil {
             _pip = new ChainlinkPip(address(_feed));
         }
 
-        if (tokenParams.decimals <= 6) {
+        if (tokenParams.decimals < 18) {
             _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token)));
         } else {
             _join = GemJoinLike(address(new GemJoin(address(dssDeploy.vat()), ilkParams.ilk, _token)));
@@ -273,17 +273,16 @@ contract DssDeployScript is Script, Test {
     PriceFeedFactory priceFeedFactory;
     PriceJoinFeedFactory priceJoinFeedFactory;
 
-    PriceFeedAggregator feedPHP;
-    PriceFeedAggregator feedUSDT;
+    AggregatorV3Interface feedPHP;
+    AggregatorV3Interface feedUSDT;
 
     MockGuard authority;
 
     DSToken usdt;
     DSToken php;
 
-    GemJoin5 phpJoin;
-    GemJoin ethJoin;
-    GemJoin5 usdtJoin;
+    GemJoinLike phpJoin;
+    GemJoinLike usdtJoin;
 
     Vat vat;
     Jug jug;
@@ -477,13 +476,6 @@ contract DssDeployScript is Script, Test {
         // TODO
         gov.setAuthority(DSAuthority(address(new MockGuard())));
         authority = new MockGuard();
-
-        // todo: replace this with collateral type factory for tests
-        feedUSDT = new PriceFeedAggregator();
-        feedPHP = new PriceFeedAggregator();
-
-        pipUSDT = new ChainlinkPip(address(feedUSDT));
-        pipPHP = new ChainlinkPip(address(feedPHP));
     }
 
     function rad(uint wad) internal pure returns (uint) {
@@ -529,83 +521,112 @@ contract DssDeployScript is Script, Test {
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
         );
 
-        // Token Factory
-        usdt = DSToken(address(new ConfigurableDSToken("tstUSDT", "Test USDT", 6, 0))); // maxSupply = 0 => unlimited supply
+        // SetupIlkRegistry
+        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
+        ilkRegistry.rely(address(dssDeploy));
+
+        address usdtAddr;
+        (usdtJoin, feedUSDT, usdtAddr, pipUSDT) = dssDeploy.addCollateral(
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.IlkParams({
+                ilk: "USDT-A",
+                line: uint(5_000_000 * RAD), // Set USDT-A limit to 5 million DAI (RAD units)
+                dust: uint(0),
+                tau: 1 hours,
+                mat: uint(1050000000 ether), // mat: Liquidation Ratio (105%),
+                hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.06e27 // 6% duty
+            }),
+            DssDeployExt.TokenParams({
+                token: address(0),
+                symbol: "tstUSDT",
+                name: "Test USDT",
+                decimals: 6,
+                maxSupply: 0
+            }),
+            DssDeployExt.FeedParams({
+                factory: priceFeedFactory,
+                joinFactory: priceJoinFeedFactory,
+                feed: address(0),
+                decimals: 6,
+                initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
+            })
+        );
+        usdt = DSToken(usdtAddr);
         usdt.mint(5_000_000 * 10 ** 6);
-        // usdt = new TestUSDT();
-        usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
-        LinearDecrease calcUSDT = calcFab.newLinearDecrease(msg.sender);
-        calcUSDT.file(bytes32("tau"), 1 hours);
-        dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
 
-        // Token Factory
-        php = DSToken(address(new ConfigurableDSToken("tstPHP", "Test PHP", 6, 0)));
-        php.mint(5_000_000 * 10 ** 6);
-        // php = new TestPHP();
-        phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
-        LinearDecrease calcPHP = calcFab.newLinearDecrease(msg.sender);
-        calcPHP.file(bytes32("tau"), 1 hours);
-        dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
-
-        // Set Params for debt ceiling
-        proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
-        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(5_000_000 * RAD)); // 5M
-        proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(5_000_000 * RAD)); // 5M
-
-        // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
-        // or relative to the USD price?
-        // @TODO there is no oracle for the GOV token?
-
-        feedUSDT.file("decimals", uint(6));
-        feedUSDT.file("answer", int(58 * 10 ** 6)); // Price 58 DAI (PHT) = 1 USDT (precision 6)
-
-        feedPHP.file("decimals", uint(6));
-        feedPHP.file("answer", int(1 * 10 ** 6)); // Price 1 DAI (PHT) = 1 PHP (precision 6)
-
-        // @TODO add / change to ethClip
-        (, phpClip, ) = dssDeploy.ilks("PHP-A");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
-        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
-        proxyActions.file(address(spotter), "USDT-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
+         address phpAddr;
+        (phpJoin, feedPHP, phpAddr, pipPHP) = dssDeploy.addCollateral(
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.IlkParams({
+                ilk: "PHP-A",
+                line: uint(5_000_000 * 10 ** 45), // Set PHP-A limit to 5 million DAI (RAD units)
+                dust: uint(0),
+                tau: 1 hours,
+                mat: uint(1050000000 ether), // Liquidation Ratio (105%),
+                hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.06e27 // 6% duty
+            }),
+            DssDeployExt.TokenParams({
+                token: address(0),
+                symbol: "tstPHP",
+                name: "Test PHP",
+                decimals: 6,
+                maxSupply: 0
+            }),
+            DssDeployExt.FeedParams({
+                factory: priceFeedFactory,
+                joinFactory: priceJoinFeedFactory,
+                feed: address(0),
+                decimals: 6,
+                initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
+            })
+        );
+        php = DSToken(phpAddr);
+        php.mint(5_000_000 * 10 ** 6);
+        (, phpClip, ) = dssDeploy.ilks("PHP-A");
 
-        spotter.poke("PHP-A");
-        spotter.poke("USDT-A");
+        {
+            // Set Params for debt ceiling
+            proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
+            // Set Liquidation/Auction Rules (Dog)
+            proxyActions.file(address(dog), "Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+            // Set Global Base Fee
+            proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee
+
+            /// Run initial drip
+            jug.drip("USDT-A");
+            jug.drip("PHP-A");
+
+            spotter.poke("PHP-A");
+            spotter.poke("USDT-A");
+        }
 
         // TODO: SETUP GemJoinX (usdtJoin is incorrect)
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
-
-        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
-        ilkRegistry.add(address(phpJoin));
-        ilkRegistry.add(address(usdtJoin));
-        ilkRegistry.rely(address(dssDeploy));
 
         (, , uint spot, , ) = vat.ilks("PHP-A");
         assertEq(spot, (1 * RAY * RAY) / uint(1050000000 ether));
         (, , spot, , ) = vat.ilks("USDT-A");
         assertEq(spot, (58 * RAY * RAY) / uint(1050000000 ether));
-
-        {
-            // Set Liquidation/Auction Rules (Dog)
-            proxyActions.file(address(dog), "Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
-
-            proxyActions.file(address(dog), "PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
-            proxyActions.file(address(dog), "PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-
-            proxyActions.file(address(dog), "USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
-            proxyActions.file(address(dog), "USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
-        }
-
-        {
-            // Set Ilk Fees
-            proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee [RAY]
-            proxyActions.file(address(jug), "USDT-A", "duty", 1.06e27); // 6% duty fee; [RAY]
-            proxyActions.file(address(jug), "PHP-A", "duty", 1.06e27); // 6% duty fee; [RAY]
-
-            /// Run initial drip
-            jug.drip("USDT-A");
-            jug.drip("PHP-A");
-        }
 
         {
             MockGuard(address(gov.authority())).permit(
