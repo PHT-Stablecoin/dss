@@ -420,8 +420,8 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
 
-            artifacts.serialize("priceFeedFactory", priceFeedFactory);
-            artifacts.serialize("priceJoinFeedFactory", priceJoinFeedFactory);
+            artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
+            artifacts.serialize("priceJoinFeedFactory", address(priceJoinFeedFactory));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
@@ -546,9 +546,9 @@ contract DssDeployScript is Script, Test {
         dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
 
         // Set Params for debt ceiling
-        proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * 10 ** 45)); // 10M PHT
-        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(5_000_000 * 10 ** 45)); // 5M
-        proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(5_000_000 * 10 ** 45)); // 5M
+        proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
+        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(5_000_000 * RAD)); // 5M
+        proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(5_000_000 * RAD)); // 5M
 
         // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
         // or relative to the USD price?
@@ -564,8 +564,10 @@ contract DssDeployScript is Script, Test {
         (, phpClip, ) = dssDeploy.ilks("PHP-A");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
-        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
-        proxyActions.file(address(spotter), "USDT-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
+        // proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
+        proxyActions.file(address(spotter), "PHP-A", "mat", uint(105 * RAY)); // Liquidation ratio 105%
+        // proxyActions.file(address(spotter), "USDT-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
+        proxyActions.file(address(spotter), "USDT-A", "mat", uint(105 * RAY)); // Liquidation ratio 105%
 
         spotter.poke("PHP-A");
         spotter.poke("USDT-A");
@@ -579,26 +581,26 @@ contract DssDeployScript is Script, Test {
         ilkRegistry.rely(address(dssDeploy));
 
         (, , uint spot, , ) = vat.ilks("PHP-A");
-        assertEq(spot, (1 * RAY * RAY) / 1050000000 ether);
+        assertEq(spot, (1 * RAY * RAY) / uint(105 * RAY));
         (, , spot, , ) = vat.ilks("USDT-A");
-        assertEq(spot, (58 * RAY * RAY) / 1050000000 ether);
+        assertEq(spot, (58 * RAY * RAY) / uint(105 * RAY));
 
         {
             // Set Liquidation/Auction Rules (Dog)
             proxyActions.file(address(dog), "Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
 
             proxyActions.file(address(dog), "PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
-            proxyActions.file(address(dog), "PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+            proxyActions.file(address(dog), "PHP-A", "chop", 13 * WAD); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
 
             proxyActions.file(address(dog), "USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
-            proxyActions.file(address(dog), "USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+            proxyActions.file(address(dog), "USDT-A", "chop", 13 * WAD); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
         }
 
         {
             // Set Ilk Fees
-            proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee
-            proxyActions.file(address(jug), "USDT-A", "duty", 1.06e27); // 6% duty fee;
-            proxyActions.file(address(jug), "PHP-A", "duty", 1.06e27); // 6% duty fee;
+            proxyActions.file(address(jug), "base", 2 * RAY); // 2% base global fee [RAY]
+            proxyActions.file(address(jug), "USDT-A", "duty", 6 * RAY); // 6% duty fee; [RAY]
+            proxyActions.file(address(jug), "PHP-A", "duty", 6 * RAY); // 6% duty fee; [RAY]
 
             /// Run initial drip
             jug.drip("USDT-A");
