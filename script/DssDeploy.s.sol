@@ -44,6 +44,10 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
 import {ConfigurableDSToken} from "./factory/ConfigurableDSToken.sol";
 
+interface RelyLike {
+    function rely(address usr) external;
+}
+
 interface GemLike {
     function balanceOf(address) external view returns (uint256);
     function burn(uint256) external;
@@ -108,9 +112,15 @@ contract DssDeployExt is DssDeploy {
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
-    ) public auth returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
+    ) public returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         (bool r, bytes memory data) = ext.delegatecall(msg.data);
         return abi.decode(data, (GemJoinLike, AggregatorV3Interface, address, ChainlinkPip));
+    }
+
+    function setAuth(address authorized, RelyLike[] targets) public {
+        for (uint256 i = 0; i < targets.length; i++) {
+            targets[i].rely(authorized);
+        }
     }
 }
 
