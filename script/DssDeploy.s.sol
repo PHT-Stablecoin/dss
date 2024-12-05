@@ -117,9 +117,9 @@ contract DssDeployExt is DssDeploy {
         return abi.decode(data, (GemJoinLike, AggregatorV3Interface, address, ChainlinkPip));
     }
 
-    function setAuth(address authorized, RelyLike[] targets) public {
+    function setAuth(address authorized, address[] memory targets) public {
         for (uint256 i = 0; i < targets.length; i++) {
-            targets[i].rely(authorized);
+            RelyLike(targets[i]).rely(authorized);
         }
     }
 }
@@ -332,6 +332,8 @@ contract DssDeployScript is Script, Test {
 
     // MARKET (2024-Q3)
     uint256 constant PHP_USD_PRICE_E18 = 58_676_224_131_699_110_000; //
+
+    address constant MULTISIG = 0x695bc953b80358E54eC5a16AbDB1Aa939Ebb665A;
 
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x);
@@ -654,7 +656,39 @@ contract DssDeployScript is Script, Test {
             );
         }
 
-        gov.mint(100 ether);
+        gov.mint(MULTISIG, 100 ether);
+        address[15] memory relies = [
+            address(vat),
+            address(cat),
+            address(dog),
+            address(vow),
+            address(jug),
+            address(pot),
+            address(dai),
+            address(spotter),
+            address(flap),
+            address(flop),
+            address(cure),
+            address(end),
+            address(phpClip),
+            address(usdtClip),
+            address(ilkRegistry)
+        ];
+        address[] memory reliesdyn = new address[](15);
+        for (uint256 i = 0; i < relies.length; i++) {
+            reliesdyn[i] = relies[i];
+        }
+        
+        dssDeploy.setAuth(MULTISIG, reliesdyn);
+
+    }
+
+    function convertStaticToDynamic(uint[3] memory fixedArray) public pure returns (uint[] memory) {
+        uint[] memory dynamicArray = new uint[](fixedArray.length);
+        for (uint i = 0; i < fixedArray.length; i++) {
+            dynamicArray[i] = fixedArray[i];
+        }
+        return dynamicArray;
     }
 
     function annualRateToPerSecondRay(uint256 annualRate) public pure returns (uint256) {
@@ -748,6 +782,24 @@ contract DssDeployScript is Script, Test {
         // dssDeploy
         assertEq(address(dssDeploy.authority()), address(0));
         assertEq(dssDeploy.owner(), msg.sender);
+    }
+
+    function assignAuth(address target) public {
+        vat.rely(target);
+        cat.rely(target);
+        dog.rely(target);
+        vow.rely(target);
+        jug.rely(target);
+        pot.rely(target);
+        dai.rely(target);
+        spotter.rely(target);
+        flap.rely(target);
+        flop.rely(target);
+        cure.rely(target);
+        end.rely(target);
+        phpClip.rely(target);
+        usdtClip.rely(target);
+        ilkRegistry.rely(target);
     }
 
     function testReleasedAuth() public {
