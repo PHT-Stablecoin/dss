@@ -10,4 +10,5 @@ forge script ./script/DssProxyDeploy.s.sol:DssProxyDeployScript \
     --rpc-url=$LOCAL_RPC_URL \
     --contracts=./script/ \
     --private-key=$PRIVATE_KEY \
-    --broadcast
+    --broadcast \
+    -vvvv

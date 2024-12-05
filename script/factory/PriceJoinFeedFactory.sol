@@ -59,7 +59,8 @@ contract PriceJoinFeedFactory is DSAuth {
             denominatorFeed,
             invertDenominator,
             description,
-            msg.sender);
+            msg.sender
+        );
     }
 
     function getFeedInfo(address feed) external view returns (PriceFeedInfo memory info) {

@@ -62,9 +62,7 @@ interface PipLike {
     function peek() external returns (bytes32, bool);
 }
 
-
 contract DssDeployExt is DssDeploy {
-
     struct TokenParams {
         address token; // optional
         uint8 decimals; // >=18 Decimals only
@@ -76,7 +74,6 @@ contract DssDeployExt is DssDeploy {
     struct FeedParams {
         PriceFeedFactory factory;
         PriceJoinFeedFactory joinFactory;
-
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
@@ -112,7 +109,7 @@ contract DssDeployExt is DssDeploy {
     function setExt(address _ext) public auth {
         ext = _ext;
     }
-    
+
     function addCollateral(
         ProxyActions proxyActions,
         IlkRegistry ilkRegistry,
@@ -137,7 +134,6 @@ contract DssDeployExt is DssDeploy {
 }
 
 contract DssDeployUtil {
-
     struct TokenParams {
         address token; // optional
         uint8 decimals; // >=18 Decimals only
@@ -149,7 +145,6 @@ contract DssDeployUtil {
     struct FeedParams {
         PriceFeedFactory factory;
         PriceJoinFeedFactory joinFactory;
-
         address feed; // (optional)
         int initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
@@ -198,15 +193,16 @@ contract DssDeployUtil {
             ConfigurableDSToken newToken = new ConfigurableDSToken(
                 tokenParams.symbol,
                 tokenParams.name,
-                tokenParams.decimals, 
-                tokenParams.maxSupply);
+                tokenParams.decimals,
+                tokenParams.maxSupply
+            );
             newToken.setOwner(owner);
             _token = address(newToken);
         }
 
         _feed = AggregatorV3Interface(feedParams.feed);
         if (address(_feed) == address(0)) {
-            if ( feedParams.numeratorFeed != address(0)) {
+            if (feedParams.numeratorFeed != address(0)) {
                 PriceJoinFeedAggregator feed;
                 (feed, _pip) = feedParams.joinFactory.create(
                     feedParams.numeratorFeed,
@@ -219,11 +215,7 @@ contract DssDeployUtil {
                 _feed = AggregatorV3Interface(address(feed));
             } else {
                 PriceFeedAggregator feed;
-                (feed, _pip) = feedParams.factory.create(
-                    feedParams.decimals,
-                    feedParams.initialPrice,
-                    ""
-                );
+                (feed, _pip) = feedParams.factory.create(feedParams.decimals, feedParams.initialPrice, "");
                 feed.setOwner(owner);
                 _feed = AggregatorV3Interface(address(feed));
             }
@@ -231,7 +223,6 @@ contract DssDeployUtil {
             _pip = new ChainlinkPip(address(_feed));
         }
 
-        
         if (tokenParams.decimals <= 6) {
             _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token)));
         } else {
@@ -252,7 +243,6 @@ contract DssDeployUtil {
             proxyActions.file(address(dssDeploy.spotter()), ilkParams.ilk, bytes32("mat"), ilkParams.mat);
         }
 
-
         {
             dssDeploy.dog().file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
             dssDeploy.dog().file("Hole", ilkParams.hole + dssDeploy.dog().Hole()); // Increase global limit
@@ -263,7 +253,7 @@ contract DssDeployUtil {
             (, Clipper clip, ) = dssDeploy.ilks(ilkParams.ilk);
             clip.file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
         }
-        
+
         {
             // Set Ilk Fees
             dssDeploy.jug().file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
@@ -521,7 +511,7 @@ contract DssDeployTestBasePHT is Test {
             DssDeployExt.IlkParams({
                 ilk: "PHP-A",
                 line: uint(10000 * 10 ** 45),
-                dust: uint(0), 
+                dust: uint(0),
                 tau: 1 hours,
                 mat: uint(1500000000 ether), // Liquidation Ratio (150%),
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
@@ -557,7 +547,7 @@ contract DssDeployTestBasePHT is Test {
         // Set Debt Ceiling (10_000 DAI)
         proxyActions.file(address(vat), bytes32("Line"), uint(10000 * RAD));
         // Set Global Base Fee
-        proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee 
+        proxyActions.file(address(jug), "base", 1.02e27); // 2% base global fee
 
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));

@@ -67,13 +67,13 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
     // --- Administration ---
     function file(bytes32 what, address data) external auth {
         if (what == "numeratorFeed") numeratorFeed = AggregatorV3Interface(data);
-        if (what == "denominatorFeed") denominatorFeed = AggregatorV3Interface(data);
+        else if (what == "denominatorFeed") denominatorFeed = AggregatorV3Interface(data);
         else revert("PriceJoinFeedAggregator/file-unrecognized-param");
     }
 
     function file(bytes32 what, bool data) external auth {
         if (what == "invertNumerator") invertNumerator = data;
-        if (what == "invertDenominator") invertDenominator = data;
+        else if (what == "invertDenominator") invertDenominator = data;
         else revert("PriceJoinFeedAggregator/file-unrecognized-param");
     }
 
@@ -123,8 +123,11 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
             uint80 _denomAnsweredInRound
         ) = denominatorFeed.latestRoundData();
 
+        // TODO: chainlink stale data check
+        require(_numAnswer > 0 && _denomAnswer > 0, "PriceJoinFeedAggregator/zero-price-feed");
+
         {
-            // Handle feed inversions with 6 decimals
+            // Handle feed inversions with 8 decimals
             int256 adjustedNumAnswer = invertNumerator ? _calculateInverse(_numAnswer) : _numAnswer;
             int256 adjustedDenomAnswer = invertDenominator ? _calculateInverse(_denomAnswer) : _denomAnswer;
 
