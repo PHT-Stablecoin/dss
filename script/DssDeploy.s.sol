@@ -553,7 +553,7 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: 1.06e27 // 6% duty
+                duty: annualRateToPerSecondRay(1.06e18) // 6% duty
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -593,7 +593,7 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: 1.06e27 // 6% duty
+                duty: annualRateToPerSecondRay(1.06e18) // 6% duty
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -625,7 +625,7 @@ contract DssDeployScript is Script, Test {
             // Set Params for debt ceiling
             proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
             // Set Global Base Fee
-            proxyActions.file(address(jug), "base", annualRateToPerSecondRay(1.02e27)); // 2% base global fee
+            proxyActions.file(address(jug), "base", annualRateToPerSecondRay(1.02e18)); // 2% base global fee
 
             /// Run initial drip
             // jug.drip("USDT-A");
