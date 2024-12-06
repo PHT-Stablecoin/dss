@@ -322,9 +322,6 @@ contract DssDeployScript is Script, Test {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
-    // --- TIME ---
-    uint256 constant SEC_PER_YEAR = 365 * 24 * 3600;
-
     // Governance Parameters
     uint256 constant INITIAL_XINF_SUPPLY = 1000000 * WAD;
     uint256 constant INITIAL_USDT_SUPPLY = 10000000 * (10 ** 6); // USDT has 6 decimals
@@ -556,7 +553,7 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: (6 * RAY) / SEC_PER_YEAR // 6% duty
+                duty: annualRateToPerSecondRay(1.06e18) // 6% duty
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -596,7 +593,7 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: (6 * RAY) / SEC_PER_YEAR // 6% duty
+                duty: annualRateToPerSecondRay(1.06e18) // 6% duty
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -628,7 +625,7 @@ contract DssDeployScript is Script, Test {
             // Set Params for debt ceiling
             proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
             // Set Global Base Fee
-            proxyActions.file(address(jug), "base", (2 * RAY) / SEC_PER_YEAR); // 2% base global fee
+            proxyActions.file(address(jug), "base", annualRateToPerSecondRay(1.02e18)); // 2% base global fee
 
             /// Run initial drip
             // jug.drip("USDT-A");
@@ -691,6 +688,14 @@ contract DssDeployScript is Script, Test {
             dynamicArray[i] = fixedArray[i];
         }
         return dynamicArray;
+    }
+
+    function annualRateToPerSecondRay(uint256 annualRate) public pure returns (uint256) {
+        uint256 SECONDS_PER_YEAR = 365 * 24 * 3600;
+        int256 r = int256(annualRate - 1e18);
+        int256 perSecondRay = int256(1e27) + (r * 1e27) / (int256(1e18) * int256(SECONDS_PER_YEAR));
+        if (perSecondRay < 0) revert("Invalid annualRate");
+        return uint256(perSecondRay);
     }
 
     function testAuth() public {
