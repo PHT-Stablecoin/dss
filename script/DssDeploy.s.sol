@@ -553,7 +553,7 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: annualRateToPerSecondRay(1.06e18) // 6% duty
+                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -593,7 +593,7 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: annualRateToPerSecondRay(1.06e18) // 6% duty
+                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -625,7 +625,8 @@ contract DssDeployScript is Script, Test {
             // Set Params for debt ceiling
             proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
             // Set Global Base Fee
-            proxyActions.file(address(jug), "base", annualRateToPerSecondRay(1.02e18)); // 2% base global fee
+
+            proxyActions.file(address(jug), "base", 1.0000000006279e27); // 0.00000006279% => 2% base global fee
 
             /// Run initial drip
             // jug.drip("USDT-A");
@@ -688,14 +689,6 @@ contract DssDeployScript is Script, Test {
             dynamicArray[i] = fixedArray[i];
         }
         return dynamicArray;
-    }
-
-    function annualRateToPerSecondRay(uint256 annualRate) public pure returns (uint256) {
-        uint256 SECONDS_PER_YEAR = 365 * 24 * 3600;
-        int256 r = int256(annualRate - 1e18);
-        int256 perSecondRay = int256(1e27) + (r * 1e27) / (int256(1e18) * int256(SECONDS_PER_YEAR));
-        if (perSecondRay < 0) revert("Invalid annualRate");
-        return uint256(perSecondRay);
     }
 
     function testAuth() public {
