@@ -636,7 +636,7 @@ contract DssDeployScript is Script, Test {
             proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
             // Set Global Base Fee
 
-            proxyActions.file(address(jug), "base", 1.0000000006279e27); // 0.00000006279% => 2% base global fee
+            proxyActions.file(address(jug), "base", 0.0000000006279e27); // 0.00000006279% => 2% base global fee
 
             /// Run initial drip
             // jug.drip("USDT-A");

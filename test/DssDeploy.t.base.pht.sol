@@ -547,7 +547,7 @@ contract DssDeployTestBasePHT is Test {
         // Set Debt Ceiling (10_000 DAI)
         proxyActions.file(address(vat), bytes32("Line"), uint(10000 * RAD));
         // Set Global Base Fee
-        proxyActions.file(address(jug), "base", 1.0000000006279e27); // 0.00000006279% => 2% base global fee
+        proxyActions.file(address(jug), "base", 0.0000000006279e27); // 0.00000006279% => 2% base global fee
 
         //TODO: SETUP GemJoinX (usdtJoin is incorrect)
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));

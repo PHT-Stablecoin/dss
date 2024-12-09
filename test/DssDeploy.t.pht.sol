@@ -515,6 +515,13 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             vm.stopPrank();
         }
 
+        (uint256 phpDuty,) = jug.ilks("PHP-A");
+        console.log("phpDuty", phpDuty);
+        console.log("base", jug.base());
+
+        // assertLt(phpDuty + jug.base(), uint(1.2e27));
+
+
         address proxy = ProxyRegistryLike(dssProxy.Registry).build(address(this));
         assertEq(ProxyLike(proxy).owner(), address(this));
 
@@ -529,8 +536,8 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             assertEq(vat.gem("PHP-A", address(this)), 0);
 
             // Approve proxy to spend 2e12 php tokens
-            php.approve(address(proxy), 1.20e6);
-            assertEq(php.allowance(address(this), address(proxy)), 1.20e6);
+            php.approve(address(proxy), 1.20* 10e6);
+            assertEq(php.allowance(address(this), address(proxy)), 1.20 *10e6);
             assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
         }
 
