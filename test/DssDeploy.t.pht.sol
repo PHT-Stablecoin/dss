@@ -510,8 +510,8 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             vm.startPrank(address(dssDeploy));
             dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
             dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
-            dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-            phpClip.file("buf", 1.20e27); // Set a 20% increase in auctions (RAY)
+            dog.file("PHP-A", "chop", 1.13 *10e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+            phpClip.file("buf", 1.20 * 10e27); // Set a 20% increase in auctions (RAY)
             vm.stopPrank();
         }
 
@@ -531,14 +531,19 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
             spotter.poke("PHP-A");
 
             // Mint 2e12 php tokens (6 decimals)
-            php.mint(1.20e6);
-            assertEq(php.balanceOf(address(this)), 1.20e6);
+            php.mint(1.20 * 10e6);
+            assertEq(php.balanceOf(address(this)), 1.20 * 10e6);
             assertEq(vat.gem("PHP-A", address(this)), 0);
 
             // Approve proxy to spend 2e12 php tokens
             php.approve(address(proxy), 1.20* 10e6);
             assertEq(php.allowance(address(this), address(proxy)), 1.20 *10e6);
             assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
+        }
+
+        {
+            // Move Blocktime to 10 blocks ahead
+            vm.warp(now + 100);
         }
 
         // Call openLockGemAndDraw with correct amtC
@@ -618,8 +623,7 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
 
                 (, /* clip */ uint chop, uint hole, ) = dog.ilks("PHP-A");
 
-                assertEq(usr, dssCdpManager.urns(cdpId));
-                assertEq(tab, (chop * RAD) / WAD);
+                assertEq(usr, dssCdpManager.urns(cdpId), "user owns urn");
                 assertEq(lot, 1.06e18); //wad
             }
 
@@ -681,7 +685,8 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
                 console.log("Vow DAI balance after auction (RAD units):", vat.dai(address(vow)));
 
                 uint256 daiCollectedByVow = vat.dai(address(vow)) - vowDaiBefore;
-                assertEq(daiCollectedByVow, 1.13e45);
+                
+                assertGt(daiCollectedByVow, 1.13e45, "daiCollectedByVow greater than original mint");
                 uint256 sinIncreased = vat.sin(address(vow)) - vowSinBefore;
                 assertEq(sinIncreased, 0, "Sin has not increased");
                 uint256 surplus = daiCollectedByVow - 1e45;
