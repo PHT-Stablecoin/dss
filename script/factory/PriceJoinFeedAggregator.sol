@@ -1,28 +1,10 @@
 pragma solidity >=0.6.12;
 
 import {DSThing} from "ds-thing/thing.sol";
+import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
+import {IThingAdmin} from "../interfaces/IThingAdmin.sol";
 
-interface AggregatorV3Interface {
-    function decimals() external view returns (uint8);
-
-    function description() external view returns (string memory);
-
-    function version() external view returns (uint256);
-
-    function getRoundData(
-        uint80 _roundId
-    )
-        external
-        view
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
-
-    function latestRoundData()
-        external
-        view
-        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
-}
-
-contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
+contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing {
     // Ex: Feeds for XSGD/USD - PHP/USD
     AggregatorV3Interface public numeratorFeed;
     AggregatorV3Interface public denominatorFeed;
@@ -65,19 +47,19 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, DSThing {
     }
 
     // --- Administration ---
-    function file(bytes32 what, address data) external auth {
+    function file(bytes32 what, address data) external override auth {
         if (what == "numeratorFeed") numeratorFeed = AggregatorV3Interface(data);
         else if (what == "denominatorFeed") denominatorFeed = AggregatorV3Interface(data);
         else revert("PriceJoinFeedAggregator/file-unrecognized-param");
     }
 
-    function file(bytes32 what, bool data) external auth {
+    function file(bytes32 what, bool data) external override auth {
         if (what == "invertNumerator") invertNumerator = data;
         else if (what == "invertDenominator") invertDenominator = data;
         else revert("PriceJoinFeedAggregator/file-unrecognized-param");
     }
 
-    function file(bytes32 what, uint data) external auth {
+    function file(bytes32 what, uint data) external override auth {
         if (what == "decimals") decimals = uint8(data);
         else revert("PriceJoinFeedAggregator/file-unrecognized-param");
     }

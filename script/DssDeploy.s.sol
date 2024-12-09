@@ -43,6 +43,7 @@ import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
 import {ConfigurableDSToken} from "./factory/ConfigurableDSToken.sol";
+import {IThingAdmin} from "./interfaces/IThingAdmin.sol";
 
 interface RelyLike {
     function rely(address usr) external;
@@ -112,9 +113,9 @@ contract DssDeployExt is DssDeploy {
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
-    ) public returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
+    ) public returns (GemJoinLike _join, address _feed, address _token, ChainlinkPip _pip) {
         (bool r, bytes memory data) = ext.delegatecall(msg.data);
-        return abi.decode(data, (GemJoinLike, AggregatorV3Interface, address, ChainlinkPip));
+        return abi.decode(data, (GemJoinLike, address, address, ChainlinkPip));
     }
 
     function setAuth(address authorized, address[] memory targets) public {
@@ -271,6 +272,7 @@ contract DssDeployScript is Script, Test {
     PauseFab pauseFab;
 
     DssDeployExt dssDeploy;
+    address dssProxyRegistry;
     ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
@@ -283,8 +285,8 @@ contract DssDeployScript is Script, Test {
     PriceFeedFactory priceFeedFactory;
     PriceJoinFeedFactory priceJoinFeedFactory;
 
-    AggregatorV3Interface feedPHP;
-    AggregatorV3Interface feedUSDT;
+    address feedPHP;
+    address feedUSDT;
 
     MockGuard authority;
 
@@ -348,9 +350,12 @@ contract DssDeployScript is Script, Test {
 
     function run() public {
         vm.startBroadcast();
-
         setUp();
         deployKeepAuth(address(dssDeploy));
+        vm.stopBroadcast();
+
+        // tests
+        test_openLockGemAndDraw();
         testAuth();
 
         // TODO: Release Auth
@@ -359,6 +364,8 @@ contract DssDeployScript is Script, Test {
         // dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
         // dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
         // testReleasedAuth();
+
+        vm.startBroadcast();
 
         // ChainLog
         {
@@ -388,6 +395,7 @@ contract DssDeployScript is Script, Test {
 
             clog.setIPFS("");
         }
+        vm.stopBroadcast();
 
         // artifacts
         {
@@ -433,12 +441,11 @@ contract DssDeployScript is Script, Test {
 
             artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
             artifacts.serialize("priceJoinFeedFactory", address(priceJoinFeedFactory));
+            artifacts.serialize("dssProxyRegistry", address(dssProxyRegistry));
 
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
         }
-
-        vm.stopBroadcast();
     }
 
     function setUp() public virtual {
@@ -522,6 +529,9 @@ contract DssDeployScript is Script, Test {
         end = dssDeploy.end();
         esm = dssDeploy.esm();
         proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
+
+        dssProxyRegistry = deployCode("./out/DssProxyRegistry.sol/DssProxyRegistry.json");
+
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
         dssCdpManager = new DssCdpManager(address(vat));
@@ -683,6 +693,81 @@ contract DssDeployScript is Script, Test {
         dssDeploy.setAuth(MULTISIG, reliesdyn);
     }
 
+    /**
+     * Test: liquidate Vault by paying PHT and receiving the collateral (PHP)
+     * - Min collateral ratio 105%
+     * - simulate price drop to make collateral ratio of Vault to 103%
+     * - show where the surplus 3% is going (Vow contract)
+     **/
+    function test_openLockGemAndDraw() public {
+        {
+            // Set global and per-collateral liquidation limits
+            vm.startPrank(address(dssDeploy));
+            dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+            dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
+            dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+            phpClip.file("buf", 1.20e27); // Set a 20% increase in auctions (RAY)
+            vm.stopPrank();
+        }
+
+        address proxy = ProxyRegistryLike(dssProxyRegistry).build(address(this));
+        assertEq(ProxyLike(proxy).owner(), address(this));
+
+        {
+            // Set Min Liquidiation Ratio = 105%
+            proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
+            spotter.poke("PHP-A");
+
+            // Mint 2e12 php tokens (6 decimals)
+            vm.startPrank(dssDeploy.owner());
+            php.mint(1.20e6);
+            IERC20(address(php)).transfer(address(this), 1.20e6);
+            vm.stopPrank();
+            assertEq(php.balanceOf(address(this)), 1.20e6);
+            assertEq(vat.gem("PHP-A", address(this)), 0);
+
+            // Approve proxy to spend 2e12 php tokens
+            php.approve(address(proxy), 1.20e6);
+            assertEq(php.allowance(address(this), address(proxy)), 1.20e6);
+            assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
+        }
+
+        assertEq(php.balanceOf(address(phpJoin)), 0);
+        assertEq(dai.balanceOf(address(this)), 0);
+
+        // Call openLockGemAndDraw with correct amtC
+        uint256 cdpId = abi.decode(
+            ProxyLike(proxy).execute(
+                address(dssProxyActions),
+                abi.encodeWithSelector(
+                    DssProxyActionsLike.openLockGemAndDraw.selector,
+                    address(dssCdpManager),
+                    address(jug),
+                    address(phpJoin),
+                    address(daiJoin),
+                    bytes32("PHP-A"),
+                    uint(1.06e6),
+                    uint(1e18), // Drawing 1 DAI (18 decimals)
+                    true
+                )
+            ),
+            (uint256)
+        );
+
+        {
+            // Collateral owned by Join
+            assertEq(php.balanceOf(address(phpJoin)), 1.06e6);
+            // After operation, balance should be zero
+            assertEq(vat.gem("PHP-A", address(proxy)), 0);
+            // Collateral owned by cdpId also zero
+            assertEq(vat.gem("PHP-A", dssCdpManager.urns(cdpId)), 0);
+            // Dai (PHT) is transferred to proxy
+            assertEq(dai.balanceOf(address(this)), 1e18);
+            // Gem ownership in urnhandler
+            assertEq(vat.gem("PHP-A", address(this)), 0);
+        }
+    }
+
     function convertStaticToDynamic(uint[3] memory fixedArray) public pure returns (uint[] memory) {
         uint[] memory dynamicArray = new uint[](fixedArray.length);
         for (uint i = 0; i < fixedArray.length; i++) {
@@ -810,4 +895,175 @@ contract DssDeployScript is Script, Test {
         assertEq(phpClip.wards(address(dssDeploy)), 0);
         assertEq(usdtClip.wards(address(dssDeploy)), 0);
     }
+}
+
+interface ProxyRegistryLike {
+    function proxies(address) external view returns (address);
+    function build(address) external returns (address);
+}
+
+interface ProxyLike {
+    function owner() external view returns (address);
+    function execute(address target, bytes memory data) external payable returns (bytes memory response);
+}
+
+/**
+ * @title CommonLike
+ * @dev Interface for the Common contract
+ */
+interface CommonLike {
+    function daiJoin_join(address apt, address urn, uint wad) external;
+}
+
+/**
+ * @title DssProxyActionsLike
+ * @dev Interface for the DssProxyActions contract, inheriting CommonLike
+ */
+interface DssProxyActionsLike is CommonLike {
+    // Transfer Functions
+    function transfer(address gem, address dst, uint amt) external;
+
+    // Join Functions
+    function ethJoin_join(address apt, address urn) external payable;
+    function gemJoin_join(address apt, address urn, uint amt, bool transferFrom) external;
+
+    // Permission Functions
+    function hope(address obj, address usr) external;
+    function nope(address obj, address usr) external;
+
+    // CDP Management Functions
+    function open(address manager, bytes32 ilk, address usr) external returns (uint cdp);
+    function give(address manager, uint cdp, address usr) external;
+    function giveToProxy(address proxyRegistry, address manager, uint cdp, address dst) external;
+    function cdpAllow(address manager, uint cdp, address usr, uint ok) external;
+    function urnAllow(address manager, address usr, uint ok) external;
+
+    // CDP Operations
+    function flux(address manager, uint cdp, address dst, uint wad) external;
+    function move(address manager, uint cdp, address dst, uint rad) external;
+    function frob(address manager, uint cdp, int dink, int dart) external;
+    function quit(address manager, uint cdp, address dst) external;
+    function enter(address manager, address src, uint cdp) external;
+    function shift(address manager, uint cdpSrc, uint cdpOrg) external;
+
+    // Bag Management
+    function makeGemBag(address gemJoin) external returns (address bag);
+
+    // Locking Collateral
+    function lockETH(address manager, address ethJoin, uint cdp) external payable;
+    function safeLockETH(address manager, address ethJoin, uint cdp, address owner) external payable;
+    function lockGem(address manager, address gemJoin, uint cdp, uint amt, bool transferFrom) external;
+    function safeLockGem(
+        address manager,
+        address gemJoin,
+        uint cdp,
+        uint amt,
+        bool transferFrom,
+        address owner
+    ) external;
+
+    // Freeing Collateral
+    function freeETH(address manager, address ethJoin, uint cdp, uint wad) external;
+    function freeGem(address manager, address gemJoin, uint cdp, uint amt) external;
+
+    // Exiting Collateral
+    function exitETH(address manager, address ethJoin, uint cdp, uint wad) external;
+    function exitGem(address manager, address gemJoin, uint cdp, uint amt) external;
+
+    // Debt Management
+    function draw(address manager, address jug, address daiJoin, uint cdp, uint wad) external;
+    function wipe(address manager, address daiJoin, uint cdp, uint wad) external;
+    function safeWipe(address manager, address daiJoin, uint cdp, uint wad, address owner) external;
+    function wipeAll(address manager, address daiJoin, uint cdp) external;
+    function safeWipeAll(address manager, address daiJoin, uint cdp, address owner) external;
+
+    // Combined Operations
+    function lockETHAndDraw(
+        address manager,
+        address jug,
+        address ethJoin,
+        address daiJoin,
+        uint cdp,
+        uint wadD
+    ) external payable;
+
+    function openLockETHAndDraw(
+        address manager,
+        address jug,
+        address ethJoin,
+        address daiJoin,
+        bytes32 ilk,
+        uint wadD
+    ) external payable returns (uint cdp);
+
+    function lockGemAndDraw(
+        address manager,
+        address jug,
+        address gemJoin,
+        address daiJoin,
+        uint cdp,
+        uint amtC,
+        uint wadD,
+        bool transferFrom
+    ) external;
+
+    function openLockGemAndDraw(
+        address manager,
+        address jug,
+        address gemJoin,
+        address daiJoin,
+        bytes32 ilk,
+        uint amtC,
+        uint wadD,
+        bool transferFrom
+    ) external returns (uint cdp);
+
+    function openLockGNTAndDraw(
+        address manager,
+        address jug,
+        address gntJoin,
+        address daiJoin,
+        bytes32 ilk,
+        uint amtC,
+        uint wadD
+    ) external returns (address bag, uint cdp);
+
+    // Wipe and Free Operations
+    function wipeAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC, uint wadD) external;
+
+    function wipeAllAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC) external;
+
+    function wipeAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC, uint wadD) external;
+
+    function wipeAllAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC) external;
+}
+
+/**
+ * @title DssProxyActionsEndLike
+ * @dev Interface for the DssProxyActionsEnd contract, inheriting CommonLike
+ */
+interface DssProxyActionsEndLike is CommonLike {
+    // Freeing Collateral via End
+    function freeETH(address manager, address ethJoin, address end, uint cdp) external;
+    function freeGem(address manager, address gemJoin, address end, uint cdp) external;
+
+    // Packing DAI
+    function pack(address daiJoin, address end, uint wad) external;
+
+    // Cashing Out Collateral
+    function cashETH(address ethJoin, address end, bytes32 ilk, uint wad) external;
+    function cashGem(address gemJoin, address end, bytes32 ilk, uint wad) external;
+}
+
+/**
+ * @title DssProxyActionsDsrLike
+ * @dev Interface for the DssProxyActionsDsr contract, inheriting CommonLike
+ */
+interface DssProxyActionsDsrLike is CommonLike {
+    // Joining to DSR
+    function join(address daiJoin, address pot, uint wad) external;
+
+    // Exiting from DSR
+    function exit(address daiJoin, address pot, uint wad) external;
+    function exitAll(address daiJoin, address pot) external;
 }
