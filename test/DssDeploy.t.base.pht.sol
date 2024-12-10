@@ -302,6 +302,9 @@ contract DssDeployTestBasePHT is Test {
     PriceFeedAggregator feedPHP;
     PriceFeedAggregator feedUSDT;
 
+    PriceFeedFactory feedFactory;
+    PriceJoinFeedFactory joinFeedFactory;
+
     MockGuard authority;
 
     DSToken usdt;
@@ -450,8 +453,8 @@ contract DssDeployTestBasePHT is Test {
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
 
-        PriceFeedFactory feedFactory = new PriceFeedFactory();
-        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
+        feedFactory = new PriceFeedFactory();
+        joinFeedFactory = new PriceJoinFeedFactory();
 
         authority.permit(
             address(proxyActions),

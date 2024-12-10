@@ -21,16 +21,14 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import {StdCheatsSafe} from "forge-std/StdCheats.sol";
+import {
+    CommonLike,
+    DssProxyActionsDsrLike,
+    DssProxyActionsLike,
+    DssProxyActionsEndLike
+    } from "./interfaces/IDssProxyActions.sol";
 
 import "./DssDeploy.t.base.pht.sol";
-
-// Declared already inside DssDeploy.t.base.pht.sol
-// interface GemLike {
-//     function balanceOf(address) external view returns (uint256);
-//     function burn(uint256) external;
-//     function transfer(address, uint256) external returns (bool);
-//     function transferFrom(address, address, uint256) external returns (bool);
-// }
 
 interface ProxyRegistryLike {
     function proxies(address) external view returns (address);
@@ -42,414 +40,16 @@ interface ProxyLike {
     function execute(address target, bytes memory data) external payable returns (bytes memory response);
 }
 
-/// New Interfaces Converted from Contracts
-
-/**
- * @title CommonLike
- * @dev Interface for the Common contract
- */
-interface CommonLike {
-    function daiJoin_join(address apt, address urn, uint wad) external;
-}
-
-/**
- * @title DssProxyActionsLike
- * @dev Interface for the DssProxyActions contract, inheriting CommonLike
- */
-interface DssProxyActionsLike is CommonLike {
-    // Transfer Functions
-    function transfer(address gem, address dst, uint amt) external;
-
-    // Join Functions
-    function ethJoin_join(address apt, address urn) external payable;
-    function gemJoin_join(address apt, address urn, uint amt, bool transferFrom) external;
-
-    // Permission Functions
-    function hope(address obj, address usr) external;
-    function nope(address obj, address usr) external;
-
-    // CDP Management Functions
-    function open(address manager, bytes32 ilk, address usr) external returns (uint cdp);
-    function give(address manager, uint cdp, address usr) external;
-    function giveToProxy(address proxyRegistry, address manager, uint cdp, address dst) external;
-    function cdpAllow(address manager, uint cdp, address usr, uint ok) external;
-    function urnAllow(address manager, address usr, uint ok) external;
-
-    // CDP Operations
-    function flux(address manager, uint cdp, address dst, uint wad) external;
-    function move(address manager, uint cdp, address dst, uint rad) external;
-    function frob(address manager, uint cdp, int dink, int dart) external;
-    function quit(address manager, uint cdp, address dst) external;
-    function enter(address manager, address src, uint cdp) external;
-    function shift(address manager, uint cdpSrc, uint cdpOrg) external;
-
-    // Bag Management
-    function makeGemBag(address gemJoin) external returns (address bag);
-
-    // Locking Collateral
-    function lockETH(address manager, address ethJoin, uint cdp) external payable;
-    function safeLockETH(address manager, address ethJoin, uint cdp, address owner) external payable;
-    function lockGem(address manager, address gemJoin, uint cdp, uint amt, bool transferFrom) external;
-    function safeLockGem(
-        address manager,
-        address gemJoin,
-        uint cdp,
-        uint amt,
-        bool transferFrom,
-        address owner
-    ) external;
-
-    // Freeing Collateral
-    function freeETH(address manager, address ethJoin, uint cdp, uint wad) external;
-    function freeGem(address manager, address gemJoin, uint cdp, uint amt) external;
-
-    // Exiting Collateral
-    function exitETH(address manager, address ethJoin, uint cdp, uint wad) external;
-    function exitGem(address manager, address gemJoin, uint cdp, uint amt) external;
-
-    // Debt Management
-    function draw(address manager, address jug, address daiJoin, uint cdp, uint wad) external;
-    function wipe(address manager, address daiJoin, uint cdp, uint wad) external;
-    function safeWipe(address manager, address daiJoin, uint cdp, uint wad, address owner) external;
-    function wipeAll(address manager, address daiJoin, uint cdp) external;
-    function safeWipeAll(address manager, address daiJoin, uint cdp, address owner) external;
-
-    // Combined Operations
-    function lockETHAndDraw(
-        address manager,
-        address jug,
-        address ethJoin,
-        address daiJoin,
-        uint cdp,
-        uint wadD
-    ) external payable;
-
-    function openLockETHAndDraw(
-        address manager,
-        address jug,
-        address ethJoin,
-        address daiJoin,
-        bytes32 ilk,
-        uint wadD
-    ) external payable returns (uint cdp);
-
-    function lockGemAndDraw(
-        address manager,
-        address jug,
-        address gemJoin,
-        address daiJoin,
-        uint cdp,
-        uint amtC,
-        uint wadD,
-        bool transferFrom
-    ) external;
-
-    function openLockGemAndDraw(
-        address manager,
-        address jug,
-        address gemJoin,
-        address daiJoin,
-        bytes32 ilk,
-        uint amtC,
-        uint wadD,
-        bool transferFrom
-    ) external returns (uint cdp);
-
-    function openLockGNTAndDraw(
-        address manager,
-        address jug,
-        address gntJoin,
-        address daiJoin,
-        bytes32 ilk,
-        uint amtC,
-        uint wadD
-    ) external returns (address bag, uint cdp);
-
-    // Wipe and Free Operations
-    function wipeAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC, uint wadD) external;
-
-    function wipeAllAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC) external;
-
-    function wipeAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC, uint wadD) external;
-
-    function wipeAllAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC) external;
-}
-
-/**
- * @title DssProxyActionsEndLike
- * @dev Interface for the DssProxyActionsEnd contract, inheriting CommonLike
- */
-interface DssProxyActionsEndLike is CommonLike {
-    // Freeing Collateral via End
-    function freeETH(address manager, address ethJoin, address end, uint cdp) external;
-    function freeGem(address manager, address gemJoin, address end, uint cdp) external;
-
-    // Packing DAI
-    function pack(address daiJoin, address end, uint wad) external;
-
-    // Cashing Out Collateral
-    function cashETH(address ethJoin, address end, bytes32 ilk, uint wad) external;
-    function cashGem(address gemJoin, address end, bytes32 ilk, uint wad) external;
-}
-
-/**
- * @title DssProxyActionsDsrLike
- * @dev Interface for the DssProxyActionsDsr contract, inheriting CommonLike
- */
-interface DssProxyActionsDsrLike is CommonLike {
-    // Joining to DSR
-    function join(address daiJoin, address pot, uint wad) external;
-
-    // Exiting from DSR
-    function exit(address daiJoin, address pot, uint wad) external;
-    function exitAll(address daiJoin, address pot) external;
-}
-
-struct DssProxy {
-    address Registry;
-    address Actions;
-    address ActionsDsr;
-    address ActionsEnd;
-}
-
-// contract ProxyCalls {
-//     ProxyLike proxy;
-//     DssProxy dssProxy;
-
-//     function transfer(address, address, uint256) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function open(address, bytes32, address) public returns (uint cdp) {
-//         bytes memory response = proxy.execute(dssProxy.Actions, msg.data);
-//         assembly {
-//             cdp := mload(add(response, 0x20))
-//         }
-//     }
-
-//     function give(address, uint, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function giveToProxy(address, address, uint, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function cdpAllow(address, uint, address, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function urnAllow(address, address, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function hope(address, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function nope(address, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function flux(address, uint, address, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function move(address, uint, address, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function frob(address, uint, int, int) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function frob(address, uint, address, int, int) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function quit(address, uint, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function enter(address, address, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function shift(address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function lockETH(address, address, uint) public payable {
-//         (bool success,) = address(proxy).call{value: msg.value}(abi.encodeWithSignature("execute(address,bytes)", dssProxy.Actions, msg.data));
-//         require(success, "");
-//     }
-
-//     function safeLockETH(address, address, uint, address) public payable {
-//         (bool success,) = address(proxy).call{ value: msg.value}(abi.encodeWithSignature("execute(address,bytes)", dssProxy.Actions, msg.data));
-//         require(success, "");
-//     }
-
-//     function lockGem(address, address, uint, uint, bool) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function safeLockGem(address, address, uint, uint, bool, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function makeGemBag(address) public returns (address bag) {
-//         address payable target = payable(address(proxy));
-//         bytes memory data = abi.encodeWithSignature("execute(address,bytes)", dssProxy.Actions, msg.data);
-//         assembly {
-//             let succeeded := call(sub(gas(), 5000), target, callvalue(), add(data, 0x20), mload(data), 0, 0)
-//             let size := returndatasize()
-//             let response := mload(0x40)
-//             mstore(0x40, add(response, and(add(add(size, 0x20), 0x1f), not(0x1f))))
-//             mstore(response, size)
-//             returndatacopy(add(response, 0x20), 0, size)
-
-//             bag := mload(add(response, 0x60))
-
-//             switch iszero(succeeded)
-//             case 1 {
-//                 // throw if delegatecall failed
-//                 revert(add(response, 0x20), size)
-//             }
-//         }
-//     }
-
-//     function freeETH(address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function freeGem(address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function exitETH(address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function exitGem(address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function draw(address, address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function wipe(address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function wipeAll(address, address, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function safeWipe(address, address, uint, uint, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function safeWipeAll(address, address, uint, address) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function lockETHAndDraw(address, address, address, address, uint, uint) public payable {
-//         (bool success,) = address(proxy).call.value(msg.value)(abi.encodeWithSignature("execute(address,bytes)", dssProxy.Actions, msg.data));
-//         require(success, "");
-//     }
-
-//     function openLockETHAndDraw(address, address, address, address, bytes32, uint) public payable returns (uint cdp) {
-//         address payable target = payable(address(proxy));
-//         bytes memory data = abi.encodeWithSignature("execute(address,bytes)", dssProxy.Actions, msg.data);
-//         assembly {
-//             let succeeded := call(sub(gas(), 5000), target, callvalue(), add(data, 0x20), mload(data), 0, 0)
-//             let size := returndatasize()
-//             let response := mload(0x40)
-//             mstore(0x40, add(response, and(add(add(size, 0x20), 0x1f), not(0x1f))))
-//             mstore(response, size)
-//             returndatacopy(add(response, 0x20), 0, size)
-
-//             cdp := mload(add(response, 0x60))
-
-//             switch iszero(succeeded)
-//             case 1 {
-//                 // throw if delegatecall failed
-//                 revert(add(response, 0x20), size)
-//             }
-//         }
-//     }
-
-//     function lockGemAndDraw(address, address, address, address, uint, uint, uint, bool) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function openLockGemAndDraw(address, address, address, address, bytes32, uint, uint, bool) public returns (uint cdp) {
-//         bytes memory response = proxy.execute(dssProxy.Actions, msg.data);
-//         assembly {
-//             cdp := mload(add(response, 0x20))
-//         }
-//     }
-
-//     function openLockGNTAndDraw(address, address, address, address, bytes32, uint, uint) public returns (address bag, uint cdp) {
-//         bytes memory response = proxy.execute(dssProxy.Actions, msg.data);
-//         assembly {
-//             bag := mload(add(response, 0x20))
-//             cdp := mload(add(response, 0x40))
-//         }
-//     }
-
-//     function wipeAndFreeETH(address, address, address, uint, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function wipeAllAndFreeETH(address, address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function wipeAndFreeGem(address, address, address, uint, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function wipeAllAndFreeGem(address, address, address, uint, uint) public {
-//         proxy.execute(dssProxy.Actions, msg.data);
-//     }
-
-//     function end_freeETH(address a, address b, address c, uint d) public {
-//         proxy.execute(dssProxy.ActionsEnd, abi.encodeWithSignature("freeETH(address,address,address,uint256)", a, b, c, d));
-//     }
-
-//     function end_freeGem(address a, address b, address c, uint d) public {
-//         proxy.execute(dssProxy.ActionsEnd, abi.encodeWithSignature("freeGem(address,address,address,uint256)", a, b, c, d));
-//     }
-
-//     function end_pack(address a, address b, uint c) public {
-//         proxy.execute(dssProxy.ActionsEnd, abi.encodeWithSignature("pack(address,address,uint256)", a, b, c));
-//     }
-
-//     function end_cashETH(address a, address b, bytes32 c, uint d) public {
-//         proxy.execute(dssProxy.ActionsEnd, abi.encodeWithSignature("cashETH(address,address,bytes32,uint256)", a, b, c, d));
-//     }
-
-//     function end_cashGem(address a, address b, bytes32 c, uint d) public {
-//         proxy.execute(dssProxy.ActionsEnd, abi.encodeWithSignature("cashGem(address,address,bytes32,uint256)", a, b, c, d));
-//     }
-
-//     function dsr_join(address a, address b, uint c) public {
-//         proxy.execute(dssProxy.ActionsDsr, abi.encodeWithSignature("join(address,address,uint256)", a, b, c));
-//     }
-
-//     function dsr_exit(address a, address b, uint c) public {
-//         proxy.execute(dssProxy.ActionsDsr, abi.encodeWithSignature("exit(address,address,uint256)", a, b, c));
-//     }
-
-//     function dsr_exitAll(address a, address b) public {
-//         proxy.execute(dssProxy.ActionsDsr, abi.encodeWithSignature("exitAll(address,address)", a, b));
-//     }
-// }
 
 contract DssDeployTestPHT is DssDeployTestBasePHT {
     DssProxy dssProxy;
+
+    struct DssProxy {
+        address Registry;
+        address Actions;
+        address ActionsDsr;
+        address ActionsEnd;
+    }
 
     function sub(uint x, uint y) internal pure returns (uint z) {
         require((z = x - y) <= x, "sub-overflow");
@@ -493,6 +93,57 @@ contract DssDeployTestPHT is DssDeployTestBasePHT {
 
         address proxy = ProxyRegistryLike(dssProxy.Registry).build(address(this));
         assertEq(ProxyLike(proxy).owner(), address(this));
+    }
+
+    function testLiquidation_addCollateral_JointFeed() public {
+        deployKeepAuth(address(dssDeploy));
+        checkAuth();
+
+        (PriceFeedAggregator feedAToB, ) = feedFactory.create(6, 3e6, "A/USD"); // 1 Token A = 3 USD;
+        (PriceFeedAggregator feedBToPHT,) = feedFactory.create(6, 2e6, "PHT/USD"); // 1 PHT = 2 USD;
+        
+        (
+            ,
+            PriceFeedAggregator feedAToPHT,
+            ,
+            ChainlinkPip pipTokenA
+        ) = dssDeploy.addCollateral(
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.IlkParams({
+                ilk: "Token-A",
+                line: uint(10000 * 10 ** 45),
+                dust: uint(0),
+                tau: 1 hours,
+                mat: uint(1500000000 ether), // mat: Liquidation Ratio (150%),
+                hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+            }),
+            DssDeployExt.TokenParams({
+                token: address(0),
+                symbol: "tknA",
+                name: "Token A",
+                decimals: 18,
+                maxSupply: 0
+            }),
+            DssDeployExt.FeedParams({
+                factory: feedFactory,
+                joinFactory: joinFeedFactory,
+                feed: address(0),
+                decimals: 0,
+                initialPrice: int(0),
+                numeratorFeed: address(feedAToB),
+                invertNumerator: false,
+                denominatorFeed: address(feedBToPHT),
+                invertDenominator: false,
+                feedDescription: "A/PHT"
+            })
+        );
+
+        (, int256 answer,,,) = feedAToPHT.latestRoundData();
+        assertEq(answer, int(1.5e8), "1 Token A  = 6 PHT");
     }
 
     /**
