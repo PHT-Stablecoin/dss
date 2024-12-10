@@ -12,5 +12,5 @@ set +a
 forge script ./script/DssDeploy.s.sol:DssDeployScript \
     --rpc-url=$LOCAL_RPC_URL \
     --private-key=$PRIVATE_KEY \
-    --broadcast \
-    --verify
+    --broadcast --slow --verify --etherscan-api-key=$ETHERSCAN_API_KEY \
+    -vvv

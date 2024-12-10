@@ -29,7 +29,8 @@ import {DssPsm} from "dss-psm/psm.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 // Chainlink
-import {MockAggregatorV3} from "../test/helpers/MockAggregatorV3.sol";
+import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
+import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.sol";
 
 // Autoline
@@ -41,19 +42,210 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 
-// Collateral Token (USDT)
-contract TestUSDT is DSToken {
-    constructor() public DSToken("tstUSDT") {
-        decimals = 6;
-        name = "Test USDT";
+import {ConfigurableDSToken} from "./factory/ConfigurableDSToken.sol";
+import {IThingAdmin} from "./interfaces/IThingAdmin.sol";
+
+interface RelyLike {
+    function rely(address usr) external;
+}
+
+interface GemLike {
+    function balanceOf(address) external view returns (uint256);
+    function burn(uint256) external;
+    function transfer(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+}
+
+interface GemJoinLike {
+    function dec() external returns (uint);
+    function gem() external returns (GemLike);
+    function join(address, uint) external payable;
+    function exit(address, uint) external;
+}
+
+interface PipLike {
+    function peek() external returns (bytes32, bool);
+}
+
+contract DssDeployExt is DssDeploy {
+    struct TokenParams {
+        address token; // optional
+        uint8 decimals; // >=18 Decimals only
+        uint256 maxSupply; // maxSupply = 0 => unlimited supply
+        string name;
+        string symbol;
+    }
+
+    struct FeedParams {
+        PriceFeedFactory factory;
+        PriceJoinFeedFactory joinFactory;
+        address feed; // (optional)
+        int initialPrice; // (optional) feed price
+        uint8 decimals; // Default: (6 decimals)
+        address numeratorFeed; // (optional)
+        address denominatorFeed;
+        bool invertNumerator;
+        bool invertDenominator;
+        string feedDescription;
+    }
+
+    struct IlkParams {
+        bytes32 ilk;
+        uint256 line; // Ilk Debt ceiling [RAD]
+        uint256 dust; // Ilk Urn Debt floor [RAD]
+        uint256 tau; // Default: 1 hours
+        uint256 mat; // Liquidation Ratio [RAY]
+        uint256 hole; // Gem-limit [RAD]
+        uint256 chop; // Liquidation-penalty [WAD]
+        uint256 buf; // Initial Auction Increase [RAY]
+        uint256 duty; // Jug: ilk fee [RAY]
+    }
+
+    address internal ext;
+
+    function setExt(address _ext) public auth {
+        ext = _ext;
+    }
+
+    function addCollateral(
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
+        IlkParams memory ilkParams,
+        TokenParams memory tokenParams,
+        FeedParams memory feedParams
+    ) public returns (GemJoinLike _join, address _feed, address _token, ChainlinkPip _pip) {
+        (bool r, bytes memory data) = ext.delegatecall(msg.data);
+        return abi.decode(data, (GemJoinLike, address, address, ChainlinkPip));
+    }
+
+    function setAuth(address authorized, address[] memory targets) public {
+        for (uint256 i = 0; i < targets.length; i++) {
+            RelyLike(targets[i]).rely(authorized);
+        }
     }
 }
 
-// Collateral Token (PHP)
-contract TestPHP is DSToken {
-    constructor() public DSToken("tstPHP") {
-        decimals = 6;
-        name = "Test PHP";
+contract DssDeployUtil {
+    struct TokenParams {
+        address token; // optional
+        uint8 decimals; // >=18 Decimals only
+        uint256 maxSupply; // maxSupply = 0 => unlimited supply
+        string name;
+        string symbol;
+    }
+
+    struct FeedParams {
+        PriceFeedFactory factory;
+        PriceJoinFeedFactory joinFactory;
+        address feed; // (optional)
+        int initialPrice; // (optional) feed price
+        uint8 decimals; // Default: (6 decimals)
+        address numeratorFeed; // (optional)
+        address denominatorFeed;
+        bool invertNumerator;
+        bool invertDenominator;
+        string feedDescription;
+    }
+
+    struct IlkParams {
+        bytes32 ilk;
+        uint256 line; // Ilk Debt ceiling [RAD]
+        uint256 dust; // Ilk Urn Debt floor [RAD]
+        uint256 tau; // Default: 1 hours
+        uint256 mat; // Liquidation Ratio [RAY]
+        uint256 hole; // Gem-limit [RAD]
+        uint256 chop; // Liquidation-penalty [WAD]
+        uint256 buf; // Initial Auction Increase [RAY]
+        uint256 duty; // Jug: ilk fee [RAY]
+    }
+
+    function addCollateral(
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
+        IlkParams memory ilkParams,
+        TokenParams memory tokenParams,
+        FeedParams memory feedParams
+    ) public returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
+        require(tokenParams.decimals <= 18, "token-factory-max-decimals");
+        require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+
+        DssDeploy dssDeploy = DssDeploy(address(this));
+        address owner = dssDeploy.owner();
+
+        _token = tokenParams.token;
+        if (_token == address(0)) {
+            ConfigurableDSToken newToken = new ConfigurableDSToken(
+                tokenParams.symbol,
+                tokenParams.name,
+                tokenParams.decimals,
+                tokenParams.maxSupply
+            );
+            newToken.setOwner(owner);
+            _token = address(newToken);
+        }
+
+        _feed = AggregatorV3Interface(feedParams.feed);
+        if (address(_feed) == address(0)) {
+            if (feedParams.numeratorFeed != address(0)) {
+                PriceJoinFeedAggregator feed;
+                (feed, _pip) = feedParams.joinFactory.create(
+                    feedParams.numeratorFeed,
+                    feedParams.denominatorFeed,
+                    feedParams.invertNumerator,
+                    feedParams.invertDenominator,
+                    feedParams.feedDescription
+                );
+                feed.setOwner(owner);
+                _feed = AggregatorV3Interface(address(feed));
+            } else {
+                PriceFeedAggregator feed;
+                (feed, _pip) = feedParams.factory.create(feedParams.decimals, feedParams.initialPrice, "");
+                feed.setOwner(owner);
+                _feed = AggregatorV3Interface(address(feed));
+            }
+        } else {
+            _pip = new ChainlinkPip(address(_feed));
+        }
+
+        if (tokenParams.decimals < 18) {
+            _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token)));
+        } else {
+            _join = GemJoinLike(address(new GemJoin(address(dssDeploy.vat()), ilkParams.ilk, _token)));
+        }
+
+        {
+            LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
+            _calc.file(bytes32("tau"), ilkParams.tau);
+            _calc.rely(owner);
+            _calc.deny(address(this));
+            dssDeploy.deployCollateralClip(ilkParams.ilk, address(_join), address(_pip), address(_calc));
+        }
+
+        {
+            proxyActions.file(address(dssDeploy.vat()), ilkParams.ilk, bytes32("line"), ilkParams.line);
+            proxyActions.file(address(dssDeploy.vat()), ilkParams.ilk, bytes32("dust"), ilkParams.dust);
+            proxyActions.file(address(dssDeploy.spotter()), ilkParams.ilk, bytes32("mat"), ilkParams.mat);
+        }
+
+        {
+            dssDeploy.dog().file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+            dssDeploy.dog().file("Hole", ilkParams.hole + dssDeploy.dog().Hole()); // Increase global limit
+            dssDeploy.dog().file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        }
+
+        {
+            (, Clipper clip, ) = dssDeploy.ilks(ilkParams.ilk);
+            clip.file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
+        }
+
+        {
+            // Set Ilk Fees
+            dssDeploy.jug().file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
+            dssDeploy.jug().drip(ilkParams.ilk);
+        }
+
+        ilkRegistry.add(address(_join));
+        dssDeploy.spotter().poke(ilkParams.ilk);
     }
 }
 
@@ -79,7 +271,8 @@ contract DssDeployScript is Script, Test {
     ESMFab esmFab;
     PauseFab pauseFab;
 
-    DssDeploy dssDeploy;
+    DssDeployExt dssDeploy;
+    address dssProxyRegistry;
     ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
@@ -89,17 +282,19 @@ contract DssDeployScript is Script, Test {
     ChainlinkPip pipPHP;
     ChainlinkPip pipUSDT;
 
-    MockAggregatorV3 feedPHP;
-    MockAggregatorV3 feedUSDT;
+    PriceFeedFactory priceFeedFactory;
+    PriceJoinFeedFactory priceJoinFeedFactory;
+
+    address feedPHP;
+    address feedUSDT;
 
     MockGuard authority;
 
-    IERC20 usdt;
-    IERC20 php;
+    DSToken usdt;
+    DSToken php;
 
-    GemJoin5 phpJoin;
-    GemJoin ethJoin;
-    GemJoin5 usdtJoin;
+    GemJoinLike phpJoin;
+    GemJoinLike usdtJoin;
 
     Vat vat;
     Jug jug;
@@ -140,6 +335,8 @@ contract DssDeployScript is Script, Test {
     // MARKET (2024-Q3)
     uint256 constant PHP_USD_PRICE_E18 = 58_676_224_131_699_110_000; //
 
+    address constant MULTISIG = 0x695bc953b80358E54eC5a16AbDB1Aa939Ebb665A;
+
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x);
     }
@@ -153,17 +350,22 @@ contract DssDeployScript is Script, Test {
 
     function run() public {
         vm.startBroadcast();
-
         setUp();
         deployKeepAuth(address(dssDeploy));
+        vm.stopBroadcast();
+
+        // tests
+        test_openLockGemAndDraw();
         testAuth();
 
-        // Release Auth
-        dssDeploy.releaseAuth(address(dssDeploy));
+        // TODO: Release Auth
+        // dssDeploy.releaseAuth(address(dssDeploy));
         // dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
-        dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
-        dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
-        testReleasedAuth();
+        // dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
+        // dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
+        // testReleasedAuth();
+
+        vm.startBroadcast();
 
         // ChainLog
         {
@@ -186,12 +388,14 @@ contract DssDeployScript is Script, Test {
             // Custom
             clog.setAddress("MCD_PSM", address(psm));
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
+            clog.setAddress("MCD_PROXY_ACTIONS", address(proxyActions));
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
 
             clog.setIPFS("");
         }
+        vm.stopBroadcast();
 
         // artifacts
         {
@@ -230,15 +434,18 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("psm", address(psm));
             artifacts.serialize("autoline", address(autoline));
             artifacts.serialize("ilkRegistry", address(ilkRegistry));
+            artifacts.serialize("proxyActions", address(proxyActions));
             artifacts.serialize("dssProxyActions", address(dssProxyActions));
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
 
+            artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
+            artifacts.serialize("priceJoinFeedFactory", address(priceJoinFeedFactory));
+            artifacts.serialize("dssProxyRegistry", address(dssProxyRegistry));
+
             string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
             json.write(path);
         }
-
-        vm.stopBroadcast();
     }
 
     function setUp() public virtual {
@@ -261,7 +468,11 @@ contract DssDeployScript is Script, Test {
         esmFab = new ESMFab();
         pauseFab = new PauseFab();
 
-        dssDeploy = new DssDeploy();
+        priceFeedFactory = new PriceFeedFactory();
+        priceJoinFeedFactory = new PriceJoinFeedFactory();
+
+        dssDeploy = new DssDeployExt();
+        dssDeploy.setExt(address(new DssDeployUtil()));
 
         dssDeploy.addFabs1(vatFab, jugFab, vowFab, catFab, dogFab, daiFab, daiJoinFab);
 
@@ -284,12 +495,6 @@ contract DssDeployScript is Script, Test {
         // TODO
         gov.setAuthority(DSAuthority(address(new MockGuard())));
         authority = new MockGuard();
-
-        feedUSDT = new MockAggregatorV3();
-        feedPHP = new MockAggregatorV3();
-
-        pipUSDT = new ChainlinkPip(address(feedUSDT));
-        pipPHP = new ChainlinkPip(address(feedPHP));
     }
 
     function rad(uint wad) internal pure returns (uint) {
@@ -324,10 +529,16 @@ contract DssDeployScript is Script, Test {
         end = dssDeploy.end();
         esm = dssDeploy.esm();
         proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
+
+        dssProxyRegistry = deployCode("./out/DssProxyRegistry.sol/DssProxyRegistry.json");
+
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
+
+        PriceFeedFactory feedFactory = new PriceFeedFactory();
+        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
 
         authority.permit(
             address(proxyActions),
@@ -335,78 +546,113 @@ contract DssDeployScript is Script, Test {
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
         );
 
-        usdt = IERC20(address(new TestUSDT()));
-        usdtJoin = new GemJoin5(address(vat), "USDT-A", address(usdt));
-        LinearDecrease calcUSDT = calcFab.newLinearDecrease(msg.sender);
-        calcUSDT.file(bytes32("tau"), 1 hours);
-        dssDeploy.deployCollateralClip("USDT-A", address(usdtJoin), address(pipUSDT), address(calcUSDT));
+        // SetupIlkRegistry
+        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
+        ilkRegistry.rely(address(dssDeploy));
 
-        php = IERC20(address(new TestPHP()));
-        phpJoin = new GemJoin5(address(vat), "PHP-A", address(php));
-        LinearDecrease calcPHP = calcFab.newLinearDecrease(msg.sender);
-        calcPHP.file(bytes32("tau"), 1 hours);
-        dssDeploy.deployCollateralClip("PHP-A", address(phpJoin), address(pipPHP), address(calcPHP));
+        address usdtAddr;
+        (usdtJoin, feedUSDT, usdtAddr, pipUSDT) = dssDeploy.addCollateral(
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.IlkParams({
+                ilk: "USDT-A",
+                line: uint(5_000_000 * RAD), // Set USDT-A limit to 5 million DAI (RAD units)
+                dust: uint(0),
+                tau: 1 hours,
+                mat: uint(1050000000 ether), // mat: Liquidation Ratio (105%),
+                hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+            }),
+            DssDeployExt.TokenParams({
+                token: address(0),
+                symbol: "tstUSDT",
+                name: "Test USDT",
+                decimals: 6,
+                maxSupply: 0
+            }),
+            DssDeployExt.FeedParams({
+                factory: priceFeedFactory,
+                joinFactory: priceJoinFeedFactory,
+                feed: address(0),
+                decimals: 6,
+                initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
+            })
+        );
+        usdt = DSToken(usdtAddr);
+        usdt.mint(5_000_000 * 10 ** 6);
 
-        // Set Params for debt ceiling
-        proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * 10 ** 45)); // 10M PHT
-        proxyActions.file(address(vat), bytes32("PHP-A"), bytes32("line"), uint(5_000_000 * 10 ** 45)); // 5M
-        proxyActions.file(address(vat), bytes32("USDT-A"), bytes32("line"), uint(5_000_000 * 10 ** 45)); // 5M
-
-        // @TODO is poke setting the price of the asset (ETH or USDT) relative to the generated stablecoin (PHT)
-        // or relative to the USD price?
-        // @TODO there is no oracle for the GOV token?
-
-        feedUSDT.file("decimals", uint(6));
-        feedUSDT.file("answer", int(58 * 10 ** 6)); // Price 58 DAI (PHT) = 1 USDT (precision 6)
-
-        feedPHP.file("decimals", uint(6));
-        feedPHP.file("answer", int(1 * 10 ** 6)); // Price 1 DAI (PHT) = 1 PHP (precision 6)
-
-        // @TODO add / change to ethClip
-        (, phpClip, ) = dssDeploy.ilks("PHP-A");
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
-        proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
-        proxyActions.file(address(spotter), "USDT-A", "mat", uint(1050000000 ether)); // Liquidation ratio 105%
+        address phpAddr;
+        (phpJoin, feedPHP, phpAddr, pipPHP) = dssDeploy.addCollateral(
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.IlkParams({
+                ilk: "PHP-A",
+                line: uint(5_000_000 * 10 ** 45), // Set PHP-A limit to 5 million DAI (RAD units)
+                dust: uint(0),
+                tau: 1 hours,
+                mat: uint(1050000000 ether), // Liquidation Ratio (105%),
+                hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+            }),
+            DssDeployExt.TokenParams({
+                token: address(0),
+                symbol: "tstPHP",
+                name: "Test PHP",
+                decimals: 6,
+                maxSupply: 0
+            }),
+            DssDeployExt.FeedParams({
+                factory: priceFeedFactory,
+                joinFactory: priceJoinFeedFactory,
+                feed: address(0),
+                decimals: 6,
+                initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
+            })
+        );
+        php = DSToken(phpAddr);
+        php.mint(5_000_000 * 10 ** 6);
+        (, phpClip, ) = dssDeploy.ilks("PHP-A");
 
-        spotter.poke("PHP-A");
-        spotter.poke("USDT-A");
+        {
+            // Set Liquidation/Auction Rules (Dog)
+            proxyActions.file(address(dog), "Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+            // Set Params for debt ceiling
+            proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
+            // Set Global Base Fee
 
-        //TODO: SETUP GemJoinX (usdtJoin is incorrect)
+            proxyActions.file(address(jug), "base", 0.0000000006279e27); // 0.00000006279% => 2% base global fee
+
+            /// Run initial drip
+            // jug.drip("USDT-A");
+            // jug.drip("PHP-A");
+
+            spotter.poke("PHP-A");
+            spotter.poke("USDT-A");
+        }
+
+        // TODO: SETUP GemJoinX (usdtJoin is incorrect)
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
 
-        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
-        ilkRegistry.add(address(phpJoin));
-        ilkRegistry.add(address(usdtJoin));
-
         (, , uint spot, , ) = vat.ilks("PHP-A");
-        assertEq(spot, (1 * RAY * RAY) / 1050000000 ether);
+        assertEq(spot, (1 * RAY * RAY) / uint(1050000000 ether));
         (, , spot, , ) = vat.ilks("USDT-A");
-        assertEq(spot, (58 * RAY * RAY) / 1050000000 ether);
-
-        // {
-        //     // TODO: Set Liquidation/Auction Rules (Dog)
-        //     dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
-        //     dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
-        //     dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-
-        //     dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
-        //     dog.file("USDT-A", "hole", 5_000_000 * RAD); // Set USDT-A limit to 5 million DAI (RAD units)
-        //     dog.file("USDT-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
-        // }
-
-        // (uint256 duty, ) = jug.ilks("PHP-A");
-        // console.log("PHP-A duty before:", duty);
-
-        // proxyActions.file(
-        //     address(jug),
-        //     "PHP-A",
-        //     "duty",
-        //     uint256(1.06e27) // 1.06e27 RAY
-        // );
-
-        // jug.file("PHP-A", "duty", 1.06e27); // 6% annual rate = 1.06 RAY
-        // jug.file("USDT-A", "duty", 1.06e27); // 6% annual rate = 1.06 RAY
+        assertEq(spot, (58 * RAY * RAY) / uint(1050000000 ether));
 
         {
             MockGuard(address(gov.authority())).permit(
@@ -421,7 +667,113 @@ contract DssDeployScript is Script, Test {
             );
         }
 
-        gov.mint(100 ether);
+        gov.mint(MULTISIG, 100 ether);
+        address[15] memory relies = [
+            address(vat),
+            address(cat),
+            address(dog),
+            address(vow),
+            address(jug),
+            address(pot),
+            address(dai),
+            address(spotter),
+            address(flap),
+            address(flop),
+            address(cure),
+            address(end),
+            address(phpClip),
+            address(usdtClip),
+            address(ilkRegistry)
+        ];
+        address[] memory reliesdyn = new address[](15);
+        for (uint256 i = 0; i < relies.length; i++) {
+            reliesdyn[i] = relies[i];
+        }
+
+        dssDeploy.setAuth(MULTISIG, reliesdyn);
+    }
+
+    /**
+     * Test: liquidate Vault by paying PHT and receiving the collateral (PHP)
+     * - Min collateral ratio 105%
+     * - simulate price drop to make collateral ratio of Vault to 103%
+     * - show where the surplus 3% is going (Vow contract)
+     **/
+    function test_openLockGemAndDraw() public {
+        {
+            // Set global and per-collateral liquidation limits
+            vm.startPrank(address(dssDeploy));
+            dog.file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+            dog.file("PHP-A", "hole", 5_000_000 * RAD); // Set PHP-A limit to 5 million DAI (RAD units)
+            dog.file("PHP-A", "chop", 1.13e18); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+            phpClip.file("buf", 1.20e27); // Set a 20% increase in auctions (RAY)
+            vm.stopPrank();
+        }
+
+        address proxy = ProxyRegistryLike(dssProxyRegistry).build(address(this));
+        assertEq(ProxyLike(proxy).owner(), address(this));
+
+        {
+            // Set Min Liquidiation Ratio = 105%
+            proxyActions.file(address(spotter), "PHP-A", "mat", uint(1050000000 ether));
+            spotter.poke("PHP-A");
+
+            // Mint 2e12 php tokens (6 decimals)
+            vm.startPrank(dssDeploy.owner());
+            php.mint(1.20e6);
+            IERC20(address(php)).transfer(address(this), 1.20e6);
+            vm.stopPrank();
+            assertEq(php.balanceOf(address(this)), 1.20e6);
+            assertEq(vat.gem("PHP-A", address(this)), 0);
+
+            // Approve proxy to spend 2e12 php tokens
+            php.approve(address(proxy), 1.20e6);
+            assertEq(php.allowance(address(this), address(proxy)), 1.20e6);
+            assertEq(phpJoin.dec(), 6, "phpJoin.dec() should be 6");
+        }
+
+        assertEq(php.balanceOf(address(phpJoin)), 0);
+        assertEq(dai.balanceOf(address(this)), 0);
+
+        // Call openLockGemAndDraw with correct amtC
+        uint256 cdpId = abi.decode(
+            ProxyLike(proxy).execute(
+                address(dssProxyActions),
+                abi.encodeWithSelector(
+                    DssProxyActionsLike.openLockGemAndDraw.selector,
+                    address(dssCdpManager),
+                    address(jug),
+                    address(phpJoin),
+                    address(daiJoin),
+                    bytes32("PHP-A"),
+                    uint(1.06e6),
+                    uint(1e18), // Drawing 1 DAI (18 decimals)
+                    true
+                )
+            ),
+            (uint256)
+        );
+
+        {
+            // Collateral owned by Join
+            assertEq(php.balanceOf(address(phpJoin)), 1.06e6);
+            // After operation, balance should be zero
+            assertEq(vat.gem("PHP-A", address(proxy)), 0);
+            // Collateral owned by cdpId also zero
+            assertEq(vat.gem("PHP-A", dssCdpManager.urns(cdpId)), 0);
+            // Dai (PHT) is transferred to proxy
+            assertEq(dai.balanceOf(address(this)), 1e18);
+            // Gem ownership in urnhandler
+            assertEq(vat.gem("PHP-A", address(this)), 0);
+        }
+    }
+
+    function convertStaticToDynamic(uint[3] memory fixedArray) public pure returns (uint[] memory) {
+        uint[] memory dynamicArray = new uint[](fixedArray.length);
+        for (uint i = 0; i < fixedArray.length; i++) {
+            dynamicArray[i] = fixedArray[i];
+        }
+        return dynamicArray;
     }
 
     function testAuth() public {
@@ -509,6 +861,24 @@ contract DssDeployScript is Script, Test {
         assertEq(dssDeploy.owner(), msg.sender);
     }
 
+    function assignAuth(address target) public {
+        vat.rely(target);
+        cat.rely(target);
+        dog.rely(target);
+        vow.rely(target);
+        jug.rely(target);
+        pot.rely(target);
+        dai.rely(target);
+        spotter.rely(target);
+        flap.rely(target);
+        flop.rely(target);
+        cure.rely(target);
+        end.rely(target);
+        phpClip.rely(target);
+        usdtClip.rely(target);
+        ilkRegistry.rely(target);
+    }
+
     function testReleasedAuth() public {
         assertEq(vat.wards(address(dssDeploy)), 0);
         assertEq(cat.wards(address(dssDeploy)), 0);
@@ -525,4 +895,175 @@ contract DssDeployScript is Script, Test {
         assertEq(phpClip.wards(address(dssDeploy)), 0);
         assertEq(usdtClip.wards(address(dssDeploy)), 0);
     }
+}
+
+interface ProxyRegistryLike {
+    function proxies(address) external view returns (address);
+    function build(address) external returns (address);
+}
+
+interface ProxyLike {
+    function owner() external view returns (address);
+    function execute(address target, bytes memory data) external payable returns (bytes memory response);
+}
+
+/**
+ * @title CommonLike
+ * @dev Interface for the Common contract
+ */
+interface CommonLike {
+    function daiJoin_join(address apt, address urn, uint wad) external;
+}
+
+/**
+ * @title DssProxyActionsLike
+ * @dev Interface for the DssProxyActions contract, inheriting CommonLike
+ */
+interface DssProxyActionsLike is CommonLike {
+    // Transfer Functions
+    function transfer(address gem, address dst, uint amt) external;
+
+    // Join Functions
+    function ethJoin_join(address apt, address urn) external payable;
+    function gemJoin_join(address apt, address urn, uint amt, bool transferFrom) external;
+
+    // Permission Functions
+    function hope(address obj, address usr) external;
+    function nope(address obj, address usr) external;
+
+    // CDP Management Functions
+    function open(address manager, bytes32 ilk, address usr) external returns (uint cdp);
+    function give(address manager, uint cdp, address usr) external;
+    function giveToProxy(address proxyRegistry, address manager, uint cdp, address dst) external;
+    function cdpAllow(address manager, uint cdp, address usr, uint ok) external;
+    function urnAllow(address manager, address usr, uint ok) external;
+
+    // CDP Operations
+    function flux(address manager, uint cdp, address dst, uint wad) external;
+    function move(address manager, uint cdp, address dst, uint rad) external;
+    function frob(address manager, uint cdp, int dink, int dart) external;
+    function quit(address manager, uint cdp, address dst) external;
+    function enter(address manager, address src, uint cdp) external;
+    function shift(address manager, uint cdpSrc, uint cdpOrg) external;
+
+    // Bag Management
+    function makeGemBag(address gemJoin) external returns (address bag);
+
+    // Locking Collateral
+    function lockETH(address manager, address ethJoin, uint cdp) external payable;
+    function safeLockETH(address manager, address ethJoin, uint cdp, address owner) external payable;
+    function lockGem(address manager, address gemJoin, uint cdp, uint amt, bool transferFrom) external;
+    function safeLockGem(
+        address manager,
+        address gemJoin,
+        uint cdp,
+        uint amt,
+        bool transferFrom,
+        address owner
+    ) external;
+
+    // Freeing Collateral
+    function freeETH(address manager, address ethJoin, uint cdp, uint wad) external;
+    function freeGem(address manager, address gemJoin, uint cdp, uint amt) external;
+
+    // Exiting Collateral
+    function exitETH(address manager, address ethJoin, uint cdp, uint wad) external;
+    function exitGem(address manager, address gemJoin, uint cdp, uint amt) external;
+
+    // Debt Management
+    function draw(address manager, address jug, address daiJoin, uint cdp, uint wad) external;
+    function wipe(address manager, address daiJoin, uint cdp, uint wad) external;
+    function safeWipe(address manager, address daiJoin, uint cdp, uint wad, address owner) external;
+    function wipeAll(address manager, address daiJoin, uint cdp) external;
+    function safeWipeAll(address manager, address daiJoin, uint cdp, address owner) external;
+
+    // Combined Operations
+    function lockETHAndDraw(
+        address manager,
+        address jug,
+        address ethJoin,
+        address daiJoin,
+        uint cdp,
+        uint wadD
+    ) external payable;
+
+    function openLockETHAndDraw(
+        address manager,
+        address jug,
+        address ethJoin,
+        address daiJoin,
+        bytes32 ilk,
+        uint wadD
+    ) external payable returns (uint cdp);
+
+    function lockGemAndDraw(
+        address manager,
+        address jug,
+        address gemJoin,
+        address daiJoin,
+        uint cdp,
+        uint amtC,
+        uint wadD,
+        bool transferFrom
+    ) external;
+
+    function openLockGemAndDraw(
+        address manager,
+        address jug,
+        address gemJoin,
+        address daiJoin,
+        bytes32 ilk,
+        uint amtC,
+        uint wadD,
+        bool transferFrom
+    ) external returns (uint cdp);
+
+    function openLockGNTAndDraw(
+        address manager,
+        address jug,
+        address gntJoin,
+        address daiJoin,
+        bytes32 ilk,
+        uint amtC,
+        uint wadD
+    ) external returns (address bag, uint cdp);
+
+    // Wipe and Free Operations
+    function wipeAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC, uint wadD) external;
+
+    function wipeAllAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC) external;
+
+    function wipeAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC, uint wadD) external;
+
+    function wipeAllAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC) external;
+}
+
+/**
+ * @title DssProxyActionsEndLike
+ * @dev Interface for the DssProxyActionsEnd contract, inheriting CommonLike
+ */
+interface DssProxyActionsEndLike is CommonLike {
+    // Freeing Collateral via End
+    function freeETH(address manager, address ethJoin, address end, uint cdp) external;
+    function freeGem(address manager, address gemJoin, address end, uint cdp) external;
+
+    // Packing DAI
+    function pack(address daiJoin, address end, uint wad) external;
+
+    // Cashing Out Collateral
+    function cashETH(address ethJoin, address end, bytes32 ilk, uint wad) external;
+    function cashGem(address gemJoin, address end, bytes32 ilk, uint wad) external;
+}
+
+/**
+ * @title DssProxyActionsDsrLike
+ * @dev Interface for the DssProxyActionsDsr contract, inheriting CommonLike
+ */
+interface DssProxyActionsDsrLike is CommonLike {
+    // Joining to DSR
+    function join(address daiJoin, address pot, uint wad) external;
+
+    // Exiting from DSR
+    function exit(address daiJoin, address pot, uint wad) external;
+    function exitAll(address daiJoin, address pot) external;
 }
