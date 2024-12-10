@@ -180,6 +180,10 @@ contract DssDeployUtil {
                 tokenParams.decimals,
                 tokenParams.maxSupply
             );
+
+            // Minting of test tokens is for development purposes only
+            newToken.mint(5_000_000 * 10 ** tokenParams.decimals);
+
             newToken.setOwner(owner);
             _token = address(newToken);
         }
@@ -336,6 +340,7 @@ contract DssDeployScript is Script, Test {
     uint256 constant PHP_USD_PRICE_E18 = 58_676_224_131_699_110_000; //
 
     address constant MULTISIG = 0x695bc953b80358E54eC5a16AbDB1Aa939Ebb665A;
+    address constant TESTER = 0x374334e22B5d6898AF77AC4d907d8b9Aca206605;
 
     function mul(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x);
@@ -563,7 +568,8 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+                // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+                duty: 1.0000000012436807e27 // => 4%
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -585,8 +591,12 @@ contract DssDeployScript is Script, Test {
                 feedDescription: ""
             })
         );
+
+        // Minting of test tokens is for development purposes only
         usdt = DSToken(usdtAddr);
         usdt.mint(5_000_000 * 10 ** 6);
+        usdt.mint(MULTISIG, 5_000_000 * 10 ** 6);
+        usdt.mint(TESTER, 5_000_000 * 10 ** 6);
 
         (, usdtClip, ) = dssDeploy.ilks("USDT-A");
 
@@ -603,7 +613,8 @@ contract DssDeployScript is Script, Test {
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
                 buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+                // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+                duty: 1.0000000012436807e27 // => 4%
             }),
             DssDeployExt.TokenParams({
                 token: address(0),
@@ -625,8 +636,13 @@ contract DssDeployScript is Script, Test {
                 feedDescription: ""
             })
         );
+
+        // Minting of test tokens is for development purposes only
         php = DSToken(phpAddr);
         php.mint(5_000_000 * 10 ** 6);
+        php.mint(MULTISIG, 5_000_000 * 10 ** 6);
+        php.mint(TESTER, 5_000_000 * 10 ** 6);
+
         (, phpClip, ) = dssDeploy.ilks("PHP-A");
 
         {
@@ -691,6 +707,7 @@ contract DssDeployScript is Script, Test {
         }
 
         dssDeploy.setAuth(MULTISIG, reliesdyn);
+        dssDeploy.setAuth(TESTER, reliesdyn);
     }
 
     /**
