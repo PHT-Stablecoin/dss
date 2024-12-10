@@ -182,7 +182,7 @@ contract DssDeployUtil {
             );
 
             // Minting of test tokens is for development purposes only
-            newToken.mint(5_000_000 * 10 ** tokenParams.decimals);
+            newToken.mint(msg.sender, tokenParams.maxSupply);
 
             newToken.setOwner(owner);
             _token = address(newToken);
