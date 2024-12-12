@@ -23,7 +23,6 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 
 // --- custom code ---
-// import {ChainHelper} from "./helpers/ChainHelper.sol";
 import {GovActions} from "../test/helpers/govActions.sol";
 import {DSRoles} from "./lib/Roles.sol";
 import {FakeUser} from "../test/helpers/FakeUser.sol";
@@ -65,6 +64,35 @@ interface GemJoinLike {
 
 interface PipLike {
     function peek() external returns (bytes32, bool);
+}
+
+struct PHTDeployResult {
+    // --- Auth ---
+    address authority;
+    address dssProxyRegistry;
+    address proxyActions;
+    address dssProxyActions;
+    address dssCdpManager;
+    address dsrManager;
+    address gov;
+    address ilkRegistry;
+    // --- MCD ---
+    address vat;
+    address jug;
+    address vow;
+    address cat;
+    address dog;
+    address flap;
+    address flop;
+    address dai;
+    address daiJoin;
+    address spotter;
+    address pot;
+    address cure;
+    address end;
+    address esm;
+    // --- ChainLog ---
+    address clog;
 }
 
 contract PHTDeploy is DssDeploy {
@@ -110,10 +138,29 @@ contract PHTDeploy is DssDeploy {
     address constant MULTISIG = 0x695bc953b80358E54eC5a16AbDB1Aa939Ebb665A;
     address constant TESTER = 0x374334e22B5d6898AF77AC4d907d8b9Aca206605;
 
-    function deploy(PHTDeployConfig memory _c) public {
-        deployAuthority();
-        deployFabs(_c.govTokenSymbol);
+    function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory) {
+        PHTDeployResult memory result;
+        result.authority = address(deployAuthority(_c.rootUsers));
+        result.gov = address(deployGov(_c.govTokenSymbol));
+        deployFabs();
         deployKeepAuth(_c);
+
+        {
+            result.vat = address(vat);
+            result.jug = address(jug);
+            result.vow = address(vow);
+            result.cat = address(cat);
+            result.dog = address(dog);
+            result.flap = address(flap);
+            result.flop = address(flop);
+            result.dai = address(dai);
+            result.daiJoin = address(daiJoin);
+            result.spotter = address(spotter);
+            result.pot = address(pot);
+            result.cure = address(cure);
+            result.end = address(end);
+            result.esm = address(esm);
+        }
 
         // TODO: Release Auth
         // dssDeploy.releaseAuth(address(dssDeploy));
@@ -149,6 +196,8 @@ contract PHTDeploy is DssDeploy {
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
 
             clog.setIPFS("");
+
+            result.clog = address(clog);
         }
 
         // artifacts
@@ -200,14 +249,22 @@ contract PHTDeploy is DssDeploy {
         //     string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
         //     json.write(path);
         // }
+
+        return result;
     }
 
-    function deployAuthority() private {
+    function deployAuthority(address[] memory _rootUsers) private returns (DSRoles) {
         // @TODO setOwner
         authority = new DSRoles();
+        uint256 l = _rootUsers.length;
+        require(l > 0);
+
+        for (uint256 i = 0; i < l; i++) {
+            DSRoles(address(authority)).setRootUser(_rootUsers[i], true);
+        }
     }
 
-    function deployFabs(string memory _govSymbol) private {
+    function deployFabs() private {
         this.addFabs1(
             new VatFab(),
             new JugFab(),
@@ -231,9 +288,12 @@ contract PHTDeploy is DssDeploy {
             new ESMFab(),
             new PauseFab()
         );
+    }
 
+    function deployGov(string memory _govSymbol) private returns (DSToken) {
         gov = new DSToken(_govSymbol);
         gov.setAuthority(authority);
+        return gov;
     }
 
     function deployKeepAuth(PHTDeployConfig memory _c) public {
