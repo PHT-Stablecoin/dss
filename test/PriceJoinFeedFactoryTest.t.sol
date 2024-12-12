@@ -54,7 +54,7 @@ contract MockChainlinkPriceFeed is AggregatorV3Interface {
     }
 }
 
-contract SGDPHPPriceJoinFeedFactoryTest is Test {
+contract PriceJoinFeedFactoryTest is Test {
     PriceJoinFeedFactory public factory;
     MockChainlinkPriceFeed public sgdUsdFeed;
     MockChainlinkPriceFeed public phpUsdFeed;

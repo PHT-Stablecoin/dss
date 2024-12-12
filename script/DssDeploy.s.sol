@@ -292,6 +292,11 @@ contract DssDeployScript is Script, Test {
     address feedPHP;
     address feedUSDT;
 
+    // Denominator feed for chainlink 2 feed aggregator
+    // Note: Deploying this feed since there's no available PHP/USD chainlint price feed on sepolia
+    PriceFeedAggregator feedPHPUSD;
+    ChainlinkPip pipPHPUSD;
+
     MockGuard authority;
 
     DSToken usdt;
@@ -444,6 +449,10 @@ contract DssDeployScript is Script, Test {
             artifacts.serialize("dssCdpManager", address(dssCdpManager));
             artifacts.serialize("dsrManager", address(dsrManager));
 
+            // See line 295
+            artifacts.serialize("feedPHPUSD", address(feedPHPUSD));
+            artifacts.serialize("pipPHPUSD", address(pipPHPUSD));
+
             artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
             artifacts.serialize("priceJoinFeedFactory", address(priceJoinFeedFactory));
             artifacts.serialize("dssProxyRegistry", address(dssProxyRegistry));
@@ -542,8 +551,9 @@ contract DssDeployScript is Script, Test {
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
 
-        PriceFeedFactory feedFactory = new PriceFeedFactory();
-        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
+        // See line 295
+        // note: since we are only using the feed, should just deploy a mock chainlink price feed?
+        (feedPHPUSD, pipPHPUSD) = priceFeedFactory.create(8, 0.018e8, "PHP/USD"); // PHP/USD: 1 PHP = 0.018 USD
 
         authority.permit(
             address(proxyActions),
