@@ -69,7 +69,6 @@ interface PipLike {
 struct PHTDeployResult {
     // --- Auth ---
     address authority;
-    address dssProxyRegistry;
     address proxyActions;
     address dssProxyActions;
     address dssCdpManager;
@@ -96,7 +95,6 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is DssDeploy {
-    address dssProxyRegistry;
     ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
@@ -160,6 +158,11 @@ contract PHTDeploy is DssDeploy {
             result.cure = address(cure);
             result.end = address(end);
             result.esm = address(esm);
+
+            result.proxyActions = address(proxyActions);
+            result.dssProxyActions = address(dssProxyActions);
+            result.dssCdpManager = address(dssCdpManager);
+            result.dsrManager = address(dsrManager);
         }
 
         // TODO: Release Auth
@@ -262,6 +265,8 @@ contract PHTDeploy is DssDeploy {
         for (uint256 i = 0; i < l; i++) {
             DSRoles(address(authority)).setRootUser(_rootUsers[i], true);
         }
+
+        return DSRoles(address(authority));
     }
 
     function deployFabs() private {
@@ -326,8 +331,6 @@ contract PHTDeploy is DssDeploy {
 
         // @TODO GovActions
         proxyActions = new ProxyActions(address(this.pause()), address(new GovActions()));
-
-        // dssProxyRegistry = ChainHelper.deployCode("./out_pht/DssProxyRegistry.sol/DssProxyRegistry.json");
 
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
@@ -467,32 +470,6 @@ contract PHTDeploy is DssDeploy {
                 true
             );
         }
-
-        // gov.mint(MULTISIG, 100 ether);
-        // address[15] memory relies = [
-        //     address(vat),
-        //     address(cat),
-        //     address(dog),
-        //     address(vow),
-        //     address(jug),
-        //     address(pot),
-        //     address(dai),
-        //     address(spotter),
-        //     address(flap),
-        //     address(flop),
-        //     address(cure),
-        //     address(end),
-        //     address(phpClip),
-        //     address(usdtClip),
-        //     address(ilkRegistry)
-        // ];
-        // address[] memory reliesdyn = new address[](15);
-        // for (uint256 i = 0; i < relies.length; i++) {
-        //     reliesdyn[i] = relies[i];
-        // }
-
-        // dssDeploy.setAuth(MULTISIG, reliesdyn);
-        // dssDeploy.setAuth(TESTER, reliesdyn);
     }
 
     function chainId() internal view returns (uint256 _chainId) {
@@ -500,32 +477,6 @@ contract PHTDeploy is DssDeploy {
         assembly {
             _chainId := chainid()
         }
-    }
-
-    function convertStaticToDynamic(uint[3] memory fixedArray) public pure returns (uint[] memory) {
-        uint[] memory dynamicArray = new uint[](fixedArray.length);
-        for (uint i = 0; i < fixedArray.length; i++) {
-            dynamicArray[i] = fixedArray[i];
-        }
-        return dynamicArray;
-    }
-
-    function assignAuth(address target) public {
-        vat.rely(target);
-        cat.rely(target);
-        dog.rely(target);
-        vow.rely(target);
-        jug.rely(target);
-        pot.rely(target);
-        dai.rely(target);
-        spotter.rely(target);
-        flap.rely(target);
-        flop.rely(target);
-        cure.rely(target);
-        end.rely(target);
-        phpClip.rely(target);
-        usdtClip.rely(target);
-        ilkRegistry.rely(target);
     }
 }
 

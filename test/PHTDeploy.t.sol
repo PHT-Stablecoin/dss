@@ -6,9 +6,10 @@ import "forge-std/console.sol";
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {PHTDeploy} from "../pht/PHTDeploy.sol";
+import {PHTDeploy, PHTDeployResult} from "../pht/PHTDeploy.sol";
 import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
+import {DSRoles} from "../pht/lib/Roles.sol";
 
 contract PHTDeployTest is Test {
     using ArrayHelpers for *;
@@ -21,7 +22,7 @@ contract PHTDeployTest is Test {
     function test_deploy() public {
         address eve = makeAddr("eve");
         PHTDeploy d = new PHTDeploy();
-        d.deploy(
+        PHTDeployResult memory r = d.deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
                 dogHoleRad: 10_000_000,
@@ -32,5 +33,6 @@ contract PHTDeployTest is Test {
         );
 
         //@TODO assert root users and permissions
+        assertTrue(DSRoles(r.authority).isUserRoot(eve), "eve is root");
     }
 }
