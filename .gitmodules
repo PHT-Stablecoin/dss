@@ -54,3 +54,7 @@
 [submodule "lib/ds-roles"]
 	path = lib/ds-roles
 	url = https://github.com/dapphub/ds-roles
+[submodule "lib/dss-deploy"]
+	path = lib/dss-deploy
+	url = https://github.com/makerdao/dss-deploy
+	branch="master"

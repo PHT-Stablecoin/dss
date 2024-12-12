@@ -7,7 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // import everything that DssDeploy imports
-import "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
+import "dss-deploy/DssDeploy.sol";
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSTest} from "ds-test/test.sol";
 import {DSToken} from "ds-token/token.sol";
