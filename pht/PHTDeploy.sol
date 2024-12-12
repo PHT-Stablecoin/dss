@@ -7,7 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // import everything that DssDeploy imports
-import "dss-deploy/DssDeploy.sol";
+import "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSTest} from "ds-test/test.sol";
 import {DSToken} from "ds-token/token.sol";
@@ -171,6 +171,7 @@ contract PHTDeploy is DssDeploy {
             result.dssProxyActions = address(dssProxyActions);
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
+            result.ilkRegistry = address(ilkRegistry);
         }
 
         {
@@ -353,39 +354,19 @@ contract PHTDeploy is DssDeploy {
         feedFactory = new PriceFeedFactory();
         joinFeedFactory = new PriceJoinFeedFactory();
 
-        collateralHelper = new PHTCollateralHelper();
+        // SetupIlkRegistry
+        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
+        ilkRegistry.rely(address(this));
+
+        // Setup CollateralHelper
+        collateralHelper = new PHTCollateralHelper(vat, spotter, dog, vow, jug, end, esm, pause, this.calcFab(), this.clipFab());
         vat.rely(address(collateralHelper));
         spotter.rely(address(collateralHelper));
         dog.rely(address(collateralHelper));
-
-        DSRoles(address(authority)).setUserRole(address(collateralHelper), ROLE_GOV_ADD_COLLATERAL, true);
-        DSRoles(address(authority)).setRoleCapability(
-            ROLE_GOV_ADD_COLLATERAL,
-            address(this),
-            bytes4(keccak256("deployCollateralClip(bytes32,address,address,address)")),
-            true
-        );
-        DSRoles(address(authority)).setRoleCapability(
-            ROLE_GOV_ADD_COLLATERAL,
-            address(vat),
-            bytes4(keccak256("file(bytes32,bytes32,uint256)")),
-            true
-        );
-        DSRoles(address(authority)).setRoleCapability(
-            ROLE_GOV_ADD_COLLATERAL,
-            address(dog),
-            bytes4(keccak256("file(bytes32,bytes32,uint256)")),
-            true
-        );
-        DSRoles(address(authority)).setRoleCapability(
-            ROLE_GOV_ADD_COLLATERAL,
-            address(dog),
-            bytes4(keccak256("file(bytes32,uint256)")),
-            true
-        );
+        ilkRegistry.rely(address(collateralHelper));
+        jug.rely(address(collateralHelper));
 
         DSRoles(address(authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
-
         DSRoles(address(authority)).setRoleCapability(
             ROLE_CAN_PLOT,
             address(this.pause()),
@@ -393,15 +374,11 @@ contract PHTDeploy is DssDeploy {
             true
         );
 
-        // SetupIlkRegistry
-        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
-        ilkRegistry.rely(address(this));
-
         uint256 l = _c.collateralConfigs.length;
         for (uint256 i = 0; i < l; i++) {
             PHTDeployCollateralConfig memory cc = _c.collateralConfigs[i];
             (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) = collateralHelper
-                .addCollateral(this, IlkRegistry(cc.ilkRegistry), cc.ilkParams, cc.tokenParams, cc.feedParams);
+                .addCollateral(address(this), IlkRegistry(cc.ilkRegistry), cc.ilkParams, cc.tokenParams, cc.feedParams);
         }
 
         // address usdtAddr;

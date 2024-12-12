@@ -49,7 +49,7 @@ contract PHTCollateralHelperTest is Test {
 
         // // address phpAddr;
         (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP) = h.addCollateral(
-            d,
+            address(this),
             IlkRegistry(res.ilkRegistry),
             PHTCollateralHelper.IlkParams({
                 ilk: "PHP-A",
