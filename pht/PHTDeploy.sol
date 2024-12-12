@@ -34,9 +34,11 @@ import {ChainLog} from "../test/helpers/ChainLog.sol";
 // Chainlink
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
-import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
+import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
+
 interface IThingAdmin {
     // --- Administration ---
     function file(bytes32 what, address data) external;
@@ -92,6 +94,13 @@ struct PHTDeployResult {
     address esm;
     // --- ChainLog ---
     address clog;
+
+    // --- Factories ---
+    address feedFactory;
+    address joinFeedFactory;
+
+    // --- Helpers ----
+    address collateralHelper;
 }
 
 contract PHTDeploy is DssDeploy {
@@ -104,8 +113,10 @@ contract PHTDeploy is DssDeploy {
     ChainlinkPip pipPHP;
     ChainlinkPip pipUSDT;
 
-    PriceFeedFactory priceFeedFactory;
-    PriceJoinFeedFactory priceJoinFeedFactory;
+    PriceFeedFactory feedFactory;
+    PriceJoinFeedFactory joinFeedFactory;
+
+    PHTCollateralHelper collateralHelper;
 
     address feedPHP;
     address feedUSDT;
@@ -126,7 +137,10 @@ contract PHTDeploy is DssDeploy {
 
     // -- ROLES --
     uint8 constant ROLE_GOV_MINT_BURN = 10;
+    uint8 constant ROLE_GOV_ADD_COLLATERAL = 10;
+
     uint8 constant ROLE_CAN_PLOT = 11;
+    
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -160,6 +174,12 @@ contract PHTDeploy is DssDeploy {
             result.dssProxyActions = address(dssProxyActions);
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
+        }
+
+        {
+            result.feedFactory = address(feedFactory);
+            result.joinFeedFactory = address(joinFeedFactory);
+            result.collateralHelper = address(collateralHelper);
         }
 
         // TODO: Release Auth
@@ -333,8 +353,36 @@ contract PHTDeploy is DssDeploy {
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
 
-        PriceFeedFactory feedFactory = new PriceFeedFactory();
-        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
+        feedFactory = new PriceFeedFactory();
+        joinFeedFactory = new PriceJoinFeedFactory();
+
+        collateralHelper = new PHTCollateralHelper();
+
+        DSRoles(address(authority)).setUserRole(address(collateralHelper), ROLE_GOV_ADD_COLLATERAL, true);
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(this),
+            bytes4(keccak256("deployCollateralClip(bytes32,address,address,address)")),
+            true
+        );
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(vat),
+            bytes4(keccak256("file(bytes32,bytes32,uint256)")),
+            true
+        );
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(dog),
+            bytes4(keccak256("file(bytes32,bytes32,uint256)")),
+            true
+        );
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(dog),
+            bytes4(keccak256("file(bytes32,uint256)")),
+            true
+        );
 
         DSRoles(address(authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
 

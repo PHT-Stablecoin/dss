@@ -1,9 +1,18 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-// @TODO why custom ProxyActions?
-import {ProxyActions} from "../../test/helpers/ProxyActions.sol";
+import {DssDeploy, Clipper} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
+import {GemJoin5} from "dss-gem-joins/join-5.sol";
+import {GemJoin} from "dss/join.sol";
+import {LinearDecrease} from "dss/abaci.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
+
+import {PHTDeploy, PHTDeployResult} from "./PHTDeploy.sol";
+import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
+import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
+import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
+
 
 contract PHTCollateralHelper {
     struct TokenParams {
@@ -40,17 +49,17 @@ contract PHTCollateralHelper {
     }
 
     function addCollateral(
-        ProxyActions proxyActions,
+        PHTDeploy dssDeploy,
+        // ProxyActions proxyActions,
         IlkRegistry ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
-    ) public returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
-        require(tokenParams.decimals <= 18, "token-factory-max-decimals");
+    ) public returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
+        // require(tokenParams.decimals <= 18, "token-factory-max-decimals");
         // @TODO why not extend DSAuth instead?
-        require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+        // require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
 
-        DssDeploy dssDeploy = DssDeploy(address(this));
         address owner = dssDeploy.owner();
 
         _token = tokenParams.token;
@@ -72,8 +81,7 @@ contract PHTCollateralHelper {
         _feed = AggregatorV3Interface(feedParams.feed);
         if (address(_feed) == address(0)) {
             if (feedParams.numeratorFeed != address(0)) {
-                PriceJoinFeedAggregator feed;
-                (feed, _pip) = feedParams.joinFactory.create(
+                PriceJoinFeedAggregator feed = feedParams.joinFactory.create(
                     feedParams.numeratorFeed,
                     feedParams.denominatorFeed,
                     feedParams.invertNumerator,
@@ -83,19 +91,18 @@ contract PHTCollateralHelper {
                 feed.setOwner(owner);
                 _feed = AggregatorV3Interface(address(feed));
             } else {
-                PriceFeedAggregator feed;
-                (feed, _pip) = feedParams.factory.create(feedParams.decimals, feedParams.initialPrice, "");
+                PriceFeedAggregator feed = feedParams.factory.create(feedParams.decimals, feedParams.initialPrice, "");
                 feed.setOwner(owner);
                 _feed = AggregatorV3Interface(address(feed));
             }
-        } else {
-            _pip = new ChainlinkPip(address(_feed));
         }
+        _pip = new ChainlinkPip(address(_feed));
+        
 
         if (tokenParams.decimals < 18) {
-            _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token)));
+            _join = address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token));
         } else {
-            _join = GemJoinLike(address(new GemJoin(address(dssDeploy.vat()), ilkParams.ilk, _token)));
+            _join = address(new GemJoin(address(dssDeploy.vat()), ilkParams.ilk, _token));
         }
 
         {
@@ -103,13 +110,13 @@ contract PHTCollateralHelper {
             _calc.file(bytes32("tau"), ilkParams.tau);
             _calc.rely(owner);
             _calc.deny(address(this));
-            dssDeploy.deployCollateralClip(ilkParams.ilk, address(_join), address(_pip), address(_calc));
+            dssDeploy.deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
         }
 
         {
-            proxyActions.file(address(dssDeploy.vat()), ilkParams.ilk, bytes32("line"), ilkParams.line);
-            proxyActions.file(address(dssDeploy.vat()), ilkParams.ilk, bytes32("dust"), ilkParams.dust);
-            proxyActions.file(address(dssDeploy.spotter()), ilkParams.ilk, bytes32("mat"), ilkParams.mat);
+            dssDeploy.vat().file(ilkParams.ilk, bytes32("line"), ilkParams.line);
+            dssDeploy.vat().file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
+            dssDeploy.spotter().file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
         }
 
         {
@@ -129,7 +136,7 @@ contract PHTCollateralHelper {
             dssDeploy.jug().drip(ilkParams.ilk);
         }
 
-        ilkRegistry.add(address(_join));
+        ilkRegistry.add(_join);
         dssDeploy.spotter().poke(ilkParams.ilk);
     }
 }
