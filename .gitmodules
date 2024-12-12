@@ -51,3 +51,6 @@
 	path = lib/dss-gem-joins
 	url = https://github.com/makerdao/dss-gem-joins
 	branch="master"
+[submodule "lib/ds-roles"]
+	path = lib/ds-roles
+	url = https://github.com/dapphub/ds-roles
