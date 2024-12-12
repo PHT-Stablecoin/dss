@@ -133,9 +133,6 @@ contract PHTDeploy is DssDeploy {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
-    address constant MULTISIG = 0x695bc953b80358E54eC5a16AbDB1Aa939Ebb665A;
-    address constant TESTER = 0x374334e22B5d6898AF77AC4d907d8b9Aca206605;
-
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory) {
         PHTDeployResult memory result;
         result.authority = address(deployAuthority(_c.rootUsers));
@@ -197,7 +194,6 @@ contract PHTDeploy is DssDeploy {
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
-
             clog.setIPFS("");
 
             result.clog = address(clog);
