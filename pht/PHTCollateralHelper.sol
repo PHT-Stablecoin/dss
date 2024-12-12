@@ -1,6 +1,7 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
+import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSPause} from "ds-pause/pause.sol";
 
 import {Vat} from "dss/vat.sol";
@@ -25,7 +26,14 @@ import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 
-contract PHTCollateralHelper {
+interface TokenLike {
+    function decimals() external returns (uint8);
+}
+interface FactoryLike {
+    function create(bytes memory payload) external returns (address);
+}
+
+contract PHTCollateralHelper is DSAuth {
 
     Vat public vat;
     Spotter public spotter;
@@ -63,10 +71,15 @@ contract PHTCollateralHelper {
         pause = pause_;
         calcFab = calcFab_;
         clipFab = clipFab_;
+
+        authority = DSAuthority(pause.authority());
     }
 
     struct TokenParams {
         address token; // optional
+        // FactoryLike factory;
+        // bytes payload;
+
         uint8 decimals; // >=18 Decimals only
         uint256 maxSupply; // maxSupply = 0 => unlimited supply
         string name;
@@ -74,6 +87,10 @@ contract PHTCollateralHelper {
     }
 
     struct FeedParams {
+        // address feed;
+        // FactoryLike factory;
+        // bytes payload;
+
         PriceFeedFactory factory;
         PriceJoinFeedFactory joinFactory;
         address feed; // (optional)
@@ -140,7 +157,7 @@ contract PHTCollateralHelper {
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
-    ) public returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
+    ) public auth returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         // require(tokenParams.decimals <= 18, "token-factory-max-decimals");
         // @TODO why not extend DSAuth instead?
         require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");

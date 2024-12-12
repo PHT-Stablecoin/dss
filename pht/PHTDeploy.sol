@@ -374,6 +374,13 @@ contract PHTDeploy is DssDeploy {
             true
         );
 
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(collateralHelper),
+            collateralHelper.addCollateral.selector,
+            true
+        );
+
         uint256 l = _c.collateralConfigs.length;
         for (uint256 i = 0; i < l; i++) {
             PHTDeployCollateralConfig memory cc = _c.collateralConfigs[i];

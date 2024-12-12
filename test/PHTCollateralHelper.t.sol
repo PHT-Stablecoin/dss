@@ -47,6 +47,8 @@ contract PHTCollateralHelperTest is Test {
         );
         PHTCollateralHelper h = PHTCollateralHelper(res.collateralHelper);
 
+        vm.prank(eve);
+        
         // // address phpAddr;
         (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP) = h.addCollateral(
             address(this),
