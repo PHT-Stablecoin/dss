@@ -7,7 +7,8 @@ import "forge-std/console.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PHTDeploy, PHTDeployResult} from "../pht/PHTDeploy.sol";
-import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTDeployConfig, PHTDeployCollateralConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
 
@@ -20,20 +21,24 @@ contract PHTDeployTest is Test {
     uint256 constant RAD = 10 ** 45;
 
     function test_deploy() public {
-        address eve = makeAddr("eve");
         PHTDeploy d = new PHTDeploy();
+
+        address eve = makeAddr("eve");
+
+        PHTDeployCollateralConfig[] memory collateralConfigs = new PHTDeployCollateralConfig[](0);
+
         PHTDeployResult memory r = d.deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
                 dogHoleRad: 10_000_000,
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
-                rootUsers: [eve].toMemoryArray()
+                rootUsers: [eve].toMemoryArray(),
+                collateralConfigs: collateralConfigs
             })
         );
 
         //@TODO assert root users and permissions
         assertTrue(DSRoles(r.authority).isUserRoot(eve), "eve is root");
     }
-
 }

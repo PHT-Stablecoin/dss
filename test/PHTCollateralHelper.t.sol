@@ -16,7 +16,7 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
-import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTDeployConfig, PHTDeployCollateralConfig} from "../pht/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 
 contract PHTCollateralHelperTest is Test {
@@ -27,12 +27,13 @@ contract PHTCollateralHelperTest is Test {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
-        // -- ROLES --
+    // -- ROLES --
     uint8 constant ROLE_GOV_MINT_BURN = 10;
     uint8 constant ROLE_CAN_PLOT = 11;
 
     function test_addCollateral() public {
         address eve = makeAddr("eve");
+        PHTDeployCollateralConfig[] memory collateralConfigs = new PHTDeployCollateralConfig[](0);
         PHTDeploy d = new PHTDeploy();
         PHTDeployResult memory res = d.deploy(
             PHTDeployConfig({
@@ -40,7 +41,8 @@ contract PHTCollateralHelperTest is Test {
                 dogHoleRad: 10_000_000,
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
-                rootUsers: [eve].toMemoryArray()
+                rootUsers: [eve].toMemoryArray(),
+                collateralConfigs: collateralConfigs
             })
         );
         PHTCollateralHelper h = PHTCollateralHelper(res.collateralHelper);
@@ -48,7 +50,6 @@ contract PHTCollateralHelperTest is Test {
         // // address phpAddr;
         (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP) = h.addCollateral(
             d,
-            IlkRegistry(res.ilkRegistry),
             PHTCollateralHelper.IlkParams({
                 ilk: "PHP-A",
                 line: uint(5_000_000 * 10 ** 45), // Set PHP-A limit to 5 million DAI (RAD units)
@@ -82,5 +83,4 @@ contract PHTCollateralHelperTest is Test {
             })
         );
     }
-
 }

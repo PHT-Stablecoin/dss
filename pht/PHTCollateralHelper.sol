@@ -13,7 +13,6 @@ import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 
-
 contract PHTCollateralHelper {
     struct TokenParams {
         address token; // optional
@@ -51,7 +50,7 @@ contract PHTCollateralHelper {
     function addCollateral(
         PHTDeploy dssDeploy,
         // ProxyActions proxyActions,
-        IlkRegistry ilkRegistry,
+        // IlkRegistry ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
@@ -97,7 +96,6 @@ contract PHTCollateralHelper {
             }
         }
         _pip = new ChainlinkPip(address(_feed));
-        
 
         if (tokenParams.decimals < 18) {
             _join = address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token));
@@ -136,7 +134,8 @@ contract PHTCollateralHelper {
             dssDeploy.jug().drip(ilkParams.ilk);
         }
 
-        ilkRegistry.add(_join);
-        dssDeploy.spotter().poke(ilkParams.ilk);
+        // moved to PHTDeploy
+        // ilkRegistry.add(_join);
+        // dssDeploy.spotter().poke(ilkParams.ilk);
     }
 }

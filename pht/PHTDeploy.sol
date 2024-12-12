@@ -36,7 +36,7 @@ import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
-import {PHTDeployConfig} from "./PHTDeployConfig.sol";
+import {PHTDeployConfig, PHTDeployCollateralConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
 
 interface IThingAdmin {
@@ -94,11 +94,9 @@ struct PHTDeployResult {
     address esm;
     // --- ChainLog ---
     address clog;
-
     // --- Factories ---
     address feedFactory;
     address joinFeedFactory;
-
     // --- Helpers ----
     address collateralHelper;
 }
@@ -140,7 +138,6 @@ contract PHTDeploy is DssDeploy {
     uint8 constant ROLE_GOV_ADD_COLLATERAL = 10;
 
     uint8 constant ROLE_CAN_PLOT = 11;
-    
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -357,6 +354,9 @@ contract PHTDeploy is DssDeploy {
         joinFeedFactory = new PriceJoinFeedFactory();
 
         collateralHelper = new PHTCollateralHelper();
+        vat.rely(address(collateralHelper));
+        spotter.rely(address(collateralHelper));
+        dog.rely(address(collateralHelper));
 
         DSRoles(address(authority)).setUserRole(address(collateralHelper), ROLE_GOV_ADD_COLLATERAL, true);
         DSRoles(address(authority)).setRoleCapability(
@@ -396,6 +396,13 @@ contract PHTDeploy is DssDeploy {
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
         ilkRegistry.rely(address(this));
+
+        uint256 l = _c.collateralConfigs.length;
+        for (uint256 i = 0; i < l; i++) {
+            PHTDeployCollateralConfig memory cc = _c.collateralConfigs[i];
+            (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) = collateralHelper
+                .addCollateral(this, cc.ilkParams, cc.tokenParams, cc.feedParams);
+        }
 
         // address usdtAddr;
         // (usdtJoin, feedUSDT, usdtAddr, pipUSDT) = dssDeploy.addCollateral(
