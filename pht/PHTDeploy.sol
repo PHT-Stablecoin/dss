@@ -34,9 +34,10 @@ import {ChainLog} from "../test/helpers/ChainLog.sol";
 // Chainlink
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
-import {ChainlinkPip, AggregatorV3Interface} from "../test/helpers/ChainlinkPip.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
+
 interface IThingAdmin {
     // --- Administration ---
     function file(bytes32 what, address data) external;
@@ -92,6 +93,10 @@ struct PHTDeployResult {
     address esm;
     // --- ChainLog ---
     address clog;
+
+    // --- Factories ---
+    address feedFactory;
+    address joinFeedFactory;
 }
 
 contract PHTDeploy is DssDeploy {
@@ -104,8 +109,8 @@ contract PHTDeploy is DssDeploy {
     ChainlinkPip pipPHP;
     ChainlinkPip pipUSDT;
 
-    PriceFeedFactory priceFeedFactory;
-    PriceJoinFeedFactory priceJoinFeedFactory;
+    PriceFeedFactory feedFactory;
+    PriceJoinFeedFactory joinFeedFactory;
 
     address feedPHP;
     address feedUSDT;
@@ -163,6 +168,11 @@ contract PHTDeploy is DssDeploy {
             result.dssProxyActions = address(dssProxyActions);
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
+        }
+
+        {
+            result.feedFactory = address(feedFactory);
+            result.joinFeedFactory = address(joinFeedFactory);
         }
 
         // TODO: Release Auth
@@ -337,8 +347,8 @@ contract PHTDeploy is DssDeploy {
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
 
-        PriceFeedFactory feedFactory = new PriceFeedFactory();
-        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
+        feedFactory = new PriceFeedFactory();
+        joinFeedFactory = new PriceJoinFeedFactory();
 
         DSRoles(address(authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
 
