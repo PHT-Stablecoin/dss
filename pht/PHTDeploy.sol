@@ -401,7 +401,7 @@ contract PHTDeploy is DssDeploy {
         for (uint256 i = 0; i < l; i++) {
             PHTDeployCollateralConfig memory cc = _c.collateralConfigs[i];
             (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) = collateralHelper
-                .addCollateral(this, cc.ilkParams, cc.tokenParams, cc.feedParams);
+                .addCollateral(this, IlkRegistry(cc.ilkRegistry), cc.ilkParams, cc.tokenParams, cc.feedParams);
         }
 
         // address usdtAddr;

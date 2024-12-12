@@ -50,6 +50,7 @@ contract PHTCollateralHelperTest is Test {
         // // address phpAddr;
         (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP) = h.addCollateral(
             d,
+            IlkRegistry(res.ilkRegistry),
             PHTCollateralHelper.IlkParams({
                 ilk: "PHP-A",
                 line: uint(5_000_000 * 10 ** 45), // Set PHP-A limit to 5 million DAI (RAD units)

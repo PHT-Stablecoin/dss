@@ -47,10 +47,44 @@ contract PHTCollateralHelper {
         uint256 duty; // Jug: ilk fee [RAY]
     }
 
+    // function deployCollateralClip(bytes32 ilk, address join, address pip, address calc) internal {
+    //     require(ilk != bytes32(""), "Missing ilk name");
+    //     require(join != address(0), "Missing join address");
+    //     require(pip != address(0), "Missing pip address");
+    //     require(address(pause) != address(0), "Missing previous step");
+
+    //     // Deploy
+    //     ilks[ilk].clip = clipFab.newClip(address(this), address(vat), address(spotter), address(dog), ilk);
+    //     ilks[ilk].join = join;
+    //     Spotter(spotter).file(ilk, "pip", address(pip)); // Set pip
+
+    //     // Internal references set up
+    //     dog.file(ilk, "clip", address(ilks[ilk].clip));
+    //     ilks[ilk].clip.file("vow", address(vow));
+
+    //     // Use calc with safe default if not configured
+    //     if (calc == address(0)) {
+    //         calc = address(calcFab.newLinearDecrease(address(this)));
+    //         LinearDecrease(calc).file(bytes32("tau"), 1 hours);
+    //     }
+    //     ilks[ilk].clip.file("calc", calc);
+    //     vat.init(ilk);
+    //     jug.init(ilk);
+
+    //     // Internal auth
+    //     vat.rely(join);
+    //     vat.rely(address(ilks[ilk].clip));
+    //     dog.rely(address(ilks[ilk].clip));
+    //     ilks[ilk].clip.rely(address(dog));
+    //     ilks[ilk].clip.rely(address(end));
+    //     ilks[ilk].clip.rely(address(esm));
+    //     ilks[ilk].clip.rely(address(pause.proxy()));
+    // }
+
     function addCollateral(
         PHTDeploy dssDeploy,
         // ProxyActions proxyActions,
-        // IlkRegistry ilkRegistry,
+        IlkRegistry ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
@@ -135,7 +169,7 @@ contract PHTCollateralHelper {
         }
 
         // moved to PHTDeploy
-        // ilkRegistry.add(_join);
-        // dssDeploy.spotter().poke(ilkParams.ilk);
+        ilkRegistry.add(_join);
+        dssDeploy.spotter().poke(ilkParams.ilk);
     }
 }
