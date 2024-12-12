@@ -8,6 +8,7 @@ import {DssDeploy, Clipper} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDepl
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {DSRoles} from "../pht/lib/Roles.sol";
 import {PHTDeploy, PHTDeployResult} from "../pht/PHTDeploy.sol";
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFactory.sol";
@@ -26,6 +27,10 @@ contract PHTCollateralHelperTest is Test {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
+        // -- ROLES --
+    uint8 constant ROLE_GOV_MINT_BURN = 10;
+    uint8 constant ROLE_CAN_PLOT = 11;
+
     function test_addCollateral() public {
         address eve = makeAddr("eve");
         PHTDeploy d = new PHTDeploy();
@@ -38,8 +43,8 @@ contract PHTCollateralHelperTest is Test {
                 rootUsers: [eve].toMemoryArray()
             })
         );
+        PHTCollateralHelper h = PHTCollateralHelper(res.collateralHelper);
 
-        PHTCollateralHelper h = new PHTCollateralHelper();
         // // address phpAddr;
         (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP) = h.addCollateral(
             d,

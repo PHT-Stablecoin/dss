@@ -58,7 +58,7 @@ contract PHTCollateralHelper {
     ) public returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         // require(tokenParams.decimals <= 18, "token-factory-max-decimals");
         // @TODO why not extend DSAuth instead?
-        require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+        // require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
 
         address owner = dssDeploy.owner();
 
@@ -95,9 +95,9 @@ contract PHTCollateralHelper {
                 feed.setOwner(owner);
                 _feed = AggregatorV3Interface(address(feed));
             }
-        } else {
-            _pip = new ChainlinkPip(address(_feed));
         }
+        _pip = new ChainlinkPip(address(_feed));
+        
 
         if (tokenParams.decimals < 18) {
             _join = address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token));

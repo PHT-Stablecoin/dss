@@ -37,6 +37,7 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoin
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
+import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
 
 interface IThingAdmin {
     // --- Administration ---
@@ -97,6 +98,9 @@ struct PHTDeployResult {
     // --- Factories ---
     address feedFactory;
     address joinFeedFactory;
+
+    // --- Helpers ----
+    address collateralHelper;
 }
 
 contract PHTDeploy is DssDeploy {
@@ -111,6 +115,8 @@ contract PHTDeploy is DssDeploy {
 
     PriceFeedFactory feedFactory;
     PriceJoinFeedFactory joinFeedFactory;
+
+    PHTCollateralHelper collateralHelper;
 
     address feedPHP;
     address feedUSDT;
@@ -131,7 +137,10 @@ contract PHTDeploy is DssDeploy {
 
     // -- ROLES --
     uint8 constant ROLE_GOV_MINT_BURN = 10;
+    uint8 constant ROLE_GOV_ADD_COLLATERAL = 10;
+
     uint8 constant ROLE_CAN_PLOT = 11;
+    
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -173,6 +182,7 @@ contract PHTDeploy is DssDeploy {
         {
             result.feedFactory = address(feedFactory);
             result.joinFeedFactory = address(joinFeedFactory);
+            result.collateralHelper = address(collateralHelper);
         }
 
         // TODO: Release Auth
@@ -349,6 +359,34 @@ contract PHTDeploy is DssDeploy {
 
         feedFactory = new PriceFeedFactory();
         joinFeedFactory = new PriceJoinFeedFactory();
+
+        collateralHelper = new PHTCollateralHelper();
+
+        DSRoles(address(authority)).setUserRole(address(collateralHelper), ROLE_GOV_ADD_COLLATERAL, true);
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(this),
+            bytes4(keccak256("deployCollateralClip(bytes32,address,address,address)")),
+            true
+        );
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(vat),
+            bytes4(keccak256("file(bytes32,bytes32,uint256)")),
+            true
+        );
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(dog),
+            bytes4(keccak256("file(bytes32,bytes32,uint256)")),
+            true
+        );
+        DSRoles(address(authority)).setRoleCapability(
+            ROLE_GOV_ADD_COLLATERAL,
+            address(dog),
+            bytes4(keccak256("file(bytes32,uint256)")),
+            true
+        );
 
         DSRoles(address(authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
 
