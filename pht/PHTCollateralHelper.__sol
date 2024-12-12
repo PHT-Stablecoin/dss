@@ -1,0 +1,135 @@
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+
+// @TODO why custom ProxyActions?
+import {ProxyActions} from "../../test/helpers/ProxyActions.sol";
+import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
+
+contract PHTCollateralHelper {
+    struct TokenParams {
+        address token; // optional
+        uint8 decimals; // >=18 Decimals only
+        uint256 maxSupply; // maxSupply = 0 => unlimited supply
+        string name;
+        string symbol;
+    }
+
+    struct FeedParams {
+        PriceFeedFactory factory;
+        PriceJoinFeedFactory joinFactory;
+        address feed; // (optional)
+        int initialPrice; // (optional) feed price
+        uint8 decimals; // Default: (6 decimals)
+        address numeratorFeed; // (optional)
+        address denominatorFeed;
+        bool invertNumerator;
+        bool invertDenominator;
+        string feedDescription;
+    }
+
+    struct IlkParams {
+        bytes32 ilk;
+        uint256 line; // Ilk Debt ceiling [RAD]
+        uint256 dust; // Ilk Urn Debt floor [RAD]
+        uint256 tau; // Default: 1 hours
+        uint256 mat; // Liquidation Ratio [RAY]
+        uint256 hole; // Gem-limit [RAD]
+        uint256 chop; // Liquidation-penalty [WAD]
+        uint256 buf; // Initial Auction Increase [RAY]
+        uint256 duty; // Jug: ilk fee [RAY]
+    }
+
+    function addCollateral(
+        ProxyActions proxyActions,
+        IlkRegistry ilkRegistry,
+        IlkParams memory ilkParams,
+        TokenParams memory tokenParams,
+        FeedParams memory feedParams
+    ) public returns (GemJoinLike _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
+        require(tokenParams.decimals <= 18, "token-factory-max-decimals");
+        // @TODO why not extend DSAuth instead?
+        require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+
+        DssDeploy dssDeploy = DssDeploy(address(this));
+        address owner = dssDeploy.owner();
+
+        _token = tokenParams.token;
+        if (_token == address(0)) {
+            ConfigurableDSToken newToken = new ConfigurableDSToken(
+                tokenParams.symbol,
+                tokenParams.name,
+                tokenParams.decimals,
+                tokenParams.maxSupply
+            );
+
+            // Minting of test tokens is for development purposes only
+            newToken.mint(msg.sender, tokenParams.maxSupply);
+
+            newToken.setOwner(owner);
+            _token = address(newToken);
+        }
+
+        _feed = AggregatorV3Interface(feedParams.feed);
+        if (address(_feed) == address(0)) {
+            if (feedParams.numeratorFeed != address(0)) {
+                PriceJoinFeedAggregator feed;
+                (feed, _pip) = feedParams.joinFactory.create(
+                    feedParams.numeratorFeed,
+                    feedParams.denominatorFeed,
+                    feedParams.invertNumerator,
+                    feedParams.invertDenominator,
+                    feedParams.feedDescription
+                );
+                feed.setOwner(owner);
+                _feed = AggregatorV3Interface(address(feed));
+            } else {
+                PriceFeedAggregator feed;
+                (feed, _pip) = feedParams.factory.create(feedParams.decimals, feedParams.initialPrice, "");
+                feed.setOwner(owner);
+                _feed = AggregatorV3Interface(address(feed));
+            }
+        } else {
+            _pip = new ChainlinkPip(address(_feed));
+        }
+
+        if (tokenParams.decimals < 18) {
+            _join = GemJoinLike(address(new GemJoin5(address(dssDeploy.vat()), ilkParams.ilk, _token)));
+        } else {
+            _join = GemJoinLike(address(new GemJoin(address(dssDeploy.vat()), ilkParams.ilk, _token)));
+        }
+
+        {
+            LinearDecrease _calc = dssDeploy.calcFab().newLinearDecrease(address(this));
+            _calc.file(bytes32("tau"), ilkParams.tau);
+            _calc.rely(owner);
+            _calc.deny(address(this));
+            dssDeploy.deployCollateralClip(ilkParams.ilk, address(_join), address(_pip), address(_calc));
+        }
+
+        {
+            proxyActions.file(address(dssDeploy.vat()), ilkParams.ilk, bytes32("line"), ilkParams.line);
+            proxyActions.file(address(dssDeploy.vat()), ilkParams.ilk, bytes32("dust"), ilkParams.dust);
+            proxyActions.file(address(dssDeploy.spotter()), ilkParams.ilk, bytes32("mat"), ilkParams.mat);
+        }
+
+        {
+            dssDeploy.dog().file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+            dssDeploy.dog().file("Hole", ilkParams.hole + dssDeploy.dog().Hole()); // Increase global limit
+            dssDeploy.dog().file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        }
+
+        {
+            (, Clipper clip, ) = dssDeploy.ilks(ilkParams.ilk);
+            clip.file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
+        }
+
+        {
+            // Set Ilk Fees
+            dssDeploy.jug().file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
+            dssDeploy.jug().drip(ilkParams.ilk);
+        }
+
+        ilkRegistry.add(address(_join));
+        dssDeploy.spotter().poke(ilkParams.ilk);
+    }
+}

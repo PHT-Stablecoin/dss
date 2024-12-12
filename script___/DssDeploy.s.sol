@@ -10,6 +10,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
+import {DSRoles} from "ds-roles/roles.sol";
 import {DSTest} from "ds-test/test.sol";
 import {DSToken} from "ds-token/token.sol";
 import {DSValue} from "ds-value/value.sol";
@@ -292,7 +293,7 @@ contract DssDeployScript is Script, Test {
     address feedPHP;
     address feedUSDT;
 
-    MockGuard authority;
+    DSRoles authority;
 
     DSToken usdt;
     DSToken php;
@@ -322,6 +323,10 @@ contract DssDeployScript is Script, Test {
     DssAutoLine autoline;
     DssPsm psm;
     IlkRegistry ilkRegistry;
+
+    // -- ROLES --
+    uint8 constant ROLE_GOV_MINT_BURN = 10;
+    uint8 constant ROLE_CAN_PLOT = 11;
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -355,6 +360,7 @@ contract DssDeployScript is Script, Test {
 
     function run() public {
         vm.startBroadcast();
+        deployAuthority();
         setUp();
         deployKeepAuth(address(dssDeploy));
         vm.stopBroadcast();
@@ -453,6 +459,11 @@ contract DssDeployScript is Script, Test {
         }
     }
 
+    function deployAuthority() private {
+        authority = new DSRoles();
+        // @TODO setOwner
+    }
+
     function setUp() public virtual {
         vatFab = new VatFab();
         jugFab = new JugFab();
@@ -496,10 +507,7 @@ contract DssDeployScript is Script, Test {
         );
 
         gov = new DSToken("GOV");
-
-        // TODO
-        gov.setAuthority(DSAuthority(address(new MockGuard())));
-        authority = new MockGuard();
+        gov.setAuthority(authority);
     }
 
     function rad(uint wad) internal pure returns (uint) {
@@ -545,11 +553,20 @@ contract DssDeployScript is Script, Test {
         PriceFeedFactory feedFactory = new PriceFeedFactory();
         PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
 
-        authority.permit(
-            address(proxyActions),
+        authority.setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
+
+        authority.setRoleCapability(
+            ROLE_CAN_PLOT,
             address(dssDeploy.pause()),
-            bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
+            bytes4(keccak256("plot(address,bytes32,bytes,uint256)")),
+            true
         );
+
+        // authority.permit(
+        //     address(proxyActions),
+        //     address(dssDeploy.pause()),
+        //     bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
+        // );
 
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
@@ -671,16 +688,30 @@ contract DssDeployScript is Script, Test {
         assertEq(spot, (58 * RAY * RAY) / uint(1050000000 ether));
 
         {
-            MockGuard(address(gov.authority())).permit(
-                address(flop),
+            authority.setUserRole(ROLE_GOV_MINT_BURN, address(flop), true);
+            authority.setUserRole(ROLE_GOV_MINT_BURN, address(flap), true);
+            authority.setRoleCapability(
+                ROLE_GOV_MINT_BURN,
                 address(gov),
-                bytes4(keccak256("mint(address,uint256)"))
+                bytes4(keccak256("mint(address,uint256)")),
+                true
             );
-            MockGuard(address(gov.authority())).permit(
-                address(flap),
+            authority.setRoleCapability(
+                ROLE_GOV_MINT_BURN,
                 address(gov),
-                bytes4(keccak256("burn(address,uint256)"))
+                bytes4(keccak256("burn(address,uint256)")),
+                true
             );
+            // MockGuard(address(gov.authority())).permit(
+            //     address(flop),
+            //     address(gov),
+            //     bytes4(keccak256("mint(address,uint256)"))
+            // );
+            // MockGuard(address(gov.authority())).permit(
+            //     address(flap),
+            //     address(gov),
+            //     bytes4(keccak256("burn(address,uint256)"))
+            // );
         }
 
         gov.mint(MULTISIG, 100 ether);

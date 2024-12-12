@@ -1,22 +1,25 @@
 pragma solidity >=0.6.12;
-
+pragma experimental ABIEncoderV2;
 import {DSThing} from "ds-thing/thing.sol";
 
 interface AggregatorV3Interface {
-  function decimals() external view returns (uint8);
+    function decimals() external view returns (uint8);
 
-  function description() external view returns (string memory);
+    function description() external view returns (string memory);
 
-  function version() external view returns (uint256);
+    function version() external view returns (uint256);
 
-  function getRoundData(
-    uint80 _roundId
-  ) external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function getRoundData(
+        uint80 _roundId
+    )
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 
-  function latestRoundData()
-    external
-    view
-    returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
 contract AggregatorAdapter2Feeds is AggregatorV3Interface, DSThing {
@@ -53,10 +56,8 @@ contract AggregatorAdapter2Feeds is AggregatorV3Interface, DSThing {
         numeratorFeed = AggregatorV3Interface(_numeratorFeed);
         denominatorFeed = AggregatorV3Interface(_denominatorFeed);
         decimals = numeratorFeed.decimals();
-        require(
-            decimals == denominatorFeed.decimals(),
-            "AggregatorAdapter2Feeds/constructor-invalid-decimals");
-        
+        require(decimals == denominatorFeed.decimals(), "AggregatorAdapter2Feeds/constructor-invalid-decimals");
+
         invertNumerator = _invertNumerator;
         invertDenominator = _invertDenominator;
         description = _description;
@@ -100,8 +101,12 @@ contract AggregatorAdapter2Feeds is AggregatorV3Interface, DSThing {
         return _getAnswer();
     }
 
-    function _getAnswer() internal view returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound) {
-      (
+    function _getAnswer()
+        internal
+        view
+        returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
+    {
+        (
             uint80 _numRoundId,
             int256 _numAnswer,
             uint256 _numStartedAt,
@@ -134,6 +139,6 @@ contract AggregatorAdapter2Feeds is AggregatorV3Interface, DSThing {
     }
 
     function _calculateInverse(int256 price) internal pure returns (int256) {
-      return (1e12) / price; // Using 1e12 (1e6 * 1e6) for 6 decimals precision
+        return (1e12) / price; // Using 1e12 (1e6 * 1e6) for 6 decimals precision
     }
 }

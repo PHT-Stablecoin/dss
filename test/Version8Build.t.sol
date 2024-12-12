@@ -1,4 +1,5 @@
 pragma solidity ^0.8.13;
+pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import "dss-proxy/DssProxyRegistry.sol";

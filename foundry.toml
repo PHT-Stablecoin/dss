@@ -1,11 +1,12 @@
 [profile.default]
-src = "src"
-out = "out"
+src = "pht"
+out = "out_pht"
 libs = ["lib"]
 evm_version = 'cancun'
+optimizer = false
+auto_detect_solc = true
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
-
 fs_permissions = [
   { access = "read", path = "./out/" },
   { access = "read", path = "./script/input/" },
@@ -19,3 +20,13 @@ anvil = "localhost:8545"
 
 [etherscan]
 # sepolia = { key = "${ETHERSCAN_API_KEY}" }
+
+[profile.mcd]
+src = "src"
+test = "src/test"
+out = "out_mcd"
+libs = []
+solc = "0.6.12"
+auto_detect_solc = false
+optimizer = false
+optimizer_runs = 200

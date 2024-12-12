@@ -374,7 +374,8 @@ scoping
 forge-artifacts/
 forge-cache/
 .aider*
-out
+out_mcd
+out_pht
 # script/output/**/*
 # broadcast
 

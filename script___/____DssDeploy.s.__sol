@@ -1,0 +1,193 @@
+pragma solidity ^0.6.12;
+pragma experimental ABIEncoderV2;
+
+contract DssDeployScript is Script, Test {
+    function deployKeepAuth(address _msgSender) public {
+        dssDeploy.deployVat();
+        dssDeploy.deployDai(99);
+        dssDeploy.deployTaxation();
+        dssDeploy.deployAuctions(address(gov));
+        dssDeploy.deployLiquidator();
+        dssDeploy.deployEnd();
+        // @TODO set pauseDelay to non-zero?
+        dssDeploy.deployPause(0, address(authority));
+
+        // @TODO set config for production?
+        dssDeploy.deployESM(address(gov), 10);
+
+        vat = dssDeploy.vat();
+        jug = dssDeploy.jug();
+        vow = dssDeploy.vow();
+        cat = dssDeploy.cat();
+        dog = dssDeploy.dog();
+        flap = dssDeploy.flap();
+        flop = dssDeploy.flop();
+        dai = dssDeploy.dai();
+        daiJoin = dssDeploy.daiJoin();
+        spotter = dssDeploy.spotter();
+        pot = dssDeploy.pot();
+        cure = dssDeploy.cure();
+        end = dssDeploy.end();
+        esm = dssDeploy.esm();
+        proxyActions = new ProxyActions(address(dssDeploy.pause()), address(new GovActions()));
+        autoline = new DssAutoLine(address(vat));
+        dssProxyActions = new DssProxyActions();
+        dssCdpManager = new DssCdpManager(address(vat));
+        dsrManager = new DsrManager(address(pot), address(daiJoin));
+
+        PriceFeedFactory feedFactory = new PriceFeedFactory();
+        PriceJoinFeedFactory joinFeedFactory = new PriceJoinFeedFactory();
+
+        authority.permit(
+            address(proxyActions),
+            address(dssDeploy.pause()),
+            bytes4(keccak256("plot(address,bytes32,bytes,uint256)"))
+        );
+
+        // SetupIlkRegistry
+        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
+        ilkRegistry.rely(address(dssDeploy));
+
+        address usdtAddr;
+        (usdtJoin, feedUSDT, usdtAddr, pipUSDT) = dssDeploy.addCollateral(
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.IlkParams({
+                ilk: "USDT-A",
+                line: uint(5_000_000 * RAD), // Set USDT-A limit to 5 million DAI (RAD units)
+                dust: uint(0),
+                tau: 1 hours,
+                mat: uint(1050000000 ether), // mat: Liquidation Ratio (105%),
+                hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+            }),
+            DssDeployExt.TokenParams({
+                token: address(0),
+                symbol: "tstUSDT",
+                name: "Test USDT",
+                decimals: 6,
+                maxSupply: 0
+            }),
+            DssDeployExt.FeedParams({
+                factory: priceFeedFactory,
+                joinFactory: priceJoinFeedFactory,
+                feed: address(0),
+                decimals: 6,
+                initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
+            })
+        );
+        usdt = DSToken(usdtAddr);
+        usdt.mint(5_000_000 * 10 ** 6);
+
+        (, usdtClip, ) = dssDeploy.ilks("USDT-A");
+
+        address phpAddr;
+        (phpJoin, feedPHP, phpAddr, pipPHP) = dssDeploy.addCollateral(
+            proxyActions,
+            ilkRegistry,
+            DssDeployExt.IlkParams({
+                ilk: "PHP-A",
+                line: uint(5_000_000 * 10 ** 45), // Set PHP-A limit to 5 million DAI (RAD units)
+                dust: uint(0),
+                tau: 1 hours,
+                mat: uint(1050000000 ether), // Liquidation Ratio (105%),
+                hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
+                chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+            }),
+            DssDeployExt.TokenParams({
+                token: address(0),
+                symbol: "tstPHP",
+                name: "Test PHP",
+                decimals: 6,
+                maxSupply: 0
+            }),
+            DssDeployExt.FeedParams({
+                factory: priceFeedFactory,
+                joinFactory: priceJoinFeedFactory,
+                feed: address(0),
+                decimals: 6,
+                initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
+                numeratorFeed: address(0),
+                invertNumerator: false,
+                denominatorFeed: address(0),
+                invertDenominator: false,
+                feedDescription: ""
+            })
+        );
+        php = DSToken(phpAddr);
+        php.mint(5_000_000 * 10 ** 6);
+        (, phpClip, ) = dssDeploy.ilks("PHP-A");
+
+        {
+            // Set Liquidation/Auction Rules (Dog)
+            proxyActions.file(address(dog), "Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
+            // Set Params for debt ceiling
+            proxyActions.file(address(vat), bytes32("Line"), uint(10_000_000 * RAD)); // 10M PHT
+            // Set Global Base Fee
+
+            proxyActions.file(address(jug), "base", 1.0000000006279e27); // 0.00000006279% => 2% base global fee
+
+            /// Run initial drip
+            // jug.drip("USDT-A");
+            // jug.drip("PHP-A");
+
+            spotter.poke("PHP-A");
+            spotter.poke("USDT-A");
+        }
+
+        // TODO: SETUP GemJoinX (usdtJoin is incorrect)
+        // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
+
+        (, , uint spot, , ) = vat.ilks("PHP-A");
+        assertEq(spot, (1 * RAY * RAY) / uint(1050000000 ether));
+        (, , spot, , ) = vat.ilks("USDT-A");
+        assertEq(spot, (58 * RAY * RAY) / uint(1050000000 ether));
+
+        {
+            MockGuard(address(gov.authority())).permit(
+                address(flop),
+                address(gov),
+                bytes4(keccak256("mint(address,uint256)"))
+            );
+            MockGuard(address(gov.authority())).permit(
+                address(flap),
+                address(gov),
+                bytes4(keccak256("burn(address,uint256)"))
+            );
+        }
+
+        gov.mint(MULTISIG, 100 ether);
+        address[15] memory relies = [
+            address(vat),
+            address(cat),
+            address(dog),
+            address(vow),
+            address(jug),
+            address(pot),
+            address(dai),
+            address(spotter),
+            address(flap),
+            address(flop),
+            address(cure),
+            address(end),
+            address(phpClip),
+            address(usdtClip),
+            address(ilkRegistry)
+        ];
+        address[] memory reliesdyn = new address[](15);
+        for (uint256 i = 0; i < relies.length; i++) {
+            reliesdyn[i] = relies[i];
+        }
+
+        dssDeploy.setAuth(MULTISIG, reliesdyn);
+    }
+}

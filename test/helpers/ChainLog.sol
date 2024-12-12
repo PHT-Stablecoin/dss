@@ -18,11 +18,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pragma solidity ^0.6.12;
-
+pragma experimental ABIEncoderV2;
 /// @title An on-chain governance-managed contract registry
 /// @notice Publicly readable data; mutating functions must be called by an authorized user
 contract ChainLog {
-
     event Rely(address usr);
     event Deny(address usr);
     event UpdateVersion(string version);
@@ -32,19 +31,25 @@ contract ChainLog {
     event RemoveAddress(bytes32 key);
 
     // --- Auth ---
-    mapping (address => uint) public wards;
-    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
-    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
-    modifier auth {
+    mapping(address => uint) public wards;
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+        emit Rely(usr);
+    }
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+        emit Deny(usr);
+    }
+    modifier auth() {
         require(wards[msg.sender] == 1, "ChainLog/not-authorized");
         _;
     }
 
     struct Location {
-        uint256  pos;
-        address  addr;
+        uint256 pos;
+        address addr;
     }
-    mapping (bytes32 => Location) location;
+    mapping(bytes32 => Location) location;
 
     bytes32[] public keys;
 
@@ -86,9 +91,9 @@ contract ChainLog {
     /// @param _addr the address to the contract
     function setAddress(bytes32 _key, address _addr) public auth {
         if (count() > 0 && _key == keys[location[_key].pos]) {
-            location[_key].addr = _addr;   // Key exists in keys (update)
+            location[_key].addr = _addr; // Key exists in keys (update)
         } else {
-            _addAddress(_key, _addr);      // Add key to keys array
+            _addAddress(_key, _addr); // Add key to keys array
         }
         emit UpdateAddress(_key, _addr);
     }
@@ -135,19 +140,16 @@ contract ChainLog {
 
     function _addAddress(bytes32 _key, address _addr) internal {
         keys.push(_key);
-        location[keys[keys.length - 1]] = Location(
-            keys.length - 1,
-            _addr
-        );
+        location[keys[keys.length - 1]] = Location(keys.length - 1, _addr);
     }
 
     function _removeAddress(bytes32 _key) internal {
-        uint256 index = location[_key].pos;       // Get pos in array
+        uint256 index = location[_key].pos; // Get pos in array
         require(keys[index] == _key, "dss-chain-log/invalid-key");
-        bytes32 move  = keys[keys.length - 1];    // Get last key
-        keys[index] = move;                       // Replace
-        location[move].pos = index;               // Update array pos
-        keys.pop();                               // Trim last key
-        delete location[_key];                    // Delete struct data
+        bytes32 move = keys[keys.length - 1]; // Get last key
+        keys[index] = move; // Replace
+        location[move].pos = index; // Update array pos
+        keys.pop(); // Trim last key
+        delete location[_key]; // Delete struct data
     }
 }

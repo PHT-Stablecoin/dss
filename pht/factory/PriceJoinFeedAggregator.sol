@@ -1,8 +1,32 @@
 pragma solidity >=0.6.12;
 
 import {DSThing} from "ds-thing/thing.sol";
-import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
-import {IThingAdmin} from "../interfaces/IThingAdmin.sol";
+interface AggregatorV3Interface {
+    function decimals() external view returns (uint8);
+
+    function description() external view returns (string memory);
+
+    function version() external view returns (uint256);
+
+    function getRoundData(
+        uint80 _roundId
+    )
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+}
+
+interface IThingAdmin {
+    // --- Administration ---
+    function file(bytes32 what, address data) external;
+    function file(bytes32 what, bool data) external;
+    function file(bytes32 what, uint data) external;
+}
 
 contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing {
     // Ex: Feeds for XSGD/USD - PHP/USD

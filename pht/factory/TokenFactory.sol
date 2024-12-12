@@ -1,7 +1,7 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {ConfigurableDSToken} from "./ConfigurableDSToken.sol";
+import {ConfigurableDSToken} from "../token/ConfigurableDSToken.sol";
 import {DSToken} from "ds-token/token.sol";
 import {DSAuth} from "ds-auth/auth.sol";
 
