@@ -8,6 +8,8 @@ import {DssDeploy, Clipper} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDepl
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
+
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {PHTDeploy, PHTDeployResult} from "../pht/PHTDeploy.sol";
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
@@ -61,12 +63,12 @@ contract PHTCollateralHelperTest is Test {
     }
 
     function test_rootCanAddCollateral() public {
-        vm.prank(eve);
+        vm.startPrank(eve);
         _addCollateral();
     }
 
     function test_ownerCannotAddCollateral() public {
-        vm.prank(alice);
+        vm.startPrank(alice);
         vm.expectRevert("ds-auth-unauthorized");
         _addCollateral();
     }
@@ -75,8 +77,8 @@ contract PHTCollateralHelperTest is Test {
         internal
         returns (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP)
     {
-        return
-            h.addCollateral(
+        uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
+        (phpJoin, feedPHP, phpAddr, pipPHP) = h.addCollateral(
                 address(this),
                 IlkRegistry(res.ilkRegistry),
                 PHTCollateralHelper.IlkParams({
@@ -111,5 +113,7 @@ contract PHTCollateralHelperTest is Test {
                     feedDescription: ""
                 })
             );
+        assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef+1);
+        assertEq(bytes32("PHP-A"), IlkRegistry(res.ilkRegistry).list()[ilksCountBef]);
     }
 }
