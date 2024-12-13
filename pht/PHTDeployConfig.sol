@@ -8,7 +8,8 @@ struct PHTDeployConfig {
     uint256 dogHoleRad;
     uint256 vatLineRad;
     uint256 jugBase;
-    address[] rootUsers;
+    address authorityOwner;
+    address[] authorityRootUsers;
     PHTDeployCollateralConfig[] collateralConfigs;
 }
 

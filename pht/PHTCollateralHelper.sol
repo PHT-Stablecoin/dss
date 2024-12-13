@@ -34,7 +34,6 @@ interface FactoryLike {
 }
 
 contract PHTCollateralHelper is DSAuth {
-
     Vat public vat;
     Spotter public spotter;
     Dog public dog;
@@ -53,11 +52,9 @@ contract PHTCollateralHelper is DSAuth {
         Dog dog_,
         Vow vow_,
         Jug jug_,
-
         End end_,
         ESM esm_,
         DSPause pause_,
-
         CalcFab calcFab_,
         ClipFab clipFab_
     ) public {
@@ -204,44 +201,28 @@ contract PHTCollateralHelper is DSAuth {
             _join = address(new GemJoin(address(vat), ilkParams.ilk, _token));
         }
 
-        {
-            
-            LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
-            _calc.file(bytes32("tau"), ilkParams.tau);
-            _calc.rely(owner);
-            _calc.deny(address(this));
+        LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
+        _calc.file(bytes32("tau"), ilkParams.tau);
+        _calc.rely(owner);
+        _calc.deny(address(this));
 
-            deployCollateralClip(
-                ilkParams.ilk,
-                _join,
-                address(_pip),
-                address(_calc));
-        }
+        deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
 
-        {
-            vat.file(ilkParams.ilk, bytes32("line"), ilkParams.line);
-            vat.file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
-            vat.rely(address(_join));
-            spotter.file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
-        }
+        vat.file(ilkParams.ilk, bytes32("line"), ilkParams.line);
+        vat.file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
+        vat.rely(address(_join));
+        spotter.file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
 
-        {
-            dog.file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
-            dog.file("Hole", ilkParams.hole + dog.Hole()); // Increase global limit
-            dog.file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-        }
+        dog.file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+        dog.file("Hole", ilkParams.hole + dog.Hole()); // Increase global limit
+        dog.file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
 
-        {
-            (address clip,,,) = dog.ilks(ilkParams.ilk);
-            Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
-        }
+        (address clip, , , ) = dog.ilks(ilkParams.ilk);
+        Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
 
-        {
-            // Set Ilk Fees
-            jug.file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
-            jug.drip(ilkParams.ilk);
-        }
-        // moved to PHTDeploy
+        // Set Ilk Fees
+        jug.file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
+        jug.drip(ilkParams.ilk);
         ilkRegistry.add(_join);
         spotter.poke(ilkParams.ilk);
     }

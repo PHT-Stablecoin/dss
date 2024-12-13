@@ -24,6 +24,7 @@ contract PHTDeployTest is Test {
         PHTDeploy d = new PHTDeploy();
 
         address eve = makeAddr("eve");
+        address alice = makeAddr("alice");
 
         PHTDeployCollateralConfig[] memory collateralConfigs = new PHTDeployCollateralConfig[](0);
 
@@ -33,12 +34,15 @@ contract PHTDeployTest is Test {
                 dogHoleRad: 10_000_000,
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
-                rootUsers: [eve].toMemoryArray(),
+                authorityOwner: alice,
+                authorityRootUsers: [eve].toMemoryArray(),
                 collateralConfigs: collateralConfigs
             })
         );
 
         //@TODO assert root users and permissions
-        assertTrue(DSRoles(r.authority).isUserRoot(eve), "eve is root");
+        assertTrue(DSRoles(r.authority).isUserRoot(eve), "eve should be root");
+        assertFalse(DSRoles(r.authority).isUserRoot(alice), "alice should NOT be root");
+        assertTrue(DSRoles(r.authority).owner() == alice, "alice should be owner");
     }
 }

@@ -146,10 +146,15 @@ contract PHTDeploy is DssDeploy {
 
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory) {
         PHTDeployResult memory result;
-        result.authority = address(deployAuthority(_c.rootUsers));
+        result.authority = address(deployAuthority(_c.authorityRootUsers));
         result.gov = address(deployGov(_c.govTokenSymbol));
         deployFabs();
         deployKeepAuth(_c);
+
+        // release auth
+        this.releaseAuth();
+        // release authority owner
+        DSRoles(address(authority)).setOwner(_c.authorityOwner);
 
         {
             result.vat = address(vat);
@@ -172,16 +177,12 @@ contract PHTDeploy is DssDeploy {
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
             result.ilkRegistry = address(ilkRegistry);
-        }
-
-        {
             result.feedFactory = address(feedFactory);
             result.joinFeedFactory = address(joinFeedFactory);
             result.collateralHelper = address(collateralHelper);
         }
 
         // TODO: Release Auth
-        // dssDeploy.releaseAuth(address(dssDeploy));
         // dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
         // dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
         // dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
@@ -217,61 +218,10 @@ contract PHTDeploy is DssDeploy {
             result.clog = address(clog);
         }
 
-        // artifacts
-        // {
-        //     string memory root = vm.projectRoot();
-        //     string memory path = string(
-        //         abi.encodePacked(root, "/script/output/", vm.toString(chainId()), "/dssDeploy.artifacts.json")
-        //     );
-
-        //     string memory artifacts = "artifacts";
-        //     artifacts.serialize("clog", address(clog));
-
-        //     artifacts.serialize("vat", address(vat));
-        //     artifacts.serialize("jug", address(jug));
-        //     artifacts.serialize("vow", address(vow));
-        //     artifacts.serialize("cat", address(cat));
-        //     artifacts.serialize("dog", address(dog));
-        //     artifacts.serialize("flap", address(flap));
-        //     artifacts.serialize("flop", address(flop));
-        //     artifacts.serialize("dai", address(dai));
-        //     artifacts.serialize("daiJoin", address(daiJoin));
-        //     artifacts.serialize("spotter", address(spotter));
-        //     artifacts.serialize("pot", address(pot));
-        //     artifacts.serialize("cure", address(cure));
-        //     artifacts.serialize("end", address(end));
-        //     artifacts.serialize("esm", address(esm));
-
-        //     artifacts.serialize("pipPHP", address(pipPHP));
-        //     artifacts.serialize("pipUSDT", address(pipUSDT));
-        //     artifacts.serialize("feedPHP", address(feedPHP));
-        //     artifacts.serialize("feedUSDT", address(feedUSDT));
-
-        //     artifacts.serialize("phpClip", address(phpClip));
-        //     artifacts.serialize("usdtClip", address(usdtClip));
-
-        //     artifacts.serialize("authority", address(authority));
-        //     artifacts.serialize("psm", address(psm));
-        //     artifacts.serialize("autoline", address(autoline));
-        //     artifacts.serialize("ilkRegistry", address(ilkRegistry));
-        //     artifacts.serialize("proxyActions", address(proxyActions));
-        //     artifacts.serialize("dssProxyActions", address(dssProxyActions));
-        //     artifacts.serialize("dssCdpManager", address(dssCdpManager));
-        //     artifacts.serialize("dsrManager", address(dsrManager));
-
-        //     artifacts.serialize("priceFeedFactory", address(priceFeedFactory));
-        //     artifacts.serialize("priceJoinFeedFactory", address(priceJoinFeedFactory));
-        //     artifacts.serialize("dssProxyRegistry", address(dssProxyRegistry));
-
-        //     string memory json = artifacts.serialize("dssDeploy", address(dssDeploy));
-        //     json.write(path);
-        // }
-
         return result;
     }
 
     function deployAuthority(address[] memory _rootUsers) private returns (DSRoles) {
-        // @TODO setOwner
         authority = new DSRoles();
         uint256 l = _rootUsers.length;
         require(l > 0);
@@ -359,7 +309,18 @@ contract PHTDeploy is DssDeploy {
         ilkRegistry.rely(address(this));
 
         // Setup CollateralHelper
-        collateralHelper = new PHTCollateralHelper(vat, spotter, dog, vow, jug, end, esm, pause, this.calcFab(), this.clipFab());
+        collateralHelper = new PHTCollateralHelper(
+            vat,
+            spotter,
+            dog,
+            vow,
+            jug,
+            end,
+            esm,
+            pause,
+            this.calcFab(),
+            this.clipFab()
+        );
         vat.rely(address(collateralHelper));
         spotter.rely(address(collateralHelper));
         dog.rely(address(collateralHelper));
@@ -388,84 +349,6 @@ contract PHTDeploy is DssDeploy {
                 .addCollateral(address(this), IlkRegistry(cc.ilkRegistry), cc.ilkParams, cc.tokenParams, cc.feedParams);
         }
 
-        // address usdtAddr;
-        // (usdtJoin, feedUSDT, usdtAddr, pipUSDT) = dssDeploy.addCollateral(
-        //     proxyActions,
-        //     ilkRegistry,
-        //     PHTDeploy.IlkParams({
-        //         ilk: "USDT-A",
-        //         line: uint(5_000_000 * RAD), // Set USDT-A limit to 5 million DAI (RAD units)
-        //         dust: uint(0),
-        //         tau: 1 hours,
-        //         mat: uint(1050000000 ether), // mat: Liquidation Ratio (105%),
-        //         hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
-        //         chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
-        //         buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-        //         // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
-        //         duty: 1.0000000012436807e27 // => 4%
-        //     }),
-        //     PHTDeploy.TokenParams({token: address(0), symbol: "tstUSDT", name: "Test USDT", decimals: 6, maxSupply: 0}),
-        //     PHTDeploy.FeedParams({
-        //         factory: priceFeedFactory,
-        //         joinFactory: priceJoinFeedFactory,
-        //         feed: address(0),
-        //         decimals: 6,
-        //         initialPrice: int(58 * 10 ** 6), // Price 58 DAI (PHT) = 1 USDT (precision 6)
-        //         numeratorFeed: address(0),
-        //         invertNumerator: false,
-        //         denominatorFeed: address(0),
-        //         invertDenominator: false,
-        //         feedDescription: ""
-        //     })
-        // );
-
-        // // // Minting of test tokens is for development purposes only
-        // usdt = DSToken(usdtAddr);
-        // usdt.mint(5_000_000 * 10 ** 6);
-        // usdt.mint(MULTISIG, 5_000_000 * 10 ** 6);
-        // usdt.mint(TESTER, 5_000_000 * 10 ** 6);
-
-        // (, usdtClip, ) = dssDeploy.ilks("USDT-A");
-
-        // // address phpAddr;
-        // (phpJoin, feedPHP, phpAddr, pipPHP) = dssDeploy.addCollateral(
-        //     proxyActions,
-        //     ilkRegistry,
-        //     PHTDeploy.IlkParams({
-        //         ilk: "PHP-A",
-        //         line: uint(5_000_000 * 10 ** 45), // Set PHP-A limit to 5 million DAI (RAD units)
-        //         dust: uint(0),
-        //         tau: 1 hours,
-        //         mat: uint(1050000000 ether), // Liquidation Ratio (105%),
-        //         hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
-        //         chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-        //         buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-        //         // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
-        //         duty: 1.0000000012436807e27 // => 4%
-        //     }),
-        //     PHTDeploy.TokenParams({token: address(0), symbol: "tstPHP", name: "Test PHP", decimals: 6, maxSupply: 0}),
-        //     PHTDeploy.FeedParams({
-        //         factory: priceFeedFactory,
-        //         joinFactory: priceJoinFeedFactory,
-        //         feed: address(0),
-        //         decimals: 6,
-        //         initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
-        //         numeratorFeed: address(0),
-        //         invertNumerator: false,
-        //         denominatorFeed: address(0),
-        //         invertDenominator: false,
-        //         feedDescription: ""
-        //     })
-        // );
-
-        // Minting of test tokens is for development purposes only
-        // php = DSToken(phpAddr);
-        // php.mint(5_000_000 * 10 ** 6);
-        // php.mint(MULTISIG, 5_000_000 * 10 ** 6);
-        // php.mint(TESTER, 5_000_000 * 10 ** 6);
-
-        // (, phpClip, ) = dssDeploy.ilks("PHP-A");
-
         {
             // Set Liquidation/Auction Rules (Dog)
             proxyActions.file(address(dog), "Hole", _c.dogHoleRad * RAD); // Set global limit to 10 million DAI (RAD units)
@@ -485,9 +368,6 @@ contract PHTDeploy is DssDeploy {
 
         // TODO: SETUP GemJoinX (usdtJoin is incorrect)
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
-
-        (, , uint spot, , ) = vat.ilks("PHP-A");
-        (, , spot, , ) = vat.ilks("USDT-A");
 
         {
             DSRoles(address(authority)).setUserRole(address(flop), ROLE_GOV_MINT_BURN, true);
