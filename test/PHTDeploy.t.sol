@@ -13,8 +13,7 @@ import {PHTDeployConfig, PHTDeployCollateralConfig} from "../pht/PHTDeployConfig
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
-// import {Dog} from "../src/dog.sol";
-import {DssProxy} from "../pht/lib/DssProxy.sol";
+import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 contract PHTDeployTest is Test {
     using ArrayHelpers for *;
 
@@ -66,14 +65,25 @@ contract PHTDeployTest is Test {
         console.log("currentHole", currentHole);
         uint256 newHole = currentHole + 10_000_000 * RAD;
 
-        bytes4 selectorDogFile = bytes4(keccak256("file(bytes32,uint256)"));
+        console.log("proxyActions", res.proxyActions);
 
-        DssProxy(payable(res.dssProxy)).execute(
-            address(res.dog),
-            abi.encodeWithSelector(selectorDogFile, "Hole", newHole)
-        );
+        ProxyActions(res.proxyActions).file(res.dog, "Hole", newHole);
 
         assertEq(Dog(res.dog).Hole(), newHole, "Hole should be set to new value");
         vm.stopPrank();
     }
+}
+
+interface DsPauseLike {
+    function plot(address, bytes32, bytes calldata, uint256) external;
+    function drop(address, bytes32, bytes calldata, uint256) external;
+    function exec(address, bytes32, bytes calldata, uint256) external returns (bytes memory);
+}
+
+interface IHasWards {
+    function wards(address) external view returns (uint256);
+}
+
+interface IHasProxy {
+    function proxy() external view returns (address);
 }

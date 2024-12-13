@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // import everything that DssDeploy imports
 import "dss-deploy/DssDeploy.sol";
+import {GovActions} from "dss-deploy/govActions.sol";
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSTest} from "ds-test/test.sol";
 import {DSToken} from "ds-token/token.sol";
@@ -23,7 +24,6 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 
 // --- custom code ---
-import {DssProxy} from "./lib/DssProxy.sol";
 import {DSRoles} from "./lib/Roles.sol";
 import {ChainLog} from "../test/helpers/ChainLog.sol";
 
@@ -34,6 +34,7 @@ import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
 import {PHTDeployConfig, PHTDeployCollateralConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
+import {ProxyActions} from "./helpers/ProxyActions.sol";
 
 interface IThingAdmin {
     // --- Administration ---
@@ -67,12 +68,13 @@ interface PipLike {
 struct PHTDeployResult {
     // --- Auth ---
     address authority;
-    address dssProxy;
     address dssProxyActions;
+    address proxyActions;
     address dssCdpManager;
     address dsrManager;
     address gov;
     address ilkRegistry;
+    address pause;
     // --- MCD ---
     address vat;
     address jug;
@@ -98,11 +100,11 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is DssDeploy {
-    DssProxy dssProxy;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
     DsrManager dsrManager;
-
+    ProxyActions proxyActions;
+    GovActions govActions;
     DSToken gov;
     ChainlinkPip pipPHP;
     ChainlinkPip pipUSDT;
@@ -134,6 +136,7 @@ contract PHTDeploy is DssDeploy {
     uint8 constant ROLE_GOV_ADD_COLLATERAL = 10;
 
     uint8 constant ROLE_CAN_PLOT = 11;
+    uint8 constant ROLE_CAN_EXEC = 12;
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -174,7 +177,8 @@ contract PHTDeploy is DssDeploy {
             result.esm = address(esm);
 
             result.dssProxyActions = address(dssProxyActions);
-            result.dssProxy = address(dssProxy);
+            result.proxyActions = address(proxyActions);
+            result.pause = address(pause);
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
             result.ilkRegistry = address(ilkRegistry);
@@ -211,7 +215,6 @@ contract PHTDeploy is DssDeploy {
             clog.setAddress("MCD_PSM", address(psm));
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
-            clog.setAddress("MCD_DSS_PROXY", address(dssProxy));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
             clog.setIPFS("");
@@ -279,10 +282,6 @@ contract PHTDeploy is DssDeploy {
         // @TODO set config for production?
         this.deployESM(address(gov), 10);
 
-        dssProxy = new DssProxy(address(this));
-        dssProxy.setAuthority(_authority);
-        dssProxy.setOwner(_c.authorityOwner);
-
         vat = this.vat();
         jug = this.jug();
         vow = this.vow();
@@ -300,6 +299,8 @@ contract PHTDeploy is DssDeploy {
 
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
+        govActions = new GovActions();
+        proxyActions = new ProxyActions(address(pause), address(govActions));
         dssCdpManager = new DssCdpManager(address(vat));
         dsrManager = new DsrManager(address(pot), address(daiJoin));
 
@@ -329,12 +330,19 @@ contract PHTDeploy is DssDeploy {
         ilkRegistry.rely(address(collateralHelper));
         jug.rely(address(collateralHelper));
 
+        DSRoles(address(authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
         DSRoles(address(authority)).setRoleCapability(
             ROLE_CAN_PLOT,
             address(this.pause()),
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)")),
             true
         );
+        // DSRoles(address(authority)).setRoleCapability(
+        //     ROLE_CAN_EXEC,
+        //     address(this.pause().proxy()),
+        //     bytes4(keccak256("exec(address,bytes32,bytes,uint256)")),
+        //     true
+        // );
 
         DSRoles(address(authority)).setRoleCapability(
             ROLE_GOV_ADD_COLLATERAL,
