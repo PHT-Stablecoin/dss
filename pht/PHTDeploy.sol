@@ -23,12 +23,7 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 
 // --- custom code ---
-import {GovActions} from "../test/helpers/govActions.sol";
 import {DSRoles} from "./lib/Roles.sol";
-import {FakeUser} from "../test/helpers/FakeUser.sol";
-import {MockGuard} from "../test/helpers/MockGuard.sol";
-import {ProxyActions} from "../test/helpers/ProxyActions.sol";
-import {XINF} from "../test/helpers/XINF.sol";
 import {ChainLog} from "../test/helpers/ChainLog.sol";
 
 // Chainlink
@@ -71,7 +66,6 @@ interface PipLike {
 struct PHTDeployResult {
     // --- Auth ---
     address authority;
-    address proxyActions;
     address dssProxyActions;
     address dssCdpManager;
     address dsrManager;
@@ -102,7 +96,6 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is DssDeploy {
-    ProxyActions proxyActions;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
     DsrManager dsrManager;
@@ -172,7 +165,6 @@ contract PHTDeploy is DssDeploy {
             result.end = address(end);
             result.esm = address(esm);
 
-            result.proxyActions = address(proxyActions);
             result.dssProxyActions = address(dssProxyActions);
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
@@ -209,7 +201,6 @@ contract PHTDeploy is DssDeploy {
             // Custom
             clog.setAddress("MCD_PSM", address(psm));
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
-            clog.setAddress("MCD_PROXY_ACTIONS", address(proxyActions));
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
@@ -293,9 +284,6 @@ contract PHTDeploy is DssDeploy {
         end = this.end();
         esm = this.esm();
 
-        // @TODO GovActions
-        proxyActions = new ProxyActions(address(this.pause()), address(new GovActions()));
-
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
         dssCdpManager = new DssCdpManager(address(vat));
@@ -327,7 +315,6 @@ contract PHTDeploy is DssDeploy {
         ilkRegistry.rely(address(collateralHelper));
         jug.rely(address(collateralHelper));
 
-        DSRoles(address(authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
         DSRoles(address(authority)).setRoleCapability(
             ROLE_CAN_PLOT,
             address(this.pause()),
@@ -351,12 +338,12 @@ contract PHTDeploy is DssDeploy {
 
         {
             // Set Liquidation/Auction Rules (Dog)
-            proxyActions.file(address(dog), "Hole", _c.dogHoleRad * RAD); // Set global limit to 10 million DAI (RAD units)
+            dog.file("Hole", _c.dogHoleRad * RAD); // Set global limit to 10 million DAI (RAD units)
             // Set Params for debt ceiling
-            proxyActions.file(address(vat), bytes32("Line"), uint(_c.vatLineRad * RAD)); // 10M PHT
+            vat.file("Line", uint(_c.vatLineRad * RAD)); // 10M PHT
             // Set Global Base Fee
 
-            proxyActions.file(address(jug), "base", _c.jugBase); // 0.00000006279% => 2% base global fee
+            jug.file("base", _c.jugBase); // 0.00000006279% => 2% base global fee
 
             /// Run initial drip
             // jug.drip("USDT-A");
