@@ -2,7 +2,6 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/console.sol";
-
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -160,6 +159,12 @@ contract PHTDeploy is DssDeploy {
         // release authority owner
         DSRoles(address(authority)).setOwner(_c.authorityOwner);
 
+        // TODO: Release
+        // dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
+        // dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
+        // dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
+        // testReleasedAuth();
+
         {
             result.vat = address(vat);
             result.jug = address(jug);
@@ -186,12 +191,6 @@ contract PHTDeploy is DssDeploy {
             result.joinFeedFactory = address(joinFeedFactory);
             result.collateralHelper = address(collateralHelper);
         }
-
-        // TODO: Release Auth
-        // dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
-        // dssDeploy.releaseAuthClip("PHP-A", address(dssDeploy));
-        // dssDeploy.releaseAuthClip("USDT-A", address(dssDeploy));
-        // testReleasedAuth();
 
         // ChainLog
         {
