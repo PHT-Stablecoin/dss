@@ -7,7 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // import everything that DssDeploy imports
-import "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
+import "dss-deploy/DssDeploy.sol";
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSTest} from "ds-test/test.sol";
 import {DSToken} from "ds-token/token.sol";
@@ -23,6 +23,7 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 
 // --- custom code ---
+import {DssProxy} from "./lib/DssProxy.sol";
 import {DSRoles} from "./lib/Roles.sol";
 import {ChainLog} from "../test/helpers/ChainLog.sol";
 
@@ -66,6 +67,7 @@ interface PipLike {
 struct PHTDeployResult {
     // --- Auth ---
     address authority;
+    address dssProxy;
     address dssProxyActions;
     address dssCdpManager;
     address dsrManager;
@@ -96,6 +98,7 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is DssDeploy {
+    DssProxy dssProxy;
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
     DsrManager dsrManager;
@@ -138,11 +141,16 @@ contract PHTDeploy is DssDeploy {
     uint256 constant RAD = 10 ** 45;
 
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory) {
+        require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
+        require(_c.authorityOwner != address(0), "authorityOwner required");
+
+        // @TODO add MkrAuthority makerdao/mkr-authority/src/MkrAuthority.sol
+
         PHTDeployResult memory result;
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         result.gov = address(deployGov(_c.govTokenSymbol));
         deployFabs();
-        deployKeepAuth(_c);
+        deployKeepAuth(_c, result.authority);
 
         // release auth
         this.releaseAuth();
@@ -166,6 +174,7 @@ contract PHTDeploy is DssDeploy {
             result.esm = address(esm);
 
             result.dssProxyActions = address(dssProxyActions);
+            result.dssProxy = address(dssProxy);
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
             result.ilkRegistry = address(ilkRegistry);
@@ -202,6 +211,7 @@ contract PHTDeploy is DssDeploy {
             clog.setAddress("MCD_PSM", address(psm));
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
+            clog.setAddress("MCD_DSS_PROXY", address(dssProxy));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
             clog.setAddress("MCD_PROXY_DSR_MANAGER", address(dsrManager));
             clog.setIPFS("");
@@ -256,7 +266,7 @@ contract PHTDeploy is DssDeploy {
         return gov;
     }
 
-    function deployKeepAuth(PHTDeployConfig memory _c) public {
+    function deployKeepAuth(PHTDeployConfig memory _c, address _authority) public {
         this.deployVat();
         this.deployDai(chainId());
         this.deployTaxation();
@@ -264,10 +274,14 @@ contract PHTDeploy is DssDeploy {
         this.deployLiquidator();
         this.deployEnd();
         // @TODO set pauseDelay to non-zero?
-        this.deployPause(0, address(authority));
+        this.deployPause(0, _authority);
 
         // @TODO set config for production?
         this.deployESM(address(gov), 10);
+
+        dssProxy = new DssProxy(address(this));
+        dssProxy.setAuthority(_authority);
+        dssProxy.setOwner(_c.authorityOwner);
 
         vat = this.vat();
         jug = this.jug();

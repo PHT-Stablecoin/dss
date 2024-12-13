@@ -14,7 +14,7 @@ import {Clipper} from "dss/clip.sol";
 import {End} from "dss/end.sol";
 import {ESM} from "esm/ESM.sol";
 
-import {CalcFab, ClipFab} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
+import {CalcFab, ClipFab} from "dss-deploy/DssDeploy.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
