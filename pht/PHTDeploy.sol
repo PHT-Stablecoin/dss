@@ -308,7 +308,7 @@ contract PHTDeploy is DssDeploy {
 
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
-        ilkRegistry.rely(address(this));
+        ilkRegistry.rely(address(pause.proxy()));
 
         // Setup CollateralHelper
         collateralHelper = new PHTCollateralHelper(
@@ -353,8 +353,15 @@ contract PHTDeploy is DssDeploy {
         uint256 l = _c.collateralConfigs.length;
         for (uint256 i = 0; i < l; i++) {
             PHTDeployCollateralConfig memory cc = _c.collateralConfigs[i];
+            // @TODO: ensure that pause.proxy() makes sense as the owner here
             (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) = collateralHelper
-                .addCollateral(address(this), IlkRegistry(cc.ilkRegistry), cc.ilkParams, cc.tokenParams, cc.feedParams);
+                .addCollateral(
+                    address(pause.proxy()),
+                    IlkRegistry(cc.ilkRegistry),
+                    cc.ilkParams,
+                    cc.tokenParams,
+                    cc.feedParams
+                );
         }
 
         {

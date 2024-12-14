@@ -16,6 +16,19 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
 
     function run() public {
         vm.startBroadcast();
+
+        console.log("[PHTDeploymentScript] starting...");
+        console.log("[PHTDeploymentScript] msg.sender \t", msg.sender);
+        console.log("[PHTDeploymentScript] address(this) \t", address(this));
+        console.log("[PHTDeploymentScript] chainId \t", chainId());
+        console.log("[PHTDeploymentScript] block.timestamp ", block.timestamp);
+        console.log("[PHTDeploymentScript] block.number \t", block.number);
+        console.log(
+            '[PHTDeploymentScript] \x1b[0m\x1b[33mNOTE: can ignore the below warning \n\t\t\t"Script [...] which does not contains any code." \x1b[1m\n\t\t\tif the address matches:',
+            address(this),
+            "\x1b[0m"
+        );
+
         PHTDeployCollateralConfig[] memory collateralConfigs = new PHTDeployCollateralConfig[](0);
         PHTDeployResult memory r = this.deploy(
             PHTDeployConfig({
