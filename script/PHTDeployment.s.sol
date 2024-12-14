@@ -38,6 +38,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             "\x1b[0m"
         );
 
+
         // @TODO move this to a per-chain json
         PHTDeployResult memory res = deploy(
             PHTDeployConfig({
@@ -62,7 +63,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
 
         // @TODO move this to a per-chain json as global config above
         (address join, , address token, ) = h.addCollateral(
-            address(pause.proxy()),
+            address(dssDeploy.pause().proxy()),
             res.ilkRegistry,
             PHTCollateralHelper.IlkParams({
                 ilk: ILK_NAME,
@@ -172,8 +173,8 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         artifacts.serialize("clog", r.clog);
 
         // --- Factories ---
-        artifacts.serialize("feedFactory", r.feedFactory);
-        artifacts.serialize("joinFeedFactory", r.joinFeedFactory);
+        artifacts.serialize("priceFeedFactory", r.feedFactory);
+        artifacts.serialize("priceJoinFeedFactory", r.joinFeedFactory);
 
         // --- Helpers ----
         string memory json = artifacts.serialize("collateralHelper", r.collateralHelper);

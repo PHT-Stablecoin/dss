@@ -7,7 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // import everything that DssDeploy imports
-import "./helpers/DssDeploy.sol";
+import "dss-deploy/DssDeploy.sol";
 import {GovActions} from "dss-deploy/govActions.sol";
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSTest} from "ds-test/test.sol";
@@ -32,9 +32,9 @@ import {ChainLog} from "../test/helpers/ChainLog.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
-import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
+import {TokenFactory} from "./factory/TokenFactory.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
-import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
+import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "./PHTCollateralHelper.sol";
 import {ProxyActions} from "./helpers/ProxyActions.sol";
 
 interface IThingAdmin {
@@ -104,7 +104,9 @@ struct PHTDeployResult {
     address collateralHelper;
 }
 
-contract PHTDeploy is DssDeploy, StdCheats {
+contract PHTDeploy is StdCheats {
+
+    DssDeploy dssDeploy;
     DssProxyActions dssProxyActions;
     DssProxyActionsEnd dssProxyActionsEnd;
     DssProxyActionsDsr dssProxyActionsDsr;
@@ -116,6 +118,10 @@ contract PHTDeploy is DssDeploy, StdCheats {
     MkrAuthority mkrAuthority;
     PriceFeedFactory feedFactory;
     PriceJoinFeedFactory joinFeedFactory;
+    GemJoinFab gemJoinFab;
+    GemJoin5Fab gemJoin5Fab;
+    TokenFactory tokenFactory;
+
     PHTCollateralHelper collateralHelper;
 
     ChainLog clog;
@@ -134,17 +140,18 @@ contract PHTDeploy is DssDeploy, StdCheats {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
-    function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory) {
+    function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory result) {
         require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
         require(_c.authorityOwner != address(0), "authorityOwner required");
 
         // @TODO add MkrAuthority makerdao/mkr-authority/src/MkrAuthority.sol
 
-        PHTDeployResult memory result;
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
 
         // --- Fabs ---
+        dssDeploy = new DssDeploy();
+
         deployFabs();
         deployKeepAuth(_c, result.authority);
         // after pause is deployed we can now set perms on MkrAuthority and GOV token
@@ -153,9 +160,9 @@ contract PHTDeploy is DssDeploy, StdCheats {
         result.dssProxyRegistry = deployDssProxyRegistry();
 
         // release auth
-        releaseAuth();
+        dssDeploy.releaseAuth();
         // release authority owner
-        DSRoles(address(authority)).setOwner(_c.authorityOwner);
+        DSRoles(address(result.authority)).setOwner(_c.authorityOwner);
 
         // TODO: Release
         // dssDeploy.releaseAuthFlip("ETH", address(dssDeploy));
@@ -164,26 +171,26 @@ contract PHTDeploy is DssDeploy, StdCheats {
         // testReleasedAuth();
 
         {
-            result.vat = address(vat);
-            result.jug = address(jug);
-            result.vow = address(vow);
-            result.cat = address(cat);
-            result.dog = address(dog);
-            result.flap = address(flap);
-            result.flop = address(flop);
-            result.dai = address(dai);
-            result.daiJoin = address(daiJoin);
-            result.spotter = address(spotter);
-            result.pot = address(pot);
-            result.cure = address(cure);
-            result.end = address(end);
-            result.esm = address(esm);
+            result.vat = address(dssDeploy.vat());
+            result.jug = address(dssDeploy.jug());
+            result.vow = address(dssDeploy.vow());
+            result.cat = address(dssDeploy.cat());
+            result.dog = address(dssDeploy.dog());
+            result.flap = address(dssDeploy.flap());
+            result.flop = address(dssDeploy.flop());
+            result.dai = address(dssDeploy.dai());
+            result.daiJoin = address(dssDeploy.daiJoin());
+            result.spotter = address(dssDeploy.spotter());
+            result.pot = address(dssDeploy.pot());
+            result.cure = address(dssDeploy.cure());
+            result.end = address(dssDeploy.end());
+            result.esm = address(dssDeploy.esm());
+            result.pause = address(dssDeploy.pause());
 
             result.dssProxyActions = address(dssProxyActions);
             result.dssProxyActionsEnd = address(dssProxyActionsEnd);
             result.dssProxyActionsDsr = address(dssProxyActionsDsr);
             result.proxyActions = address(proxyActions);
-            result.pause = address(pause);
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
             result.ilkRegistry = address(ilkRegistry);
@@ -195,20 +202,20 @@ contract PHTDeploy is DssDeploy, StdCheats {
         // ChainLog
         {
             clog = new ChainLog();
-            clog.setAddress("MCD_VAT", address(vat));
-            clog.setAddress("MCD_JUG", address(jug));
-            clog.setAddress("MCD_VOW", address(vow));
-            clog.setAddress("MCD_CAT", address(cat));
-            clog.setAddress("MCD_DOG", address(dog));
-            clog.setAddress("MCD_FLAP", address(flap));
-            clog.setAddress("MCD_FLOP", address(flop));
-            clog.setAddress("MCD_DAI", address(dai));
-            clog.setAddress("MCD_DAIJOIN", address(daiJoin));
-            clog.setAddress("MCD_SPOTTER", address(spotter));
-            clog.setAddress("MCD_POT", address(pot));
-            clog.setAddress("MCD_CURE", address(cure));
-            clog.setAddress("MCD_END", address(end));
-            clog.setAddress("MCD_ESM", address(esm));
+            clog.setAddress("MCD_VAT", result.vat);
+            clog.setAddress("MCD_JUG", result.jug);
+            clog.setAddress("MCD_VOW", result.vow);
+            clog.setAddress("MCD_CAT", result.cat);
+            clog.setAddress("MCD_DOG", result.dog);
+            clog.setAddress("MCD_FLAP", result.flap);
+            clog.setAddress("MCD_FLOP", result.flop);
+            clog.setAddress("MCD_DAI", result.dai);
+            clog.setAddress("MCD_DAIJOIN", result.daiJoin);
+            clog.setAddress("MCD_SPOTTER", result.spotter);
+            clog.setAddress("MCD_POT", result.pot);
+            clog.setAddress("MCD_CURE", result.cure);
+            clog.setAddress("MCD_END", result.end);
+            clog.setAddress("MCD_ESM", result.esm);
 
             // Custom
             // clog.setAddress("MCD_PSM", address(psm));
@@ -224,7 +231,7 @@ contract PHTDeploy is DssDeploy, StdCheats {
         return result;
     }
 
-    function deployAuthority(address[] memory _rootUsers) private returns (DSRoles) {
+    function deployAuthority(address[] memory _rootUsers) private returns (DSRoles authority) {
         authority = new DSRoles();
         uint256 l = _rootUsers.length;
         require(l > 0);
@@ -233,13 +240,23 @@ contract PHTDeploy is DssDeploy, StdCheats {
             DSRoles(address(authority)).setRootUser(_rootUsers[i], true);
         }
 
+        DSRoles(address(authority)).setRootUser(address(this), true);
+
         return DSRoles(address(authority));
     }
 
     function deployFabs() private {
-        addFabs1(new VatFab(), new JugFab(), new VowFab(), new CatFab(), new DogFab(), new DaiFab(), new DaiJoinFab());
+        dssDeploy.addFabs1(
+            new VatFab(),
+            new JugFab(),
+            new VowFab(),
+            new CatFab(),
+            new DogFab(),
+            new DaiFab(),
+            new DaiJoinFab()
+        );
 
-        addFabs2(
+        dssDeploy.addFabs2(
             new FlapFab(),
             new FlopFab(),
             new FlipFab(),
@@ -278,111 +295,109 @@ contract PHTDeploy is DssDeploy, StdCheats {
         // sethSend "$GOV_GUARD" 'setRoot(address)' "$MCD_PAUSE_PROXY"
 
         // Allow Flop to mint Gov token
-        mkrAuthority.rely(address(flop));
+        mkrAuthority.rely(address(dssDeploy.flop()));
         // Set root to MCD_PAUSE_PROXY
-        mkrAuthority.setRoot(address(pause.proxy()));
+        mkrAuthority.setRoot(address(dssDeploy.pause().proxy()));
         // Set ownership to MCD_PAUSE_PROXY
-        gov.setOwner(address(pause.proxy()));
+        gov.setOwner(address(dssDeploy.pause().proxy()));
     }
 
     function deployKeepAuth(PHTDeployConfig memory _c, address _authority) public {
         // @see https://github.com/makerdao/dss-deploy-scripts/blob/7ca0b4a6469eecb08aebb5478c47a9533eeeeb1b/libexec/dss/deploy-core
         // # Deploy VAT
         // sethSend "$MCD_DEPLOY" "deployVat()"
-        deployVat();
+        dssDeploy.deployVat();
         // # Deploy MCD
         // sethSend "$MCD_DEPLOY" "deployDai(uint256)" "$(seth rpc net_version)"
-        deployDai(chainId());
+        dssDeploy.deployDai(chainId());
         // # Deploy Taxation
         // sethSend "$MCD_DEPLOY" "deployTaxation()"
-        deployTaxation();
+        dssDeploy.deployTaxation();
         // # Deploy Auctions
         // sethSend "$MCD_DEPLOY" "deployAuctions(address)" "$MCD_GOV"
-        deployAuctions(address(gov));
+        dssDeploy.deployAuctions(address(gov));
         // # Deploy Liquidation
         // sethSend "$MCD_DEPLOY" "deployLiquidator()"
-        deployLiquidator();
+        dssDeploy.deployLiquidator();
         // # Deploy End
-        // sethSend "$MCD_DEPLOY" "deployEnd()"
-        deployEnd();
+        // sethSend "$MCD_DEPLOY" "dssDeploy.()"
+        dssDeploy.deployEnd();
         // # Deploy pause
         // MCD_PAUSE_DELAY=${MCD_PAUSE_DELAY:-"3600"}
         // sethSend "$MCD_DEPLOY" "deployPause(uint256,address)" "$(seth --to-uint256 "$MCD_PAUSE_DELAY")" "$MCD_ADM"
         // @TODO set pauseDelay to non-zero?
-        deployPause(0, _authority);
+        dssDeploy.deployPause(0, _authority);
         // # Deploy ESM
         // MCD_ESM_MIN=${MCD_ESM_MIN:-"$(seth --to-uint256 "$(seth --to-wei 50000 "eth")")"}
         // sethSend "$MCD_DEPLOY" "deployESM(address,uint256)" "$MCD_GOV" "$MCD_ESM_MIN"
         // @TODO set config for production?
-        deployESM(address(gov), 10);
+        dssDeploy.deployESM(address(gov), 10);
 
-        vat = this.vat();
-        jug = this.jug();
-        vow = this.vow();
-        cat = this.cat();
-        dog = this.dog();
-        flap = this.flap();
-        flop = this.flop();
-        dai = this.dai();
-        daiJoin = this.daiJoin();
-        spotter = this.spotter();
-        pot = this.pot();
-        cure = this.cure();
-        end = this.end();
-        esm = this.esm();
-
-        autoline = new DssAutoLine(address(vat));
+        autoline = new DssAutoLine(address(dssDeploy.vat()));
         dssProxyActions = new DssProxyActions();
         dssProxyActionsEnd = new DssProxyActionsEnd();
         dssProxyActionsDsr = new DssProxyActionsDsr();
 
         govActions = new GovActions();
-        proxyActions = new ProxyActions(address(pause), address(govActions));
-        dssCdpManager = new DssCdpManager(address(vat));
-        dsrManager = new DsrManager(address(pot), address(daiJoin));
+        proxyActions = new ProxyActions(address(dssDeploy.pause()), address(govActions));
+        dssCdpManager = new DssCdpManager(address(dssDeploy.vat()));
+        dsrManager = new DsrManager(address(dssDeploy.pot()), address(dssDeploy.daiJoin()));
 
+        tokenFactory = new TokenFactory();
         feedFactory = new PriceFeedFactory();
         joinFeedFactory = new PriceJoinFeedFactory();
+        gemJoinFab = new GemJoinFab();
+        gemJoin5Fab = new GemJoin5Fab();
 
         // SetupIlkRegistry
-        ilkRegistry = new IlkRegistry(address(vat), address(dog), address(cat), address(spotter));
-        ilkRegistry.rely(address(pause.proxy()));
+        ilkRegistry = new IlkRegistry(address(dssDeploy.vat()), address(dssDeploy.dog()), address(dssDeploy.cat()), address(dssDeploy.spotter()));
+        ilkRegistry.rely(address(dssDeploy.pause().proxy()));
 
-        // Setup CollateralHelper
-        collateralHelper = new PHTCollateralHelper(
-            address(vat),
-            spotter,
-            address(dog),
-            vow,
-            jug,
-            end,
-            esm,
-            pause,
-            this.calcFab(),
-            this.clipFab()
-        );
-        console.log("[PHTDeploy] collateralHelper \t", address(collateralHelper));
-        vat.rely(address(collateralHelper));
-        spotter.rely(address(collateralHelper));
-        dog.rely(address(collateralHelper));
-        ilkRegistry.rely(address(collateralHelper));
-        jug.rely(address(collateralHelper));
-
-        DSRoles(address(authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
-        DSRoles(address(authority)).setRoleCapability(
+        DSRoles(address(_authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
+        DSRoles(address(_authority)).setRoleCapability(
             ROLE_CAN_PLOT,
-            address(this.pause()),
+            address(dssDeploy.pause()),
             bytes4(keccak256("plot(address,bytes32,bytes,uint256)")),
             true
         );
-        // DSRoles(address(authority)).setRoleCapability(
+
+        {
+            // Setup CollateralHelper
+            collateralHelper = new PHTCollateralHelper(
+                dssDeploy.vat(),
+                dssDeploy.spotter(),
+                dssDeploy.dog(),
+                dssDeploy.vow(),
+                dssDeploy.jug(),
+                dssDeploy.end(),
+                dssDeploy.esm(),
+                dssDeploy.pause()
+            );
+
+            collateralHelper.setFabs(
+                dssDeploy.calcFab(),
+                dssDeploy.clipFab(),
+                tokenFactory,
+                gemJoinFab,
+                gemJoin5Fab
+            );
+
+            proxyActions.rely(address(dssDeploy.vat()),     address(collateralHelper));
+            proxyActions.rely(address(dssDeploy.spotter()), address(collateralHelper));
+            proxyActions.rely(address(dssDeploy.dog()),     address(collateralHelper));
+            proxyActions.rely(address(ilkRegistry),         address(collateralHelper));
+            proxyActions.rely(address(dssDeploy.jug()),     address(collateralHelper));
+        }
+
+
+        // DSRoles(address(_authority)).setRoleCapability(
         //     ROLE_CAN_EXEC,
-        //     address(this.pause().proxy()),
+        //     address(pause().proxy()),
         //     bytes4(keccak256("exec(address,bytes32,bytes,uint256)")),
         //     true
         // );
 
-        DSRoles(address(authority)).setRoleCapability(
+        DSRoles(address(_authority)).setRoleCapability(
             ROLE_GOV_ADD_COLLATERAL,
             address(collateralHelper),
             collateralHelper.addCollateral.selector,
@@ -391,12 +406,11 @@ contract PHTDeploy is DssDeploy, StdCheats {
 
         {
             // Set Liquidation/Auction Rules (Dog)
-            dog.file("Hole", _c.dogHoleRad * RAD); // Set global limit to 10 million DAI (RAD units)
+            proxyActions.file(address(dssDeploy.dog()), "Hole", _c.dogHoleRad * RAD); // Set global limit to 10 million DAI (RAD units)
             // Set Params for debt ceiling
-            vat.file("Line", uint(_c.vatLineRad * RAD)); // 10M PHT
+            proxyActions.file(address(dssDeploy.vat()), "Line", uint(_c.vatLineRad * RAD)); // 10M PHT
             // Set Global Base Fee
-
-            jug.file("base", _c.jugBase); // 0.00000006279% => 2% base global fee
+            proxyActions.file(address(dssDeploy.jug()), "base", _c.jugBase); // 0.00000006279% => 2% base global fee
 
             /// Run initial drip
             // jug.drip("USDT-A");
@@ -410,15 +424,15 @@ contract PHTDeploy is DssDeploy, StdCheats {
         // psm = new DssPsm(address(usdtJoin), address(daiJoin), address(vow));
 
         {
-            DSRoles(address(authority)).setUserRole(address(flop), ROLE_GOV_MINT_BURN, true);
-            DSRoles(address(authority)).setUserRole(address(flap), ROLE_GOV_MINT_BURN, true);
-            DSRoles(address(authority)).setRoleCapability(
+            DSRoles(address(_authority)).setUserRole(address(dssDeploy.flop()), ROLE_GOV_MINT_BURN, true);
+            DSRoles(address(_authority)).setUserRole(address(dssDeploy.flap()), ROLE_GOV_MINT_BURN, true);
+            DSRoles(address(_authority)).setRoleCapability(
                 ROLE_GOV_MINT_BURN,
                 address(gov),
                 bytes4(keccak256("mint(address,uint256)")),
                 true
             );
-            DSRoles(address(authority)).setRoleCapability(
+            DSRoles(address(_authority)).setRoleCapability(
                 ROLE_GOV_MINT_BURN,
                 address(gov),
                 bytes4(keccak256("burn(address,uint256)")),

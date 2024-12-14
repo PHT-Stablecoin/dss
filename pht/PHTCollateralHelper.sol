@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSPause} from "ds-pause/pause.sol";
 
+import "dss-deploy/DssDeploy.sol";
 import {Jug} from "dss/jug.sol";
 import {Vow} from "dss/vow.sol";
 import {Cat} from "dss/cat.sol";
@@ -22,11 +23,11 @@ import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 
+import {TokenFactory} from "./factory/TokenFactory.sol";
+
+
 interface TokenLike {
     function decimals() external returns (uint8);
-}
-interface FactoryLike {
-    function create(bytes memory payload) external returns (address);
 }
 
 interface IlkRegistryLike {
@@ -34,44 +35,38 @@ interface IlkRegistryLike {
     function add(address join) external;
 }
 
+contract GemJoinFab {
+    function newJoin(address owner, address vat, bytes32 ilk, address token) public returns (GemJoin join) {
+        join = new GemJoin(vat, ilk, token);
+        join.rely(owner);
+        join.deny(address(this));
+    }
+}
+
+contract GemJoin5Fab {
+    function newJoin(address owner, address vat, bytes32 ilk, address token) public returns (GemJoin5 join) {
+        join = new GemJoin5(vat, ilk, token);
+        join.rely(owner);
+        join.deny(address(this));
+    }
+}
+
 contract PHTCollateralHelper is DSAuth {
-    address public vat;
+    Vat public vat;
     Spotter public spotter;
-    address public dog;
+    Dog public dog;
     Vow public vow;
     Jug public jug;
     End public end;
     ESM public esm;
     DSPause public pause;
 
-    address public calcFab;
-    address public clipFab;
+    CalcFab calcFab;
+    ClipFab clipFab;
+    TokenFactory tokenFab;
+    GemJoinFab gemJoinFab;
+    GemJoin5Fab gemJoin5Fab;
 
-    constructor(
-        address vat_,
-        Spotter spotter_,
-        address dog_,
-        Vow vow_,
-        Jug jug_,
-        End end_,
-        ESM esm_,
-        DSPause pause_,
-        address calcFab_,
-        address clipFab_
-    ) public {
-        vat = vat_;
-        spotter = spotter_;
-        dog = dog_;
-        vow = vow_;
-        jug = jug_;
-        end = end_;
-        esm = esm_;
-        pause = pause_;
-        calcFab = calcFab_;
-        clipFab = clipFab_;
-
-        authority = DSAuthority(pause.authority());
-    }
 
     struct TokenParams {
         address token; // optional
@@ -114,6 +109,44 @@ contract PHTCollateralHelper is DSAuth {
         uint256 duty; // Jug: ilk fee [RAY]
     }
 
+    constructor(
+        Vat vat_,
+        Spotter spotter_,
+        Dog dog_,
+        Vow vow_,
+        Jug jug_,
+        End end_,
+        ESM esm_,
+        DSPause pause_
+    ) public {
+        vat = vat_;
+        spotter = spotter_;
+        dog = dog_;
+        vow = vow_;
+        jug = jug_;
+        end = end_;
+        esm = esm_;
+        pause = pause_;
+        authority = DSAuthority(pause.authority());
+
+    }
+
+    function setFabs(
+        CalcFab calcFab_,
+        ClipFab clipFab_,
+        TokenFactory tokenFab_,
+        GemJoinFab gemJoinFab_,
+        GemJoin5Fab gemJoin5Fab_
+    ) auth public {
+        require(address(calcFab) == address(0), "pht-collateral-helper-fabs-init");
+        calcFab = calcFab_;
+        clipFab = clipFab_;
+        tokenFab = tokenFab_;
+        gemJoinFab = gemJoinFab_;
+        gemJoin5Fab = gemJoin5Fab_;
+    }
+
+
     function deployCollateralClip(
         bytes32 ilk,
         address join,
@@ -128,21 +161,21 @@ contract PHTCollateralHelper is DSAuth {
         require(address(pause) != address(0), "Missing previous step");
 
         // Deploy
-        clip = ClipFabLike(clipFab).newClip(address(this), address(vat), address(spotter), address(dog), ilk);
+        clip = clipFab.newClip(address(this), address(vat), address(spotter), address(dog), ilk);
         spotter.file(ilk, "pip", pip); // Set pip
 
         // Internal references set up
-        DogLike(dog).file(ilk, "clip", address(clip));
+        dog.file(ilk, "clip", address(clip));
         clip.file("vow", address(vow));
         clip.file("calc", calc);
 
-        VatLinke(vat).init(ilk);
+        vat.init(ilk);
         jug.init(ilk);
 
         // Internal auth
-        VatLinke(vat).rely(join);
-        VatLinke(vat).rely(address(clip));
-        DogLike(dog).rely(address(clip));
+        vat.rely(join);
+        vat.rely(address(clip));
+        dog.rely(address(clip));
         clip.rely(address(dog));
         clip.rely(address(end));
         clip.rely(address(esm));
@@ -159,11 +192,11 @@ contract PHTCollateralHelper is DSAuth {
     ) public auth returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         // require(tokenParams.decimals <= 18, "token-factory-max-decimals");
         // @TODO why not extend DSAuth instead?
-        require(IlkRegistryLike(ilkRegistry).wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+        // require(IlkRegistryLike(ilkRegistry).wards(address(this)) == 1, "pht-collateral-helper-ilkreg-not-authorized");
 
         _token = tokenParams.token;
         if (_token == address(0)) {
-            ConfigurableDSToken newToken = new ConfigurableDSToken(
+            ConfigurableDSToken newToken = tokenFab.newToken(
                 tokenParams.symbol,
                 tokenParams.name,
                 tokenParams.decimals,
@@ -200,35 +233,45 @@ contract PHTCollateralHelper is DSAuth {
 
         // @TODO deny this ward in GemJoin(s)
         if (tokenParams.decimals < 18) {
-            _join = address(new GemJoin5(address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoin5Fab.newJoin(owner,address(vat), ilkParams.ilk, _token));
         } else {
-            _join = address(new GemJoin(address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoinFab.newJoin(owner,address(vat), ilkParams.ilk, _token));
         }
 
-        LinearDecrease _calc = CalcFabLike(calcFab).newLinearDecrease(address(this));
-        _calc.file(bytes32("tau"), ilkParams.tau);
-        _calc.rely(owner);
-        _calc.deny(address(this));
+        {
+            LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
+            _calc.file(bytes32("tau"), ilkParams.tau);
+            _calc.rely(owner);
+            _calc.deny(address(this));
 
-        deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
+            deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
+        }
 
-        VatLinke(vat).file(ilkParams.ilk, bytes32("line"), ilkParams.line);
-        VatLinke(vat).file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
-        VatLinke(vat).rely(address(_join));
-        spotter.file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
+        {
+            vat.file(ilkParams.ilk, bytes32("line"), ilkParams.line);
+            vat.file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
+            vat.rely(address(_join));
+            spotter.file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
+        }
 
-        DogLike(dog).file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
-        DogLike(dog).file("Hole", ilkParams.hole + DogLike(dog).Hole()); // Increase global limit
-        DogLike(dog).file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        {
+            dog.file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+            dog.file("Hole", ilkParams.hole + dog.Hole()); // Increase global limit
+            dog.file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        }
 
-        (address clip, , , ) = DogLike(dog).ilks(ilkParams.ilk);
-        Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
+        {
+            (address clip, , , ) = dog.ilks(ilkParams.ilk);
+            Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
+        }
 
-        // Set Ilk Fees
-        jug.file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
-        jug.drip(ilkParams.ilk);
-        IlkRegistryLike(ilkRegistry).add(_join);
-        spotter.poke(ilkParams.ilk);
+        {
+            // Set Ilk Fees
+            jug.file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
+            jug.drip(ilkParams.ilk);
+            IlkRegistryLike(ilkRegistry).add(_join);
+            spotter.poke(ilkParams.ilk);
+        }
     }
 }
 
