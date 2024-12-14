@@ -21,7 +21,7 @@ library PHTCollateralTestLib {
         return
             h.addCollateral(
                 owner,
-                IlkRegistry(res.ilkRegistry),
+                res.ilkRegistry,
                 PHTCollateralHelper.IlkParams({
                     ilk: ilkName,
                     line: uint(5_000_000 * RAD), // Set PHP-A limit to 5 million DAI (RAD units)

@@ -107,29 +107,13 @@ contract PHTDeploy is DssDeploy, StdCheats {
     ProxyActions proxyActions;
     GovActions govActions;
     DSToken gov;
-    ChainlinkPip pipPHP;
-    ChainlinkPip pipUSDT;
 
     PriceFeedFactory feedFactory;
     PriceJoinFeedFactory joinFeedFactory;
-
     PHTCollateralHelper collateralHelper;
-
-    address feedPHP;
-    address feedUSDT;
-
-    DSToken usdt;
-    DSToken php;
-
-    GemJoinLike phpJoin;
-    GemJoinLike usdtJoin;
-
-    Clipper usdtClip;
-    Clipper phpClip;
 
     ChainLog clog;
     DssAutoLine autoline;
-    DssPsm psm;
     IlkRegistry ilkRegistry;
 
     // -- ROLES --
@@ -214,7 +198,7 @@ contract PHTDeploy is DssDeploy, StdCheats {
             clog.setAddress("MCD_ESM", address(esm));
 
             // Custom
-            clog.setAddress("MCD_PSM", address(psm));
+            // clog.setAddress("MCD_PSM", address(psm));
             clog.setAddress("MCD_ILKS", address(ilkRegistry));
             clog.setAddress("MCD_DSS_PROXY_ACTIONS", address(dssProxyActions));
             clog.setAddress("MCD_DSS_PROXY_CDP_MANAGER", address(dssCdpManager));
@@ -326,6 +310,7 @@ contract PHTDeploy is DssDeploy, StdCheats {
             this.calcFab(),
             this.clipFab()
         );
+        console.log("[PHTDeploy] collateralHelper \t", address(collateralHelper));
         vat.rely(address(collateralHelper));
         spotter.rely(address(collateralHelper));
         dog.rely(address(collateralHelper));

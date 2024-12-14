@@ -18,7 +18,6 @@ import {CalcFab, ClipFab} from "dss-deploy/DssDeploy.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
-import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 import {PHTDeploy, PHTDeployResult} from "./PHTDeploy.sol";
 import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
@@ -31,6 +30,11 @@ interface TokenLike {
 }
 interface FactoryLike {
     function create(bytes memory payload) external returns (address);
+}
+
+interface IlkRegistryLike {
+    function wards(address user) external view returns (uint256);
+    function add(address join) external;
 }
 
 contract PHTCollateralHelper is DSAuth {
@@ -151,14 +155,14 @@ contract PHTCollateralHelper is DSAuth {
     function addCollateral(
         // ProxyActions proxyActions,
         address owner,
-        IlkRegistry ilkRegistry,
+        address ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
     ) public auth returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         // require(tokenParams.decimals <= 18, "token-factory-max-decimals");
         // @TODO why not extend DSAuth instead?
-        require(ilkRegistry.wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
+        require(IlkRegistryLike(ilkRegistry).wards(address(this)) == 1, "dss-deploy-ext-ilkreg-not-authorized");
 
         _token = tokenParams.token;
         if (_token == address(0)) {
@@ -226,7 +230,7 @@ contract PHTCollateralHelper is DSAuth {
         // Set Ilk Fees
         jug.file(ilkParams.ilk, "duty", ilkParams.duty); // 6% duty fee;
         jug.drip(ilkParams.ilk);
-        ilkRegistry.add(_join);
+        IlkRegistryLike(ilkRegistry).add(_join);
         spotter.poke(ilkParams.ilk);
     }
 }

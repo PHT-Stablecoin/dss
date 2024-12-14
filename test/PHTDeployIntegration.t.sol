@@ -26,7 +26,7 @@ contract PHTDeployIntegrationTest is Test {
     uint256 constant RAD = 10 ** 45;
 
     // --- Constants ---
-    bytes32 constant ILK_NAME = bytes32("PHT-NEW-ILK-0");
+    bytes32 constant ILK_NAME = bytes32("PHP-A");
 
     address alice; // authority owner
     address eve; // authority root user
