@@ -77,10 +77,11 @@ contract PHTCollateralHelper is DSAuth {
         // FactoryLike factory;
         // bytes payload;
 
-        uint8 decimals; // >=18 Decimals only
-        uint256 maxSupply; // maxSupply = 0 => unlimited supply
         string name;
         string symbol;
+        uint8 decimals;
+        uint256 maxSupply; // maxSupply == 0 => unlimited supply
+        uint256 initialSupply; // initialSupply == 0 => no initial supply
     }
 
     struct FeedParams {
@@ -168,8 +169,9 @@ contract PHTCollateralHelper is DSAuth {
                 tokenParams.maxSupply
             );
 
-            // Minting of test tokens is for development purposes only
-            newToken.mint(msg.sender, tokenParams.maxSupply);
+            if (tokenParams.initialSupply > 0) {
+                newToken.mint(msg.sender, tokenParams.initialSupply);
+            }
 
             newToken.setOwner(owner);
             _token = address(newToken);

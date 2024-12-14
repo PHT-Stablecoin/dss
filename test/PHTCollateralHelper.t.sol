@@ -21,6 +21,8 @@ import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 import {PHTDeployConfig, PHTDeployCollateralConfig} from "../pht/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 
+import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
+
 contract PHTCollateralHelperTest is Test {
     using ArrayHelpers for *;
 
@@ -61,70 +63,51 @@ contract PHTCollateralHelperTest is Test {
         uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
 
         vm.startPrank(eve);
-        _addCollateral();
+        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
+            .addCollateral(res, h, eve);
         vm.stopPrank();
 
+        assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
+        assertEq(IERC20Metadata(token).symbol(), "tstPHP", "token symbol");
+        assertEq(uint256(IERC20Metadata(token).decimals()), 6, "token decimals");
+        // ensure eve received the token balance
+        assertEq(IERC20(token).balanceOf(eve), 1000 * 10 ** 6, "eve should have received the token balance");
         assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef + 1, "[PHTCollateralHelperTest] ilksCount");
         assertEq(bytes32("PHP-A"), IlkRegistry(res.ilkRegistry).list()[ilksCountBef], "[PHTCollateralHelperTest] ilk");
     }
 
     function test_shouldFailWithAuth() public {
         vm.expectRevert("ds-auth-unauthorized");
-        _addCollateral();
+        PHTCollateralTestLib.addCollateral(res, h, alice);
     }
 
     function test_rootCanAddCollateral() public {
         vm.startPrank(eve);
-        _addCollateral();
+        PHTCollateralTestLib.addCollateral(res, h, eve);
         vm.stopPrank();
     }
 
     function test_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
         vm.expectRevert("ds-auth-unauthorized");
-        _addCollateral();
+        PHTCollateralTestLib.addCollateral(res, h, alice);
         vm.stopPrank();
     }
+}
 
-    function _addCollateral()
-        internal
-        returns (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP)
-    {
-        return
-            h.addCollateral(
-                address(this),
-                IlkRegistry(res.ilkRegistry),
-                PHTCollateralHelper.IlkParams({
-                    ilk: "PHP-A",
-                    line: uint(5_000_000 * 10 ** 45), // Set PHP-A limit to 5 million DAI (RAD units)
-                    dust: uint(0),
-                    tau: 1 hours,
-                    mat: uint(1050000000 ether), // Liquidation Ratio (105%),
-                    hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
-                    chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-                    buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                    // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
-                    duty: 1.0000000012436807e27 // => 4%
-                }),
-                PHTCollateralHelper.TokenParams({
-                    token: address(0),
-                    symbol: "tstPHP",
-                    name: "Test PHP",
-                    decimals: 6,
-                    maxSupply: 0
-                }),
-                PHTCollateralHelper.FeedParams({
-                    factory: PriceFeedFactory(res.feedFactory),
-                    joinFactory: PriceJoinFeedFactory(res.joinFeedFactory),
-                    feed: address(0),
-                    decimals: 6,
-                    initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
-                    numeratorFeed: address(0),
-                    invertNumerator: false,
-                    denominatorFeed: address(0),
-                    invertDenominator: false,
-                    feedDescription: ""
-                })
-            );
-    }
+interface IERC20Metadata is IERC20 {
+    /**
+     * @dev Returns the name of the token.
+     */
+    function name() external view returns (string memory);
+
+    /**
+     * @dev Returns the symbol of the token.
+     */
+    function symbol() external view returns (string memory);
+
+    /**
+     * @dev Returns the decimals places of the token.
+     */
+    function decimals() external view returns (uint8);
 }
