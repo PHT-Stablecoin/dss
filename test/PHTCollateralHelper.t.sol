@@ -9,6 +9,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
+import {Jug} from "../src/jug.sol";
 
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {PHTDeploy, PHTDeployResult} from "../pht/PHTDeploy.sol";
@@ -62,20 +63,35 @@ contract PHTCollateralHelperTest is Test {
         h = PHTCollateralHelper(res.collateralHelper);
     }
 
-    function getLastIlkName(address ilkRegistry) internal returns (bytes32) {
+    function geLastIlkName(address ilkRegistry) internal returns (bytes32) {
+        return keccak256(abi.encodePacked(ILK_PREFIX, IlkRegistry(ilkRegistry).count() - 1));
+    }
+
+    function geNextIlkName(address ilkRegistry) internal returns (bytes32) {
         return keccak256(abi.encodePacked(ILK_PREFIX, IlkRegistry(ilkRegistry).count()));
     }
 
     function test_multipleIlks() public {
+        bytes32 prevIlk;
+        uint256 prevIlkDuty;
         vm.startPrank(eve);
-        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
-        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
-        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
-        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        prevIlk = geLastIlkName(res.ilkRegistry);
+        (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
+        assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
+        assertTrue(prevIlk != geNextIlkName(res.ilkRegistry), "prev ilk should not be the same as the next ilk");
+
+        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        prevIlk = geLastIlkName(res.ilkRegistry);
+        (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
+        assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
+
+        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
 
         assertEq(
-            getLastIlkName(res.ilkRegistry),
+            geNextIlkName(res.ilkRegistry),
             keccak256(abi.encodePacked(ILK_PREFIX, uint256(4))),
             "ilk name correct for multiple adds"
         );
@@ -86,7 +102,7 @@ contract PHTCollateralHelperTest is Test {
 
         vm.startPrank(eve);
         (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
-            .addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
+            .addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
@@ -99,17 +115,17 @@ contract PHTCollateralHelperTest is Test {
 
     function test_rootCanAddCollateral() public {
         vm.startPrank(eve);
-        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
     }
 
     function testFail_shouldFailWithAuth() public {
-        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, alice);
+        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, alice);
     }
 
     function testFail_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
-        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, alice);
+        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, alice);
         vm.stopPrank();
     }
 }
