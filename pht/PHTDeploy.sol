@@ -22,6 +22,7 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
+import {MkrAuthority} from "mkr-authority/MkrAuthority.sol";
 
 // --- custom code ---
 import {DSRoles} from "./lib/Roles.sol";
@@ -68,6 +69,7 @@ interface PipLike {
 struct PHTDeployResult {
     // --- Auth ---
     address authority;
+    address mkrAuthority;
     address dssProxyActions;
     address dssProxyRegistry;
     address proxyActions;
@@ -107,7 +109,7 @@ contract PHTDeploy is DssDeploy, StdCheats {
     ProxyActions proxyActions;
     GovActions govActions;
     DSToken gov;
-
+    MkrAuthority mkrAuthority;
     PriceFeedFactory feedFactory;
     PriceJoinFeedFactory joinFeedFactory;
     PHTCollateralHelper collateralHelper;
@@ -136,9 +138,14 @@ contract PHTDeploy is DssDeploy, StdCheats {
 
         PHTDeployResult memory result;
         result.authority = address(deployAuthority(_c.authorityRootUsers));
-        result.gov = address(deployGov(_c.govTokenSymbol));
+        (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
+
+        // --- Fabs ---
         deployFabs();
         deployKeepAuth(_c, result.authority);
+        // after pause is deployed we can now set perms on MkrAuthority and GOV token
+        setGovAndMkrAuthorityPerms();
+
         result.dssProxyRegistry = deployDssProxyRegistry();
 
         // release auth
@@ -249,10 +256,35 @@ contract PHTDeploy is DssDeploy, StdCheats {
         );
     }
 
-    function deployGov(string memory _govSymbol) private returns (DSToken) {
+    function deployGovAndMkrAuthority(string memory _govSymbol) private returns (address, address) {
+        // @see https://github.com/makerdao/dss-deploy-scripts/blob/85c2a6a7046ec618596b47e5259090dad0269a5f/libexec/base-deploy
+        // L134
+        mkrAuthority = new MkrAuthority();
+
+        // GOV token
         gov = new DSToken(_govSymbol);
-        gov.setAuthority(authority);
-        return gov;
+        gov.setAuthority(DSAuthority(address(mkrAuthority)));
+
+        return (address(gov), address(mkrAuthority));
+    }
+
+    function setGovAndMkrAuthorityPerms() private {
+        // @see https://github.com/makerdao/dss-deploy-scripts/blob/85c2a6a7046ec618596b47e5259090dad0269a5f/libexec/base-deploy
+        // # Set GOV_GUARD as authority of MCD_GOV
+        // sethSend "$MCD_GOV" 'setAuthority(address)' "$GOV_GUARD"
+        // # Set ownership to MCD_PAUSE_PROXY
+        // sethSend "$MCD_GOV" 'setOwner(address)' "$MCD_PAUSE_PROXY"
+        // # Allow Flop to mint Gov token
+        // sethSend "$GOV_GUARD" 'rely(address)' "$MCD_FLOP"
+        // # Set root to MCD_PAUSE_PROXY
+        // sethSend "$GOV_GUARD" 'setRoot(address)' "$MCD_PAUSE_PROXY"
+
+        // Allow Flop to mint Gov token
+        mkrAuthority.rely(address(flop));
+        // Set root to MCD_PAUSE_PROXY
+        mkrAuthority.setRoot(address(pause.proxy()));
+        // Set ownership to MCD_PAUSE_PROXY
+        gov.setOwner(address(pause.proxy()));
     }
 
     function deployKeepAuth(PHTDeployConfig memory _c, address _authority) public {

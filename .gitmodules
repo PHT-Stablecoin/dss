@@ -58,3 +58,6 @@
 	path = lib/dss-deploy
 	url = https://github.com/makerdao/dss-deploy
 	branch="master"
+[submodule "lib/mkr-authority"]
+	path = lib/mkr-authority
+	url = https://github.com/makerdao/mkr-authority

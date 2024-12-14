@@ -107,6 +107,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         string memory artifacts = "artifacts";
         // --- Auth ---
         artifacts.serialize("authority", r.authority);
+        artifacts.serialize("mkrAuthority", r.mkrAuthority);
         artifacts.serialize("dssProxyActions", r.dssProxyActions);
         artifacts.serialize("dssProxyRegistry", r.dssProxyRegistry);
         artifacts.serialize("proxyActions", r.proxyActions);

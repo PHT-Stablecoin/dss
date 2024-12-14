@@ -21,3 +21,4 @@ dss-ilk-registry/=lib/ilk-registry/src/
 dss-proxy/=lib/dss-proxy/src/
 dss-deploy/=lib/dss-deploy/src/
 dss-gem-joins/=lib/dss-gem-joins/src/
+mkr-authority/=lib/mkr-authority/src/
