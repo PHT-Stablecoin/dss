@@ -17,7 +17,7 @@ import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
 import {DssPsm} from "dss-psm/psm.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
-import {DssProxyActions} from "dss-proxy-actions/DssProxyActions.sol";
+import {DssProxyActions, DssProxyActionsEnd, DssProxyActionsDsr} from "dss-proxy-actions/DssProxyActions.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
@@ -71,6 +71,8 @@ struct PHTDeployResult {
     address authority;
     address mkrAuthority;
     address dssProxyActions;
+    address dssProxyActionsEnd;
+    address dssProxyActionsDsr;
     address dssProxyRegistry;
     address proxyActions;
     address dssCdpManager;
@@ -104,6 +106,8 @@ struct PHTDeployResult {
 
 contract PHTDeploy is DssDeploy, StdCheats {
     DssProxyActions dssProxyActions;
+    DssProxyActionsEnd dssProxyActionsEnd;
+    DssProxyActionsDsr dssProxyActionsDsr;
     DssCdpManager dssCdpManager;
     DsrManager dsrManager;
     ProxyActions proxyActions;
@@ -176,6 +180,8 @@ contract PHTDeploy is DssDeploy, StdCheats {
             result.esm = address(esm);
 
             result.dssProxyActions = address(dssProxyActions);
+            result.dssProxyActionsEnd = address(dssProxyActionsEnd);
+            result.dssProxyActionsDsr = address(dssProxyActionsDsr);
             result.proxyActions = address(proxyActions);
             result.pause = address(pause);
             result.dssCdpManager = address(dssCdpManager);
@@ -317,6 +323,9 @@ contract PHTDeploy is DssDeploy, StdCheats {
 
         autoline = new DssAutoLine(address(vat));
         dssProxyActions = new DssProxyActions();
+        dssProxyActionsEnd = new DssProxyActionsEnd();
+        dssProxyActionsDsr = new DssProxyActionsDsr();
+
         govActions = new GovActions();
         proxyActions = new ProxyActions(address(pause), address(govActions));
         dssCdpManager = new DssCdpManager(address(vat));
