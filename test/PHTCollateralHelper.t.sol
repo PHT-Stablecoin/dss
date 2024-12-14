@@ -57,6 +57,17 @@ contract PHTCollateralHelperTest is Test {
         h = PHTCollateralHelper(res.collateralHelper);
     }
 
+    function test_addsIlk() public {
+        uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
+
+        vm.startPrank(eve);
+        _addCollateral();
+        vm.stopPrank();
+
+        assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef + 1, "[PHTCollateralHelperTest] ilksCount");
+        assertEq(bytes32("PHP-A"), IlkRegistry(res.ilkRegistry).list()[ilksCountBef], "[PHTCollateralHelperTest] ilk");
+    }
+
     function test_shouldFailWithAuth() public {
         vm.expectRevert("ds-auth-unauthorized");
         _addCollateral();
@@ -65,20 +76,22 @@ contract PHTCollateralHelperTest is Test {
     function test_rootCanAddCollateral() public {
         vm.startPrank(eve);
         _addCollateral();
+        vm.stopPrank();
     }
 
     function test_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
         vm.expectRevert("ds-auth-unauthorized");
         _addCollateral();
+        vm.stopPrank();
     }
 
     function _addCollateral()
         internal
         returns (address phpJoin, AggregatorV3Interface feedPHP, address phpAddr, ChainlinkPip pipPHP)
     {
-        uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
-        (phpJoin, feedPHP, phpAddr, pipPHP) = h.addCollateral(
+        return
+            h.addCollateral(
                 address(this),
                 IlkRegistry(res.ilkRegistry),
                 PHTCollateralHelper.IlkParams({
@@ -113,7 +126,5 @@ contract PHTCollateralHelperTest is Test {
                     feedDescription: ""
                 })
             );
-        assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef+1);
-        assertEq(bytes32("PHP-A"), IlkRegistry(res.ilkRegistry).list()[ilksCountBef]);
     }
 }
