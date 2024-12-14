@@ -14,10 +14,13 @@ import {DSRoles} from "../pht/lib/Roles.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {PriceFeedFactory} from "../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory} from "../pht/factory/PriceJoinFeedFactory.sol";
+import {PHTOpsTestLib} from "../test/helpers/PHTOpsTestLib.sol";
 
 contract PHTDeploymentScript is Script, PHTDeploy, Test {
     using ArrayHelpers for *;
     using stdJson for string;
+
+    bytes32 constant ILK_NAME = bytes32("PHP-A");
 
     function run() public {
         vm.startBroadcast();
@@ -55,7 +58,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             address(pause.proxy()),
             res.ilkRegistry,
             PHTCollateralHelper.IlkParams({
-                ilk: "PHP-A",
+                ilk: ILK_NAME,
                 line: uint(5_000_000 * RAD), // Set PHP-A limit to 5 million DAI (RAD units)
                 dust: uint(0),
                 tau: 1 hours,
@@ -90,10 +93,32 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         vm.stopBroadcast();
 
         assertEq(IERC20(token).balanceOf(msg.sender), 1000 * 10 ** 6, "msg.sender should have 1000 tstPHP");
+        assertTrue(DSRoles(res.authority).isUserRoot(msg.sender), "msg.sender is root");
+
+        _test_openLockGemAndDraw(res, msg.sender, ILK_NAME, token, join);
 
         writeArtifacts(res);
+    }
 
-        assertTrue(DSRoles(res.authority).isUserRoot(msg.sender), "msg.sender is root");
+    function _test_openLockGemAndDraw(
+        PHTDeployResult memory res,
+        address bob,
+        bytes32 ilk,
+        address token,
+        address join
+    ) private {
+        // transfer some tokens to bob
+        address bob = makeAddr("bob");
+        vm.prank(msg.sender);
+        IERC20(token).transfer(bob, 1000 * 10 ** 6);
+
+        // Move Blocktime to 10 blocks ahead
+        vm.warp(now + 100);
+
+        // normal user opens a CDP
+        vm.startPrank(bob);
+        PHTOpsTestLib.openLockGemAndDraw(res, bob, ilk, token, join);
+        vm.stopPrank();
     }
 
     function writeArtifacts(PHTDeployResult memory r) public {
