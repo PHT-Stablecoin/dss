@@ -294,15 +294,33 @@ contract PHTDeploy is DssDeploy, StdCheats {
     }
 
     function deployKeepAuth(PHTDeployConfig memory _c, address _authority) public {
+        // @see https://github.com/makerdao/dss-deploy-scripts/blob/7ca0b4a6469eecb08aebb5478c47a9533eeeeb1b/libexec/dss/deploy-core
+        // # Deploy VAT
+        // sethSend "$MCD_DEPLOY" "deployVat()"
         this.deployVat();
+        // # Deploy MCD
+        // sethSend "$MCD_DEPLOY" "deployDai(uint256)" "$(seth rpc net_version)"
         this.deployDai(chainId());
+        // # Deploy Taxation
+        // sethSend "$MCD_DEPLOY" "deployTaxation()"
         this.deployTaxation();
+        // # Deploy Auctions
+        // sethSend "$MCD_DEPLOY" "deployAuctions(address)" "$MCD_GOV"
         this.deployAuctions(address(gov));
+        // # Deploy Liquidation
+        // sethSend "$MCD_DEPLOY" "deployLiquidator()"
         this.deployLiquidator();
+        // # Deploy End
+        // sethSend "$MCD_DEPLOY" "deployEnd()"
         this.deployEnd();
+        // # Deploy pause
+        // MCD_PAUSE_DELAY=${MCD_PAUSE_DELAY:-"3600"}
+        // sethSend "$MCD_DEPLOY" "deployPause(uint256,address)" "$(seth --to-uint256 "$MCD_PAUSE_DELAY")" "$MCD_ADM"
         // @TODO set pauseDelay to non-zero?
         this.deployPause(0, _authority);
-
+        // # Deploy ESM
+        // MCD_ESM_MIN=${MCD_ESM_MIN:-"$(seth --to-uint256 "$(seth --to-wei 50000 "eth")")"}
+        // sethSend "$MCD_DEPLOY" "deployESM(address,uint256)" "$MCD_GOV" "$MCD_ESM_MIN"
         // @TODO set config for production?
         this.deployESM(address(gov), 10);
 
