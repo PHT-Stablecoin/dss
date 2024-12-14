@@ -19,7 +19,7 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
-import {PHTDeployConfig, PHTDeployCollateralConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
@@ -47,7 +47,6 @@ contract PHTCollateralHelperTest is Test {
     function setUp() public {
         eve = makeAddr("eve");
         alice = makeAddr("alice");
-        PHTDeployCollateralConfig[] memory collateralConfigs = new PHTDeployCollateralConfig[](0);
         PHTDeploy d = new PHTDeploy();
         res = d.deploy(
             PHTDeployConfig({
@@ -56,8 +55,7 @@ contract PHTCollateralHelperTest is Test {
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 authorityOwner: alice,
-                authorityRootUsers: [eve].toMemoryArray(),
-                collateralConfigs: collateralConfigs
+                authorityRootUsers: [eve].toMemoryArray()
             })
         );
         h = PHTCollateralHelper(res.collateralHelper);

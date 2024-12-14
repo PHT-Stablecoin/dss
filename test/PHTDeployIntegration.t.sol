@@ -13,7 +13,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {PHTDeploy, PHTDeployResult, ProxyLike, ProxyRegistryLike, DssProxyActionsLike} from "../pht/PHTDeploy.sol";
 import {Jug} from "../src/jug.sol";
-import {PHTDeployConfig, PHTDeployCollateralConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
@@ -41,8 +41,6 @@ contract PHTDeployIntegrationTest is Test {
         alice = makeAddr("alice");
         bob = makeAddr("bob");
 
-        PHTDeployCollateralConfig[] memory collateralConfigs = new PHTDeployCollateralConfig[](0);
-
         res = d.deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
@@ -50,8 +48,7 @@ contract PHTDeployIntegrationTest is Test {
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 authorityOwner: alice,
-                authorityRootUsers: [eve].toMemoryArray(),
-                collateralConfigs: collateralConfigs
+                authorityRootUsers: [eve].toMemoryArray()
             })
         );
         h = PHTCollateralHelper(res.collateralHelper);

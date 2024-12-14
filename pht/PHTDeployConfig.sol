@@ -10,13 +10,4 @@ struct PHTDeployConfig {
     uint256 jugBase;
     address authorityOwner;
     address[] authorityRootUsers;
-    PHTDeployCollateralConfig[] collateralConfigs;
-}
-
-struct PHTDeployCollateralConfig {
-    address phtDeploy;
-    address ilkRegistry;
-    PHTCollateralHelper.IlkParams ilkParams;
-    PHTCollateralHelper.TokenParams tokenParams;
-    PHTCollateralHelper.FeedParams feedParams;
 }

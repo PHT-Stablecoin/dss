@@ -32,7 +32,7 @@ import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
-import {PHTDeployConfig, PHTDeployCollateralConfig} from "./PHTDeployConfig.sol";
+import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
 import {ProxyActions} from "./helpers/ProxyActions.sol";
 
@@ -352,20 +352,6 @@ contract PHTDeploy is DssDeploy, StdCheats {
             collateralHelper.addCollateral.selector,
             true
         );
-
-        uint256 l = _c.collateralConfigs.length;
-        for (uint256 i = 0; i < l; i++) {
-            PHTDeployCollateralConfig memory cc = _c.collateralConfigs[i];
-            // @TODO: ensure that pause.proxy() makes sense as the owner here
-            (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) = collateralHelper
-                .addCollateral(
-                    address(pause.proxy()),
-                    IlkRegistry(cc.ilkRegistry),
-                    cc.ilkParams,
-                    cc.tokenParams,
-                    cc.feedParams
-                );
-        }
 
         {
             // Set Liquidation/Auction Rules (Dog)
