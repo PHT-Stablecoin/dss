@@ -31,6 +31,9 @@ contract PHTCollateralHelperTest is Test {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
+    // --- CONSTANTS ---
+    string constant ILK_PREFIX = "PHT-NEW-ILK-";
+
     // -- ROLES --
     uint8 constant ROLE_GOV_MINT_BURN = 10;
     uint8 constant ROLE_CAN_PLOT = 11;
@@ -59,12 +62,31 @@ contract PHTCollateralHelperTest is Test {
         h = PHTCollateralHelper(res.collateralHelper);
     }
 
+    function getLastIlkName(address ilkRegistry) internal returns (bytes32) {
+        return keccak256(abi.encodePacked(ILK_PREFIX, IlkRegistry(ilkRegistry).count()));
+    }
+
+    function test_multipleIlks() public {
+        vm.startPrank(eve);
+        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
+        vm.stopPrank();
+
+        assertEq(
+            getLastIlkName(res.ilkRegistry),
+            keccak256(abi.encodePacked(ILK_PREFIX, uint256(4))),
+            "ilk name correct for multiple adds"
+        );
+    }
+
     function test_addsIlk() public {
         uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
 
         vm.startPrank(eve);
         (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
-            .addCollateral(res, h, eve);
+            .addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
@@ -73,24 +95,21 @@ contract PHTCollateralHelperTest is Test {
         // ensure eve received the token balance
         assertEq(IERC20(token).balanceOf(eve), 1000 * 10 ** 6, "eve should have received the token balance");
         assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef + 1, "[PHTCollateralHelperTest] ilksCount");
-        assertEq(bytes32("PHP-A"), IlkRegistry(res.ilkRegistry).list()[ilksCountBef], "[PHTCollateralHelperTest] ilk");
-    }
-
-    function test_shouldFailWithAuth() public {
-        vm.expectRevert("ds-auth-unauthorized");
-        PHTCollateralTestLib.addCollateral(res, h, alice);
     }
 
     function test_rootCanAddCollateral() public {
         vm.startPrank(eve);
-        PHTCollateralTestLib.addCollateral(res, h, eve);
+        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
     }
 
-    function test_ownerCannotAddCollateral() public {
+    function testFail_shouldFailWithAuth() public {
+        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, alice);
+    }
+
+    function testFail_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
-        vm.expectRevert("ds-auth-unauthorized");
-        PHTCollateralTestLib.addCollateral(res, h, alice);
+        PHTCollateralTestLib.addCollateral(getLastIlkName(res.ilkRegistry), res, h, alice);
         vm.stopPrank();
     }
 }

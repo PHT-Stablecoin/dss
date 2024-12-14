@@ -60,6 +60,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         // --- Auth ---
         artifacts.serialize("authority", r.authority);
         artifacts.serialize("dssProxyActions", r.dssProxyActions);
+        artifacts.serialize("dssProxyRegistry", r.dssProxyRegistry);
         artifacts.serialize("proxyActions", r.proxyActions);
         artifacts.serialize("dssCdpManager", r.dssCdpManager);
         artifacts.serialize("dsrManager", r.dsrManager);

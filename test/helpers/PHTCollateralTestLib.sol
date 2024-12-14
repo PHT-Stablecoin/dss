@@ -1,7 +1,7 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "forge-std/console.sol";
+import {console} from "forge-std/console.sol";
 
 import {PHTCollateralHelper} from "../../pht/PHTCollateralHelper.sol";
 import {PHTDeploy, PHTDeployResult} from "../../pht/PHTDeploy.sol";
@@ -12,18 +12,18 @@ import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 library PHTCollateralTestLib {
     uint256 constant RAD = 10 ** 45;
-
     function addCollateral(
+        bytes32 ilkName,
         PHTDeployResult memory res,
         PHTCollateralHelper h,
         address owner
-    ) internal returns (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) {
+    ) internal returns (address join, AggregatorV3Interface feed, address token, ChainlinkPip pip) {
         return
             h.addCollateral(
                 owner,
                 IlkRegistry(res.ilkRegistry),
                 PHTCollateralHelper.IlkParams({
-                    ilk: "PHP-A",
+                    ilk: ilkName,
                     line: uint(5_000_000 * RAD), // Set PHP-A limit to 5 million DAI (RAD units)
                     dust: uint(0),
                     tau: 1 hours,

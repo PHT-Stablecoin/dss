@@ -2,6 +2,7 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "forge-std/console.sol";
+import "forge-std/StdCheats.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -68,6 +69,7 @@ struct PHTDeployResult {
     // --- Auth ---
     address authority;
     address dssProxyActions;
+    address dssProxyRegistry;
     address proxyActions;
     address dssCdpManager;
     address dsrManager;
@@ -98,7 +100,7 @@ struct PHTDeployResult {
     address collateralHelper;
 }
 
-contract PHTDeploy is DssDeploy {
+contract PHTDeploy is DssDeploy, StdCheats {
     DssProxyActions dssProxyActions;
     DssCdpManager dssCdpManager;
     DsrManager dsrManager;
@@ -153,6 +155,7 @@ contract PHTDeploy is DssDeploy {
         result.gov = address(deployGov(_c.govTokenSymbol));
         deployFabs();
         deployKeepAuth(_c, result.authority);
+        result.dssProxyRegistry = deployDssProxyRegistry();
 
         // release auth
         this.releaseAuth();
@@ -400,6 +403,11 @@ contract PHTDeploy is DssDeploy {
                 true
             );
         }
+    }
+
+    function deployDssProxyRegistry() private returns (address) {
+        // path needs to match the `out` path in foundry.toml
+        return deployCode("./out_pht/DssProxyRegistry.sol/DssProxyRegistry.json");
     }
 
     function chainId() internal view returns (uint256 _chainId) {
