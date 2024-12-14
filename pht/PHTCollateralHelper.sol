@@ -4,17 +4,14 @@ pragma experimental ABIEncoderV2;
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSPause} from "ds-pause/pause.sol";
 
-import {Vat} from "dss/vat.sol";
 import {Jug} from "dss/jug.sol";
 import {Vow} from "dss/vow.sol";
 import {Cat} from "dss/cat.sol";
-import {Dog} from "dss/dog.sol";
 import {Spotter} from "dss/spot.sol";
 import {Clipper} from "dss/clip.sol";
 import {End} from "dss/end.sol";
 import {ESM} from "esm/ESM.sol";
 
-import {CalcFab, ClipFab} from "dss-deploy/DssDeploy.sol";
 import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
@@ -38,29 +35,29 @@ interface IlkRegistryLike {
 }
 
 contract PHTCollateralHelper is DSAuth {
-    Vat public vat;
+    address public vat;
     Spotter public spotter;
-    Dog public dog;
+    address public dog;
     Vow public vow;
     Jug public jug;
     End public end;
     ESM public esm;
     DSPause public pause;
 
-    CalcFab calcFab;
-    ClipFab clipFab;
+    address public calcFab;
+    address public clipFab;
 
     constructor(
-        Vat vat_,
+        address vat_,
         Spotter spotter_,
-        Dog dog_,
+        address dog_,
         Vow vow_,
         Jug jug_,
         End end_,
         ESM esm_,
         DSPause pause_,
-        CalcFab calcFab_,
-        ClipFab clipFab_
+        address calcFab_,
+        address clipFab_
     ) public {
         vat = vat_;
         spotter = spotter_;
@@ -131,21 +128,21 @@ contract PHTCollateralHelper is DSAuth {
         require(address(pause) != address(0), "Missing previous step");
 
         // Deploy
-        clip = clipFab.newClip(address(this), address(vat), address(spotter), address(dog), ilk);
+        clip = ClipFabLike(clipFab).newClip(address(this), address(vat), address(spotter), address(dog), ilk);
         spotter.file(ilk, "pip", pip); // Set pip
 
         // Internal references set up
-        dog.file(ilk, "clip", address(clip));
+        DogLike(dog).file(ilk, "clip", address(clip));
         clip.file("vow", address(vow));
         clip.file("calc", calc);
 
-        vat.init(ilk);
+        VatLinke(vat).init(ilk);
         jug.init(ilk);
 
         // Internal auth
-        vat.rely(join);
-        vat.rely(address(clip));
-        dog.rely(address(clip));
+        VatLinke(vat).rely(join);
+        VatLinke(vat).rely(address(clip));
+        DogLike(dog).rely(address(clip));
         clip.rely(address(dog));
         clip.rely(address(end));
         clip.rely(address(esm));
@@ -208,23 +205,23 @@ contract PHTCollateralHelper is DSAuth {
             _join = address(new GemJoin(address(vat), ilkParams.ilk, _token));
         }
 
-        LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
+        LinearDecrease _calc = CalcFabLike(calcFab).newLinearDecrease(address(this));
         _calc.file(bytes32("tau"), ilkParams.tau);
         _calc.rely(owner);
         _calc.deny(address(this));
 
         deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
 
-        vat.file(ilkParams.ilk, bytes32("line"), ilkParams.line);
-        vat.file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
-        vat.rely(address(_join));
+        VatLinke(vat).file(ilkParams.ilk, bytes32("line"), ilkParams.line);
+        VatLinke(vat).file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
+        VatLinke(vat).rely(address(_join));
         spotter.file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
 
-        dog.file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
-        dog.file("Hole", ilkParams.hole + dog.Hole()); // Increase global limit
-        dog.file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
+        DogLike(dog).file(ilkParams.ilk, "hole", ilkParams.hole); // Set PHP-A limit to 5 million DAI (RAD units)
+        DogLike(dog).file("Hole", ilkParams.hole + DogLike(dog).Hole()); // Increase global limit
+        DogLike(dog).file(ilkParams.ilk, "chop", ilkParams.chop); // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
 
-        (address clip, , , ) = dog.ilks(ilkParams.ilk);
+        (address clip, , , ) = DogLike(dog).ilks(ilkParams.ilk);
         Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
 
         // Set Ilk Fees
@@ -233,4 +230,28 @@ contract PHTCollateralHelper is DSAuth {
         IlkRegistryLike(ilkRegistry).add(_join);
         spotter.poke(ilkParams.ilk);
     }
+}
+
+interface VatLinke {
+    function file(bytes32 ilk, bytes32 what, uint256 data) external;
+    function init(bytes32 ilk) external;
+    function rely(address usr) external;
+    function deny(address usr) external;
+}
+
+interface DogLike {
+    function ilks(bytes32) external returns (address clip, uint256 chop, uint256 hole, uint256 dirt);
+    function file(bytes32 ilk, bytes32 what, uint256 data) external;
+    function file(bytes32 ilk, string memory what, address data) external;
+    function file(bytes32 what, uint256 data) external;
+    function rely(address usr) external;
+    function Hole() external returns (uint256);
+}
+
+interface CalcFabLike {
+    function newLinearDecrease(address owner) external returns (address);
+}
+
+interface ClipFabLike {
+    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk) external returns (address);
 }

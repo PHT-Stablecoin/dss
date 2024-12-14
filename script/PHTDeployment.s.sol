@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "forge-std/Script.sol";
 import "forge-std/Test.sol";
 import {stdJson} from "forge-std/StdJson.sol";
+import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -38,7 +39,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         );
 
         // @TODO move this to a per-chain json
-        PHTDeployResult memory res = this.deploy(
+        PHTDeployResult memory res = deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
                 dogHoleRad: 10_000_000,
@@ -49,6 +50,12 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 authorityRootUsers: [msg.sender].toMemoryArray()
             })
         );
+
+        console.log("ilkRegistry", res.ilkRegistry);
+        console.log("ilkRegistry.list");
+        bytes32[] memory ilks = IlkRegistry(res.ilkRegistry).list();
+        console.log("ilks.length", ilks.length);
+        // console.logBytes32(ilks[0]);
 
         console.log("[PHTDeploymentScript] res.collateralHelper \t", res.collateralHelper);
         PHTCollateralHelper h = PHTCollateralHelper(res.collateralHelper);
@@ -91,6 +98,9 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             })
         );
         vm.stopBroadcast();
+
+        ilks = IlkRegistry(res.ilkRegistry).list();
+        console.log("ilks.length", ilks.length);
 
         assertEq(IERC20(token).balanceOf(msg.sender), 1000 * 10 ** 6, "msg.sender should have 1000 tstPHP");
         assertTrue(DSRoles(res.authority).isUserRoot(msg.sender), "msg.sender is root");
