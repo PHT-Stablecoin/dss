@@ -42,7 +42,6 @@ import {ChainLog} from "../test/helpers/ChainLog.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
-import {TokenFactory} from "./factory/TokenFactory.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "./PHTCollateralHelper.sol";
 import {ProxyActions} from "./helpers/ProxyActions.sol";
@@ -110,7 +109,7 @@ struct PHTDeployResult {
     // --- Factories ---
     address feedFactory;
     address joinFeedFactory;
-    address stableEvmFactory;
+    address tokenFactory;
     // --- Helpers ----
     address collateralHelper;
 }
@@ -132,7 +131,6 @@ contract PHTDeploy is StdCheats {
     PriceJoinFeedFactory joinFeedFactory;
     GemJoinFab gemJoinFab;
     GemJoin5Fab gemJoin5Fab;
-    TokenFactory tokenFactory;
 
     PHTCollateralHelper collateralHelper;
 
@@ -156,7 +154,7 @@ contract PHTDeploy is StdCheats {
         require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
         require(_c.authorityOwner != address(0), "authorityOwner required");
 
-        result.stableEvmFactory = deployFiatTokenFactory();
+        result.tokenFactory = deployFiatTokenFactory();
 
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
@@ -369,7 +367,6 @@ contract PHTDeploy is StdCheats {
         dssCdpManager = new DssCdpManager(address(dssDeploy.vat()));
         dsrManager = new DsrManager(address(dssDeploy.pot()), address(dssDeploy.daiJoin()));
 
-        tokenFactory = new TokenFactory();
         feedFactory = new PriceFeedFactory();
         joinFeedFactory = new PriceJoinFeedFactory();
         gemJoinFab = new GemJoinFab();
@@ -405,7 +402,7 @@ contract PHTDeploy is StdCheats {
                 dssDeploy.pause()
             );
 
-            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), tokenFactory, gemJoinFab, gemJoin5Fab);
+            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab, gemJoin5Fab);
 
             proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.spotter()), address(collateralHelper));

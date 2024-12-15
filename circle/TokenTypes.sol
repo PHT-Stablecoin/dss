@@ -6,6 +6,8 @@ struct FiatTokenInfo {
     string tokenSymbol;
     uint8 tokenDecimals;
     string tokenCurrency;
+    uint256 initialSupply;
+    address initialSupplyMintTo; // address to mint the initial supply to
     address masterMinterOwner;
     address proxyAdmin;
     address pauser;

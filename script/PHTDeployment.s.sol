@@ -16,6 +16,7 @@ import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {PriceFeedFactory} from "../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {PHTOpsTestLib} from "../test/helpers/PHTOpsTestLib.sol";
+import {ITokenFactory} from "../circle/CircleTokenFactory.sol";
 
 contract PHTDeploymentScript is Script, PHTDeploy, Test {
     using ArrayHelpers for *;
@@ -77,6 +78,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 duty: 1.0000000012436807e27 // => 4%
             }),
             PHTCollateralHelper.TokenParams({
+                factory: ITokenFactory(res.tokenFactory),
                 token: address(0),
                 symbol: "tstPHP",
                 name: "Testtttttttt PHP",
@@ -117,8 +119,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         address token,
         address join
     ) private {
-        // transfer some tokens to bob
-        address bob = makeAddr("bob");
         vm.prank(msg.sender);
         IERC20(token).transfer(bob, 1000 * 10 ** 6);
 

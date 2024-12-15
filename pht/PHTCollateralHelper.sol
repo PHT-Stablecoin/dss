@@ -23,8 +23,8 @@ import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 
-import {TokenFactory} from "./factory/TokenFactory.sol";
-
+import {ITokenFactory} from "../circle/CircleTokenFactory.sol";
+import {FiatTokenInfo} from "../circle/TokenTypes.sol";
 
 interface TokenLike {
     function decimals() external returns (uint8);
@@ -63,16 +63,12 @@ contract PHTCollateralHelper is DSAuth {
 
     CalcFab calcFab;
     ClipFab clipFab;
-    TokenFactory tokenFab;
     GemJoinFab gemJoinFab;
     GemJoin5Fab gemJoin5Fab;
 
-
     struct TokenParams {
+        ITokenFactory factory;
         address token; // optional
-        // FactoryLike factory;
-        // bytes payload;
-
         string name;
         string symbol;
         uint8 decimals;
@@ -109,16 +105,7 @@ contract PHTCollateralHelper is DSAuth {
         uint256 duty; // Jug: ilk fee [RAY]
     }
 
-    constructor(
-        Vat vat_,
-        Spotter spotter_,
-        Dog dog_,
-        Vow vow_,
-        Jug jug_,
-        End end_,
-        ESM esm_,
-        DSPause pause_
-    ) public {
+    constructor(Vat vat_, Spotter spotter_, Dog dog_, Vow vow_, Jug jug_, End end_, ESM esm_, DSPause pause_) public {
         vat = vat_;
         spotter = spotter_;
         dog = dog_;
@@ -128,24 +115,15 @@ contract PHTCollateralHelper is DSAuth {
         esm = esm_;
         pause = pause_;
         authority = DSAuthority(pause.authority());
-
     }
 
-    function setFabs(
-        CalcFab calcFab_,
-        ClipFab clipFab_,
-        TokenFactory tokenFab_,
-        GemJoinFab gemJoinFab_,
-        GemJoin5Fab gemJoin5Fab_
-    ) auth public {
+    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_) public auth {
         require(address(calcFab) == address(0), "pht-collateral-helper-fabs-init");
         calcFab = calcFab_;
         clipFab = clipFab_;
-        tokenFab = tokenFab_;
         gemJoinFab = gemJoinFab_;
         gemJoin5Fab = gemJoin5Fab_;
     }
-
 
     function deployCollateralClip(
         bytes32 ilk,
@@ -182,8 +160,10 @@ contract PHTCollateralHelper is DSAuth {
         clip.rely(address(pause.proxy()));
     }
 
+    // @TODO return masterMinter
+    // @TODO reuse masterMinter?
     function addCollateral(
-        // ProxyActions proxyActions,
+        // @TOOD avoid shadowing owner from base class DSAuth
         address owner,
         address ilkRegistry,
         IlkParams memory ilkParams,
@@ -196,19 +176,29 @@ contract PHTCollateralHelper is DSAuth {
 
         _token = tokenParams.token;
         if (_token == address(0)) {
-            ConfigurableDSToken newToken = tokenFab.newToken(
-                tokenParams.symbol,
-                tokenParams.name,
-                tokenParams.decimals,
-                tokenParams.maxSupply
+            FiatTokenInfo memory info = FiatTokenInfo({
+                tokenName: tokenParams.name,
+                tokenSymbol: tokenParams.symbol,
+                tokenDecimals: tokenParams.decimals,
+                // @TODO needs FE update
+                tokenCurrency: "",
+                initialSupply: tokenParams.initialSupply,
+                initialSupplyMintTo: msg.sender,
+                masterMinterOwner: owner,
+                // @TODO proxyAdmin cannot be the same as owner
+                // update Proxy actions to allow update of implementation of FiatProxy
+                proxyAdmin: address(pause.proxy()),
+                pauser: owner,
+                blacklister: owner,
+                owner: owner
+            });
+
+            (address implementation, address proxy, address masterMinter) = ITokenFactory(tokenParams.factory).create(
+                info
             );
 
-            if (tokenParams.initialSupply > 0) {
-                newToken.mint(msg.sender, tokenParams.initialSupply);
-            }
-
-            newToken.setOwner(owner);
-            _token = address(newToken);
+            // newToken.setOwner(owner);
+            _token = address(proxy);
         }
 
         _feed = AggregatorV3Interface(feedParams.feed);
@@ -233,9 +223,9 @@ contract PHTCollateralHelper is DSAuth {
 
         // @TODO deny this ward in GemJoin(s)
         if (tokenParams.decimals < 18) {
-            _join = address(gemJoin5Fab.newJoin(owner,address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoin5Fab.newJoin(owner, address(vat), ilkParams.ilk, _token));
         } else {
-            _join = address(gemJoinFab.newJoin(owner,address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoinFab.newJoin(owner, address(vat), ilkParams.ilk, _token));
         }
 
         {

@@ -58,7 +58,7 @@ contract PHTDeployIntegrationTest is Test {
 
     function test_stableEvmDeploy() public {
         (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
-        assertTrue(res.stableEvmFactory != address(0), "stableEvmFactory should be non-zero");
+        assertTrue(res.tokenFactory != address(0), "tokenFactory should be non-zero");
 
         // Create addresses for different roles
         address proxyAdmin = makeAddr("proxyAdmin");
@@ -73,6 +73,8 @@ contract PHTDeployIntegrationTest is Test {
             tokenSymbol: "ST1",
             tokenDecimals: 6,
             tokenCurrency: "USD",
+            initialSupply: 100_000 * 1e6,
+            initialSupplyMintTo: bob,
             masterMinterOwner: masterMinterOwner,
             proxyAdmin: proxyAdmin,
             pauser: owner,
@@ -80,29 +82,12 @@ contract PHTDeployIntegrationTest is Test {
             owner: owner
         });
 
-        (address implementation, address proxy, address masterMinter) = CircleTokenFactory(res.stableEvmFactory).create(
+        (address implementation, address proxy, address masterMinter) = CircleTokenFactory(res.tokenFactory).create(
             info
         );
 
-        console.log("[Test] Implementation deployed at:", implementation);
-        console.log("[Test] Proxy deployed at:", proxy);
-        console.log("[Test] MasterMinter deployed at:", masterMinter);
-
-        console.log("MinterManager:", address(IMintController(masterMinter).getMinterManager()));
-
-        // Switch to masterMinterOwner to configure the minter
-        // vm.startPrank(masterMinterOwner);
-        // IMasterMinter(masterMinter).configureController(controller, minter);
-        // vm.stopPrank();
-
-        // console.log("minter manger configured");
-
-        // vm.startPrank(controller);
-        // IMintController(masterMinter).configureMinter(1e9);
-        // vm.stopPrank();
-
         // Verify initial balance
-        assertEq(IERC20(proxy).balanceOf(bob), 0, "bob should not have any tokens");
+        assertEq(IERC20(proxy).balanceOf(bob), 100_000 * 1e6, "bob should have 100,000 tokens");
 
         vm.prank(masterMinterOwner);
         IMasterMinter(masterMinter).configureController(controller, minter);
@@ -113,7 +98,7 @@ contract PHTDeployIntegrationTest is Test {
         vm.prank(minter);
         IFiatToken(proxy).mint(bob, 1e9);
 
-        assertEq(IERC20(proxy).balanceOf(bob), 1e9, "bob should have 1000 tokens");
+        assertEq(IERC20(proxy).balanceOf(bob), (100_000 * 1e6) + 1e9, "bob should have 100,000 + 1000 tokens");
     }
 
     function test_openLockGemAndDraw() public {
