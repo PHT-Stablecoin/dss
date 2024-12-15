@@ -19,8 +19,8 @@ import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 import {PHTOpsTestLib} from "./helpers/PHTOpsTestLib.sol";
 
-import {CircleTokenFactory} from "../circle/CircleTokenFactory.sol";
-import {FiatTokenInfo} from "../circle/TokenTypes.sol";
+import {FiatTokenFactory} from "../fiattoken/FiatTokenFactory.sol";
+import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
 import {MinterManagementInterface} from "stablecoin-evm/minting/MinterManagementInterface.sol";
 
 contract PHTDeployIntegrationTest is Test {
@@ -82,9 +82,7 @@ contract PHTDeployIntegrationTest is Test {
             owner: owner
         });
 
-        (address implementation, address proxy, address masterMinter) = CircleTokenFactory(res.tokenFactory).create(
-            info
-        );
+        (address implementation, address proxy, address masterMinter) = FiatTokenFactory(res.tokenFactory).create(info);
 
         // Verify initial balance
         assertEq(IERC20(proxy).balanceOf(bob), 100_000 * 1e6, "bob should have 100,000 tokens");

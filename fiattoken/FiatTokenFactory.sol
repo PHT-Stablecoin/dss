@@ -14,7 +14,7 @@ interface ITokenFactory {
     ) external returns (address implementation, address proxy, address masterMinter);
 }
 
-contract CircleTokenFactory is ITokenFactory {
+contract FiatTokenFactory is ITokenFactory {
     IImplementationDeployer public immutable IMPLEMENTATION_DEPLOYER;
     IMasterMinterDeployer public immutable MASTER_MINTER_DEPLOYER;
     IProxyInitializer public immutable PROXY_INITIALIZER;

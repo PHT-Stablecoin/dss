@@ -16,7 +16,7 @@ import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {PriceFeedFactory} from "../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {PHTOpsTestLib} from "../test/helpers/PHTOpsTestLib.sol";
-import {ITokenFactory} from "../circle/CircleTokenFactory.sol";
+import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 
 contract PHTDeploymentScript is Script, PHTDeploy, Test {
     using ArrayHelpers for *;

@@ -10,10 +10,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {FiatTokenV2_2} from "stablecoin-evm/v2/FiatTokenV2_2.sol";
 import {MasterMinter} from "stablecoin-evm/minting/MasterMinter.sol";
 import {FiatTokenProxy} from "stablecoin-evm/v1/FiatTokenProxy.sol";
-import {CircleTokenFactory} from "../circle/CircleTokenFactory.sol";
-import {ImplementationDeployer} from "../circle/ImplementationDeployer.sol";
-import {MasterMinterDeployer} from "../circle/MasterMinterDeployer.sol";
-import {ProxyInitializer} from "../circle/ProxyInitializer.sol";
+import {FiatTokenFactory} from "../fiattoken/FiatTokenFactory.sol";
+import {ImplementationDeployer} from "../fiattoken/ImplementationDeployer.sol";
+import {MasterMinterDeployer} from "../fiattoken/MasterMinterDeployer.sol";
+import {ProxyInitializer} from "../fiattoken/ProxyInitializer.sol";
 // end
 
 // import everything that DssDeploy imports
@@ -246,7 +246,7 @@ contract PHTDeploy is StdCheats {
         MasterMinterDeployer masterMinterDeployer = new MasterMinterDeployer();
         ProxyInitializer proxyInitializer = new ProxyInitializer();
 
-        CircleTokenFactory factory = new CircleTokenFactory(
+        FiatTokenFactory factory = new FiatTokenFactory(
             address(implementationDeployer),
             address(masterMinterDeployer),
             address(proxyInitializer)

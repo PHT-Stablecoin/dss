@@ -9,7 +9,7 @@ import {ChainlinkPip, AggregatorV3Interface} from "../../pht/helpers/ChainlinkPi
 import {PriceFeedFactory, PriceFeedAggregator} from "../../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../../pht/factory/PriceJoinFeedFactory.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
-import {ITokenFactory} from "../../circle/CircleTokenFactory.sol";
+import {ITokenFactory} from "../../fiattoken/FiatTokenFactory.sol";
 library PHTCollateralTestLib {
     uint256 constant RAD = 10 ** 45;
     function addCollateral(

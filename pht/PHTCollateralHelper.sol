@@ -23,8 +23,8 @@ import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
 
-import {ITokenFactory} from "../circle/CircleTokenFactory.sol";
-import {FiatTokenInfo} from "../circle/TokenTypes.sol";
+import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
+import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
 
 interface TokenLike {
     function decimals() external returns (uint8);
