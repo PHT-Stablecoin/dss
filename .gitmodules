@@ -61,3 +61,6 @@
 [submodule "lib/mkr-authority"]
 	path = lib/mkr-authority
 	url = https://github.com/makerdao/mkr-authority
+[submodule "lib/stablecoin-evm"]
+	path = lib/stablecoin-evm
+	url = https://github.com/circlefin/stablecoin-evm
