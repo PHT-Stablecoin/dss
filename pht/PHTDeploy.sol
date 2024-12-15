@@ -105,7 +105,6 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is StdCheats {
-
     DssDeploy dssDeploy;
     DssProxyActions dssProxyActions;
     DssProxyActionsEnd dssProxyActionsEnd;
@@ -143,8 +142,6 @@ contract PHTDeploy is StdCheats {
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory result) {
         require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
         require(_c.authorityOwner != address(0), "authorityOwner required");
-
-        // @TODO add MkrAuthority makerdao/mkr-authority/src/MkrAuthority.sol
 
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
@@ -240,7 +237,7 @@ contract PHTDeploy is StdCheats {
             DSRoles(address(authority)).setRootUser(_rootUsers[i], true);
         }
 
-        DSRoles(address(authority)).setRootUser(address(this), true);
+        // DSRoles(address(authority)).setRootUser(address(this), true);
 
         return DSRoles(address(authority));
     }
@@ -350,7 +347,12 @@ contract PHTDeploy is StdCheats {
         gemJoin5Fab = new GemJoin5Fab();
 
         // SetupIlkRegistry
-        ilkRegistry = new IlkRegistry(address(dssDeploy.vat()), address(dssDeploy.dog()), address(dssDeploy.cat()), address(dssDeploy.spotter()));
+        ilkRegistry = new IlkRegistry(
+            address(dssDeploy.vat()),
+            address(dssDeploy.dog()),
+            address(dssDeploy.cat()),
+            address(dssDeploy.spotter())
+        );
         ilkRegistry.rely(address(dssDeploy.pause().proxy()));
 
         DSRoles(address(_authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
@@ -374,21 +376,14 @@ contract PHTDeploy is StdCheats {
                 dssDeploy.pause()
             );
 
-            collateralHelper.setFabs(
-                dssDeploy.calcFab(),
-                dssDeploy.clipFab(),
-                tokenFactory,
-                gemJoinFab,
-                gemJoin5Fab
-            );
+            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), tokenFactory, gemJoinFab, gemJoin5Fab);
 
-            proxyActions.rely(address(dssDeploy.vat()),     address(collateralHelper));
+            proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.spotter()), address(collateralHelper));
-            proxyActions.rely(address(dssDeploy.dog()),     address(collateralHelper));
-            proxyActions.rely(address(ilkRegistry),         address(collateralHelper));
-            proxyActions.rely(address(dssDeploy.jug()),     address(collateralHelper));
+            proxyActions.rely(address(dssDeploy.dog()), address(collateralHelper));
+            proxyActions.rely(address(ilkRegistry), address(collateralHelper));
+            proxyActions.rely(address(dssDeploy.jug()), address(collateralHelper));
         }
-
 
         // DSRoles(address(_authority)).setRoleCapability(
         //     ROLE_CAN_EXEC,

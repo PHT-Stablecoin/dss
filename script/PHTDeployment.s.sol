@@ -38,7 +38,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             "\x1b[0m"
         );
 
-
         // @TODO move this to a per-chain json
         PHTDeployResult memory res = deploy(
             PHTDeployConfig({
@@ -80,7 +79,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             PHTCollateralHelper.TokenParams({
                 token: address(0),
                 symbol: "tstPHP",
-                name: "Test PHP",
+                name: "Testtttttttt PHP",
                 decimals: 6,
                 maxSupply: 0,
                 initialSupply: 1000 * 10 ** 6
