@@ -6,6 +6,16 @@ import "forge-std/StdCheats.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// stablecoin-evm related
+import {FiatTokenV2_2} from "stablecoin-evm/v2/FiatTokenV2_2.sol";
+import {MasterMinter} from "stablecoin-evm/minting/MasterMinter.sol";
+import {FiatTokenProxy} from "stablecoin-evm/v1/FiatTokenProxy.sol";
+import {CircleTokenFactory} from "../circle/CircleTokenFactory.sol";
+import {ImplementationDeployer} from "../circle/ImplementationDeployer.sol";
+import {MasterMinterDeployer} from "../circle/MasterMinterDeployer.sol";
+import {ProxyInitializer} from "../circle/ProxyInitializer.sol";
+// end
+
 // import everything that DssDeploy imports
 import "dss-deploy/DssDeploy.sol";
 import {GovActions} from "dss-deploy/govActions.sol";
@@ -100,11 +110,14 @@ struct PHTDeployResult {
     // --- Factories ---
     address feedFactory;
     address joinFeedFactory;
+    address stableEvmFactory;
     // --- Helpers ----
     address collateralHelper;
 }
 
 contract PHTDeploy is StdCheats {
+    address constant THROWAWAY_ADDRESS = address(1);
+
     DssDeploy dssDeploy;
     DssProxyActions dssProxyActions;
     DssProxyActionsEnd dssProxyActionsEnd;
@@ -139,9 +152,25 @@ contract PHTDeploy is StdCheats {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
+    function stableEvmDeploy() private returns (address) {
+        ImplementationDeployer implementationDeployer = new ImplementationDeployer();
+        MasterMinterDeployer masterMinterDeployer = new MasterMinterDeployer();
+        ProxyInitializer proxyInitializer = new ProxyInitializer();
+
+        CircleTokenFactory factory = new CircleTokenFactory(
+            address(implementationDeployer),
+            address(masterMinterDeployer),
+            address(proxyInitializer)
+        );
+
+        return address(factory);
+    }
+
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory result) {
         require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
         require(_c.authorityOwner != address(0), "authorityOwner required");
+
+        result.stableEvmFactory = stableEvmDeploy();
 
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);

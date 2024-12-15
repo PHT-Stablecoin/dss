@@ -19,6 +19,10 @@ import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 import {PHTOpsTestLib} from "./helpers/PHTOpsTestLib.sol";
 
+import {CircleTokenFactory} from "../circle/CircleTokenFactory.sol";
+import {TokenTypes} from "../circle/TokenTypes.sol";
+import {MinterManagementInterface} from "stablecoin-evm/minting/MinterManagementInterface.sol";
+
 contract PHTDeployIntegrationTest is Test {
     using ArrayHelpers for *;
 
@@ -32,10 +36,7 @@ contract PHTDeployIntegrationTest is Test {
     address eve; // authority root user
     address bob; // normal non-admin / "normal" user
 
-    PHTDeploy d;
-    PHTDeployResult res;
-    PHTCollateralHelper h;
-    function _deploy() internal {
+    function _deploy() internal returns (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) {
         d = new PHTDeploy();
         eve = makeAddr("eve");
         alice = makeAddr("alice");
@@ -52,10 +53,37 @@ contract PHTDeployIntegrationTest is Test {
             })
         );
         h = PHTCollateralHelper(res.collateralHelper);
+        return (d, h, res);
+    }
+
+    function test_stableEvmDeploy() public {
+        (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
+        assertTrue(res.stableEvmFactory != address(0), "stableEvmFactory should be non-zero");
+
+        // Test #1: Create a token
+        TokenTypes.TokenInfo memory info = TokenTypes.TokenInfo({
+            tokenName: "Stable1",
+            tokenSymbol: "ST1",
+            tokenDecimals: 6,
+            tokenCurrency: "USD",
+            masterMinterOwner: address(this),
+            proxyAdmin: address(this),
+            pauser: address(this),
+            blacklister: address(this),
+            owner: address(this)
+        });
+
+        (address implementation, address proxy, address masterMinter) = CircleTokenFactory(res.stableEvmFactory).create(
+            info
+        );
+
+        console.log("[Test] Implementation deployed at:", implementation);
+        console.log("[Test] Proxy deployed at:", proxy);
+        console.log("[Test] MasterMinter deployed at:", masterMinter);
     }
 
     function test_openLockGemAndDraw() public {
-        _deploy();
+        (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
         vm.startPrank(eve);
         (address join, , address token, ) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
         // transfer some tokens to bob
