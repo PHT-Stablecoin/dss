@@ -20,7 +20,7 @@ import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 import {PHTOpsTestLib} from "./helpers/PHTOpsTestLib.sol";
 
 import {CircleTokenFactory} from "../circle/CircleTokenFactory.sol";
-import {TokenTypes} from "../circle/TokenTypes.sol";
+import {FiatTokenInfo} from "../circle/TokenTypes.sol";
 import {MinterManagementInterface} from "stablecoin-evm/minting/MinterManagementInterface.sol";
 
 contract PHTDeployIntegrationTest is Test {
@@ -60,17 +60,24 @@ contract PHTDeployIntegrationTest is Test {
         (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
         assertTrue(res.stableEvmFactory != address(0), "stableEvmFactory should be non-zero");
 
+        // Create addresses for different roles
+        address proxyAdmin = makeAddr("proxyAdmin");
+        address owner = makeAddr("owner");
+        address masterMinterOwner = makeAddr("masterMinterOwner");
+        address controller = makeAddr("controller");
+        address minter = makeAddr("minter");
+
         // Test #1: Create a token
-        TokenTypes.TokenInfo memory info = TokenTypes.TokenInfo({
+        FiatTokenInfo memory info = FiatTokenInfo({
             tokenName: "Stable1",
             tokenSymbol: "ST1",
             tokenDecimals: 6,
             tokenCurrency: "USD",
-            masterMinterOwner: address(this),
-            proxyAdmin: address(this),
-            pauser: address(this),
-            blacklister: address(this),
-            owner: address(this)
+            masterMinterOwner: masterMinterOwner,
+            proxyAdmin: proxyAdmin,
+            pauser: owner,
+            blacklister: owner,
+            owner: owner
         });
 
         (address implementation, address proxy, address masterMinter) = CircleTokenFactory(res.stableEvmFactory).create(
@@ -80,6 +87,33 @@ contract PHTDeployIntegrationTest is Test {
         console.log("[Test] Implementation deployed at:", implementation);
         console.log("[Test] Proxy deployed at:", proxy);
         console.log("[Test] MasterMinter deployed at:", masterMinter);
+
+        console.log("MinterManager:", address(IMintController(masterMinter).getMinterManager()));
+
+        // Switch to masterMinterOwner to configure the minter
+        // vm.startPrank(masterMinterOwner);
+        // IMasterMinter(masterMinter).configureController(controller, minter);
+        // vm.stopPrank();
+
+        // console.log("minter manger configured");
+
+        // vm.startPrank(controller);
+        // IMintController(masterMinter).configureMinter(1e9);
+        // vm.stopPrank();
+
+        // Verify initial balance
+        assertEq(IERC20(proxy).balanceOf(bob), 0, "bob should not have any tokens");
+
+        vm.prank(masterMinterOwner);
+        IMasterMinter(masterMinter).configureController(controller, minter);
+
+        vm.prank(controller);
+        IMasterMinter(masterMinter).configureMinter(1e9);
+
+        vm.prank(minter);
+        IFiatToken(proxy).mint(bob, 1e9);
+
+        assertEq(IERC20(proxy).balanceOf(bob), 1e9, "bob should have 1000 tokens");
     }
 
     function test_openLockGemAndDraw() public {
@@ -87,7 +121,7 @@ contract PHTDeployIntegrationTest is Test {
         vm.startPrank(eve);
         (address join, , address token, ) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
         // transfer some tokens to bob
-        IERC20(token).transfer(bob, 1000 * 10 ** 6);
+        IERC20(token).transfer(bob, 1e9);
 
         uint256 jugBase = Jug(res.jug).base();
         uint256 jugRate = Jug(res.jug).drip(ILK_NAME);
@@ -116,4 +150,19 @@ interface IHasWards {
 
 interface IHasProxy {
     function proxy() external view returns (address);
+}
+
+interface IFiatToken {
+    function mint(address _to, uint256 _amount) external returns (bool);
+    function masterMinter() external view returns (address);
+}
+
+interface IMasterMinter {
+    function configureController(address controller, address worker) external;
+    function configureMinter(uint256 minterAllowedAmount) external returns (bool);
+}
+
+interface IMintController {
+    function configureMinter(uint256 minterAllowedAmount) external returns (bool);
+    function getMinterManager() external view returns (MinterManagementInterface);
 }

@@ -1,8 +1,8 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {TokenTypes} from "../TokenTypes.sol";
+import {FiatTokenInfo} from "../TokenTypes.sol";
 
 interface IProxyInitializer {
-    function initialize(address tokenProxy, address masterMinter, TokenTypes.TokenInfo memory tokenInfo) external;
+    function initialize(address tokenProxy, address masterMinter, FiatTokenInfo memory tokenInfo) external;
 }

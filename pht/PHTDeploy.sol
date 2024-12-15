@@ -152,25 +152,11 @@ contract PHTDeploy is StdCheats {
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
 
-    function stableEvmDeploy() private returns (address) {
-        ImplementationDeployer implementationDeployer = new ImplementationDeployer();
-        MasterMinterDeployer masterMinterDeployer = new MasterMinterDeployer();
-        ProxyInitializer proxyInitializer = new ProxyInitializer();
-
-        CircleTokenFactory factory = new CircleTokenFactory(
-            address(implementationDeployer),
-            address(masterMinterDeployer),
-            address(proxyInitializer)
-        );
-
-        return address(factory);
-    }
-
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory result) {
         require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
         require(_c.authorityOwner != address(0), "authorityOwner required");
 
-        result.stableEvmFactory = stableEvmDeploy();
+        result.stableEvmFactory = deployFiatTokenFactory();
 
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
@@ -255,6 +241,20 @@ contract PHTDeploy is StdCheats {
         }
 
         return result;
+    }
+
+    function deployFiatTokenFactory() private returns (address) {
+        ImplementationDeployer implementationDeployer = new ImplementationDeployer();
+        MasterMinterDeployer masterMinterDeployer = new MasterMinterDeployer();
+        ProxyInitializer proxyInitializer = new ProxyInitializer();
+
+        CircleTokenFactory factory = new CircleTokenFactory(
+            address(implementationDeployer),
+            address(masterMinterDeployer),
+            address(proxyInitializer)
+        );
+
+        return address(factory);
     }
 
     function deployAuthority(address[] memory _rootUsers) private returns (DSRoles authority) {

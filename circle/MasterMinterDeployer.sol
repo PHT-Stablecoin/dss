@@ -4,8 +4,8 @@ import {MasterMinter} from "stablecoin-evm/minting/MasterMinter.sol";
 import {IMasterMinterDeployer} from "./interfaces/IMasterMinterDeployer.sol";
 
 contract MasterMinterDeployer is IMasterMinterDeployer {
-    function deployMasterMinter(address token, address owner) external override returns (address) {
-        MasterMinter masterMinter = new MasterMinter(token);
+    function deployMasterMinter(address tokenProxy, address owner) external override returns (address) {
+        MasterMinter masterMinter = new MasterMinter(tokenProxy);
 
         // Configure controller (adds owner as minter)
         masterMinter.configureController(owner, owner);

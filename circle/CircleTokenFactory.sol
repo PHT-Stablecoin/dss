@@ -1,18 +1,23 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {TokenTypes} from "./TokenTypes.sol";
+import {FiatTokenInfo} from "./TokenTypes.sol";
 import {IImplementationDeployer} from "./interfaces/IImplementationDeployer.sol";
 import {IMasterMinterDeployer} from "./interfaces/IMasterMinterDeployer.sol";
 import {IProxyInitializer} from "./interfaces/IProxyInitializer.sol";
 import {FiatTokenProxy} from "stablecoin-evm/v1/FiatTokenProxy.sol";
 
-contract CircleTokenFactory {
+interface ITokenFactory {
+    event TokenCreated(address implementation, address proxy, address creator);
+    function create(
+        FiatTokenInfo memory tokenInfo
+    ) external returns (address implementation, address proxy, address masterMinter);
+}
+
+contract CircleTokenFactory is ITokenFactory {
     IImplementationDeployer public immutable IMPLEMENTATION_DEPLOYER;
     IMasterMinterDeployer public immutable MASTER_MINTER_DEPLOYER;
     IProxyInitializer public immutable PROXY_INITIALIZER;
-
-    event TokenCreated(address implementation, address proxy, address creator);
 
     constructor(address _implementationDeployer, address _masterMinterDeployer, address _proxyInitializer) public {
         IMPLEMENTATION_DEPLOYER = IImplementationDeployer(_implementationDeployer);
@@ -21,15 +26,15 @@ contract CircleTokenFactory {
     }
 
     function create(
-        TokenTypes.TokenInfo memory tokenInfo
-    ) external returns (address implementation, address proxy, address masterMinter) {
+        FiatTokenInfo memory tokenInfo
+    ) external override returns (address implementation, address proxy, address masterMinter) {
         (implementation, proxy, masterMinter) = _deployAndInitialize(tokenInfo);
         emit TokenCreated(implementation, proxy, msg.sender);
         return (implementation, proxy, masterMinter);
     }
 
     function _deployAndInitialize(
-        TokenTypes.TokenInfo memory tokenInfo
+        FiatTokenInfo memory tokenInfo
     ) internal returns (address implementation, address proxy, address masterMinter) {
         // Deploy the latest implementation contract code to the network.
         address implementation = IMPLEMENTATION_DEPLOYER.deployImplementation();

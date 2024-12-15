@@ -2,11 +2,11 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import {FiatTokenV2_2} from "stablecoin-evm/v2/FiatTokenV2_2.sol";
-import {TokenTypes} from "./TokenTypes.sol";
+import {FiatTokenInfo} from "./TokenTypes.sol";
 import {IProxyInitializer} from "./interfaces/IProxyInitializer.sol";
 
 contract ProxyInitializer is IProxyInitializer {
-    function initialize(address proxy, address masterMinter, TokenTypes.TokenInfo memory tokenInfo) external override {
+    function initialize(address proxy, address masterMinter, FiatTokenInfo memory tokenInfo) external override {
         // Do the initial (V1) initialization.
         // Note that this takes in the master minter contract's address as the master minter.
         // The master minter contract's owner is a separate address.
