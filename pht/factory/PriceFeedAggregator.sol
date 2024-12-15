@@ -34,7 +34,7 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
 
     uint256 public override version = 0;
     string public override description = "";
-    uint8 public override decimals = 6;
+    uint8 public override decimals = 8;
 
     int256 internal answer = 0;
     uint internal live = 0;

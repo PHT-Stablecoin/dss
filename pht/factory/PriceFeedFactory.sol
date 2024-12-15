@@ -30,7 +30,7 @@ contract PriceFeedFactory is DSAuth {
             decimals: decimals,
             exists: true
         });
-        
+
         feed.file("decimals", uint(decimals));
         feed.file("answer", initialAnswer);
         // Transfer feed ownership to caller
