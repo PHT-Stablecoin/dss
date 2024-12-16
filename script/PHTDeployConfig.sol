@@ -1,8 +1,6 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
-
 struct PHTDeployConfig {
     string govTokenSymbol;
     address phtUsdFeed; // optional for testing environments

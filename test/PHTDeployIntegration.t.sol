@@ -9,9 +9,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Vat} from "../src/vat.sol";
-import {PHTDeploy, PHTDeployResult, ProxyLike, ProxyRegistryLike, DssProxyActionsLike} from "../pht/PHTDeploy.sol";
+import {PHTDeploy, PHTDeployResult, ProxyLike, ProxyRegistryLike, DssProxyActionsLike} from "../script/PHTDeploy.sol";
 import {Jug} from "../src/jug.sol";
-import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
@@ -41,6 +41,11 @@ contract PHTDeployIntegrationTest is Test {
         eve = makeAddr("eve");
         alice = makeAddr("alice");
         bob = makeAddr("bob");
+
+        console.log("alice", alice);
+        console.log("eve", eve);
+        console.log("bob", bob);
+        console.log("jugBase", uint256(0.0000000006279e27));
 
         res = d.deploy(
             PHTDeployConfig({

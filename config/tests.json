@@ -1,0 +1,9 @@
+{
+  "authorityOwner": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
+  "authorityRootUsers": ["0xa959355654849CbEAbBf65235f8235833b9e031D"],
+  "dogHoleRad": 10000000,
+  "govTokenSymbol": "APC",
+  "jugBase": 0.0000000006279e27,
+  "phtUsdFeed": "0x0000000000000000000000000000000000000000",
+  "vatLineRad": 10000000
+}

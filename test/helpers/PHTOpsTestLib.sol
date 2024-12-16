@@ -1,11 +1,11 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {PHTDeployResult} from "../../pht/PHTDeploy.sol";
+import {PHTDeployResult} from "../../script/PHTDeploy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Vat} from "dss/vat.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
-import {ProxyRegistryLike, ProxyLike, DssProxyActionsLike} from "../../pht/PHTDeploy.sol";
+import {ProxyRegistryLike, ProxyLike, DssProxyActionsLike} from "../../script/PHTDeploy.sol";
 
 library PHTOpsTestLib {
     function openLockGemAndDraw(

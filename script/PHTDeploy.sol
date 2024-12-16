@@ -35,16 +35,16 @@ import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 import {MkrAuthority} from "mkr-authority/MkrAuthority.sol";
 
 // --- custom code ---
-import {DSRoles} from "./lib/Roles.sol";
+import {DSRoles} from "../pht/lib/Roles.sol";
 import {ChainLog} from "../test/helpers/ChainLog.sol";
 
 // Chainlink
-import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
-import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
-import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
+import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFactory.sol";
+import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
-import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "./PHTCollateralHelper.sol";
-import {ProxyActions} from "./helpers/ProxyActions.sol";
+import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
+import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
 interface IThingAdmin {
     // --- Administration ---

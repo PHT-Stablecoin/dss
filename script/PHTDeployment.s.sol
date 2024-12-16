@@ -8,9 +8,9 @@ import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {PHTDeploy, PHTDeployResult} from "../pht/PHTDeploy.sol";
+import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
-import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {PriceFeedFactory} from "../pht/factory/PriceFeedFactory.sol";

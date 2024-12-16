@@ -14,10 +14,20 @@ interface ITokenFactory {
     ) external returns (address implementation, address proxy, address masterMinter);
 }
 
+struct FactoryToken {
+    address implementation;
+    address masterMinter;
+}
+
 contract FiatTokenFactory is ITokenFactory {
     IImplementationDeployer public immutable IMPLEMENTATION_DEPLOYER;
     IMasterMinterDeployer public immutable MASTER_MINTER_DEPLOYER;
     IProxyInitializer public immutable PROXY_INITIALIZER;
+
+    // proxy address => FactoryToken
+    mapping(address => FactoryToken) public tokens;
+    // list of all proxy token addresses
+    address[] public tokenAddresses;
 
     constructor(address _implementationDeployer, address _masterMinterDeployer, address _proxyInitializer) public {
         IMPLEMENTATION_DEPLOYER = IImplementationDeployer(_implementationDeployer);

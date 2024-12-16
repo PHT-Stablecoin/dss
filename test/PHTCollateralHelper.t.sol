@@ -12,14 +12,14 @@ import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {Jug} from "../src/jug.sol";
 
 import {DSRoles} from "../pht/lib/Roles.sol";
-import {PHTDeploy, PHTDeployResult} from "../pht/PHTDeploy.sol";
+import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
-import {PHTDeployConfig} from "../pht/PHTDeployConfig.sol";
+import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";

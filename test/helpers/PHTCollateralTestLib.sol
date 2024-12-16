@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import {console} from "forge-std/console.sol";
 
 import {PHTCollateralHelper} from "../../pht/PHTCollateralHelper.sol";
-import {PHTDeploy, PHTDeployResult} from "../../pht/PHTDeploy.sol";
+import {PHTDeploy, PHTDeployResult} from "../../script/PHTDeploy.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../../pht/helpers/ChainlinkPip.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "../../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../../pht/factory/PriceJoinFeedFactory.sol";
