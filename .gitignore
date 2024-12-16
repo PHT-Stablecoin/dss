@@ -364,11 +364,10 @@ MigrationBackup/
 build/
 cache/
 
-
-# HaloDao Ignore
 typechain
 .DS_Store
 scoping
+Notes.md
 
 # Forge
 forge-artifacts/
@@ -376,7 +375,7 @@ forge-cache/
 .aider*
 out_mcd
 out_pht
-# script/output/**/*
+script/output/31337**/*
 # broadcast
 
 # Hardhat
