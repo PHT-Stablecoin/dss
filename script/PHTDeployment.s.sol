@@ -48,13 +48,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             })
         );
 
-        console.log("ilkRegistry", res.ilkRegistry);
-        console.log("ilkRegistry.list");
-        bytes32[] memory ilks = IlkRegistry(res.ilkRegistry).list();
-        console.log("ilks.length", ilks.length);
-        // console.logBytes32(ilks[0]);
-
-        console.log("[PHTDeploymentScript] res.collateralHelper \t", res.collateralHelper);
         PHTCollateralHelper h = PHTCollateralHelper(res.collateralHelper);
 
         // @TODO move this to a per-chain json as global config above
@@ -96,9 +89,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             })
         );
         vm.stopBroadcast();
-
-        ilks = IlkRegistry(res.ilkRegistry).list();
-        console.log("ilks.length", ilks.length);
 
         assertEq(IERC20(token).balanceOf(msg.sender), 1000 * 10 ** 6, "msg.sender should have 1000 tstPHP");
         assertTrue(DSRoles(res.authority).isUserRoot(msg.sender), "msg.sender is root");
