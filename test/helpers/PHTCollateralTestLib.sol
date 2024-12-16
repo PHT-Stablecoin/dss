@@ -44,7 +44,7 @@ library PHTCollateralTestLib {
                     initialSupply: 1000 * 10 ** 6
                 }),
                 PHTCollateralHelper.FeedParams({
-                    factory: PriceFeedFactory(res.feedFactory),
+                    factory: PriceFeedFactory(res.priceFeedFactory),
                     joinFactory: PriceJoinFeedFactory(res.joinFeedFactory),
                     feed: address(0),
                     decimals: 6,

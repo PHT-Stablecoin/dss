@@ -38,6 +38,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         PHTDeployResult memory res = deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
+                phtUsdFeed: address(0), // only for sepolia / local testing
                 dogHoleRad: 10_000_000,
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
@@ -82,7 +83,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 initialSupply: 1000 * 10 ** 6
             }),
             PHTCollateralHelper.FeedParams({
-                factory: PriceFeedFactory(res.feedFactory),
+                factory: PriceFeedFactory(res.priceFeedFactory),
                 joinFactory: PriceJoinFeedFactory(res.joinFeedFactory),
                 feed: address(0),
                 decimals: 6,
@@ -167,9 +168,11 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         artifacts.serialize("clog", r.clog);
 
         // --- Factories ---
-        artifacts.serialize("priceFeedFactory", r.feedFactory);
+        artifacts.serialize("priceFeedFactory", r.priceFeedFactory);
         artifacts.serialize("priceJoinFeedFactory", r.joinFeedFactory);
         artifacts.serialize("tokenFactory", r.tokenFactory);
+        // --- Chainlink ---
+        artifacts.serialize("feedPhpUsd", r.feedPhpUsd);
 
         // --- Helpers ----
         string memory json = artifacts.serialize("collateralHelper", r.collateralHelper);

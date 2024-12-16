@@ -20,6 +20,8 @@ interface AggregatorV3Interface {
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+    // @TODO add this
+    // function latestAnswer() external view returns (int256);
 }
 
 contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
@@ -75,5 +77,10 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
         returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
         _answer = answer;
+        // @TODO add this & in getRoundData
+        // _updatedAt = block.timestamp;
+        // _startedAt = block.timestamp;
+        // _answeredInRound = 1;
+        // _roundId = 1;
     }
 }

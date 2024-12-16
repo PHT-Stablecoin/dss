@@ -107,11 +107,13 @@ struct PHTDeployResult {
     // --- ChainLog ---
     address clog;
     // --- Factories ---
-    address feedFactory;
+    address priceFeedFactory;
     address joinFeedFactory;
     address tokenFactory;
     // --- Helpers ----
     address collateralHelper;
+    // --- Chainlink ---
+    address feedPhpUsd;
 }
 
 contract PHTDeploy is StdCheats {
@@ -127,7 +129,7 @@ contract PHTDeploy is StdCheats {
     GovActions govActions;
     DSToken gov;
     MkrAuthority mkrAuthority;
-    PriceFeedFactory feedFactory;
+    PriceFeedFactory priceFeedFactory;
     PriceJoinFeedFactory joinFeedFactory;
     GemJoinFab gemJoinFab;
     GemJoin5Fab gemJoin5Fab;
@@ -137,6 +139,7 @@ contract PHTDeploy is StdCheats {
     ChainLog clog;
     DssAutoLine autoline;
     IlkRegistry ilkRegistry;
+    address feedPhpUsd;
 
     // -- ROLES --
     uint8 constant ROLE_GOV_MINT_BURN = 10;
@@ -204,7 +207,8 @@ contract PHTDeploy is StdCheats {
             result.dssCdpManager = address(dssCdpManager);
             result.dsrManager = address(dsrManager);
             result.ilkRegistry = address(ilkRegistry);
-            result.feedFactory = address(feedFactory);
+            result.priceFeedFactory = address(priceFeedFactory);
+            result.feedPhpUsd = feedPhpUsd;
             result.joinFeedFactory = address(joinFeedFactory);
             result.collateralHelper = address(collateralHelper);
         }
@@ -367,7 +371,12 @@ contract PHTDeploy is StdCheats {
         dssCdpManager = new DssCdpManager(address(dssDeploy.vat()));
         dsrManager = new DsrManager(address(dssDeploy.pot()), address(dssDeploy.daiJoin()));
 
-        feedFactory = new PriceFeedFactory();
+        priceFeedFactory = new PriceFeedFactory();
+        feedPhpUsd = _c.phtUsdFeed;
+        // in testing environments we can deploy a mock feed for PHP/USD
+        if (feedPhpUsd == address(0)) {
+            feedPhpUsd = address(priceFeedFactory.create(8, 0.018e8, "PHP/USD")); // PHP/USD: 1 PHP = 0.018 USD
+        }
         joinFeedFactory = new PriceJoinFeedFactory();
         gemJoinFab = new GemJoinFab();
         gemJoin5Fab = new GemJoin5Fab();

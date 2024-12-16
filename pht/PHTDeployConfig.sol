@@ -5,6 +5,7 @@ import {PHTCollateralHelper} from "./PHTCollateralHelper.sol";
 
 struct PHTDeployConfig {
     string govTokenSymbol;
+    address phtUsdFeed; // optional for testing environments
     uint256 dogHoleRad;
     uint256 vatLineRad;
     uint256 jugBase;
