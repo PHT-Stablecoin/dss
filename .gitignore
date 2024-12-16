@@ -375,6 +375,7 @@ forge-cache/
 .aider*
 out_mcd
 out_pht
+# ingore localhost deployments
 script/output/31337**/*
 broadcast/*/31337/**/*
 # broadcast
