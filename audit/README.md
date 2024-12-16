@@ -1,4 +1,19 @@
-# PHT Audit request information
+# PHT MakerDAO Integration Security Audit Documentation
+
+## Table of Contents
+
+- [PHT MakerDAO Integration Security Audit Documentation](#pht-makerdao-integration-security-audit-documentation)
+  - [Table of Contents](#table-of-contents)
+  - [Files under audit](#files-under-audit)
+  - [System Overview](#system-overview)
+    - [Key Modifications](#key-modifications)
+  - [Architecture](#architecture)
+    - [System Components](#system-components)
+  - [Core Components](#core-components)
+    - [PHT Integration (`pht/`)](#pht-integration-pht)
+    - [FiatToken Integration (`fiattoken/`)](#fiattoken-integration-fiattoken)
+    - [Deployment System (`script/`)](#deployment-system-script)
+    - [Key Deviations from MCD](#key-deviations-from-mcd)
 
 ## Files under audit
 
@@ -30,24 +45,6 @@
 - fiattoken/interfaces/IImplementationDeployer.sol
 - fiattoken/interfaces/IProxyInitializer.sol
 - fiattoken/ImplementationDeployer.sol
-
-# PHT MakerDAO Integration Security Audit Documentation
-
-## Table of Contents
-
-- [PHT Audit request information](#pht-audit-request-information)
-  - [Files under audit](#files-under-audit)
-- [PHT MakerDAO Integration Security Audit Documentation](#pht-makerdao-integration-security-audit-documentation)
-  - [Table of Contents](#table-of-contents)
-  - [System Overview](#system-overview)
-    - [Key Modifications](#key-modifications)
-  - [Architecture](#architecture)
-    - [System Components](#system-components)
-  - [Core Components](#core-components)
-    - [PHT Integration (`pht/`)](#pht-integration-pht)
-    - [FiatToken Integration (`fiattoken/`)](#fiattoken-integration-fiattoken)
-    - [Deployment System (`script/`)](#deployment-system-script)
-    - [Key Deviations from MCD](#key-deviations-from-mcd)
 
 ## System Overview
 

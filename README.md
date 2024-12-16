@@ -1,79 +1,54 @@
-## Foundry
+# PHT MakerDAO Integration
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This project implements a PHP stablecoin system built on MakerDAO's Multi-Collateral Dai (MCD) architecture. It enables the creation of a PHP-denominated stablecoin based on different collateral tokens. Additionally it uses the Circle's FiatToken framework for self-managed collateral tokens and custom Chainlink compatible price feeds.
 
-Foundry consists of:
+## Overview
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The system extends MakerDAO's core contracts to support PHP-denominated assets with three main components:
 
-## Documentation
+1. PHT Integration: Connects PHP tokens to MakerDAO's collateral system
+2. FiatToken Integration: Manages PHP stablecoin implementation using Circle's framework
+3. Deployment System: Orchestrates system deployment and configuration
 
-https://book.getfoundry.sh/
+## Quick Start
 
-## Usage
-
-### Localhost Dev
-
-```shell
-$ forge install
-$ npm install
-$ cp .env.example .env.development # Create Dev Env
-$ chmod -R 777 ./script/cmd # Chmod Scripts
-$ ./script/cmd/anvil.sh # Run in seperate shell
-$ ./script/cmd/dssDeploy_anvil.sh # Deploy Sample Dss
-$ cat ./script/output/31337/dssDeploy.artifacts.json ## Artifacts deployed here
-$ ./script/cmd/run_jobs.sh # Run Jobs every 5 seconds
+```bash
+# this will take a long time even on fast connections
+forge install
+forge build # this is required
+# run tests
+forge test
 ```
 
-### Build (For Scripts)
-```shell 
-$ #NODE
-$ npm install
+## Deploy to local node:
+
+```bash
+# start anvil in a separate terminal
+anvil
+
+# you need to have done a forge install && forge build before this next step
+# deploy to local anvil node using its default public/private key at index 0
+forge script ./script/PHTDeployment.s.sol --broadcast --rpc-url http://127.0.0.1:8545 \
+--sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
+--private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-### Test
+## Project Structure
 
-```shell
-$ forge test
+```
+├── audit/              # Audit related readme
+├── fiattoken/          # Circle FiatToken integration
+├── pht/                # PHT collateral system
+│   ├── factory/        # Price feed factories
+│   ├── helpers/        # Utility contracts
+│   └── lib/            # Shared libraries
+├── script/             # Deployment scripts
+└── test/               # Test suites
 ```
 
-### Format
+## Acknowledgments
 
-```shell
-$ forge fmt
-```
+This project builds upon:
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+- [MakerDAO's DSS System](https://github.com/makerdao/dss)
+- [Circle's FiatToken](https://github.com/circlefin/stablecoin-evm)
