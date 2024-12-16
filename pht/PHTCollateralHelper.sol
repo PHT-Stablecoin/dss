@@ -18,7 +18,6 @@ import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
 
 import {PHTDeploy, PHTDeployResult} from "./PHTDeploy.sol";
-import {ConfigurableDSToken} from "./token/ConfigurableDSToken.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";

@@ -33,11 +33,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         console.log("[PHTDeploymentScript] chainId \t", chainId());
         console.log("[PHTDeploymentScript] block.timestamp ", block.timestamp);
         console.log("[PHTDeploymentScript] block.number \t", block.number);
-        console.log(
-            '[PHTDeploymentScript] \x1b[0m\x1b[33mNOTE: can ignore the below warning \n\t\t\t"Script [...] which does not contains any code." \x1b[1m\n\t\t\tif the address matches:',
-            address(this),
-            "\x1b[0m"
-        );
 
         // @TODO move this to a per-chain json
         PHTDeployResult memory res = deploy(
@@ -174,6 +169,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         // --- Factories ---
         artifacts.serialize("priceFeedFactory", r.feedFactory);
         artifacts.serialize("priceJoinFeedFactory", r.joinFeedFactory);
+        artifacts.serialize("tokenFactory", r.tokenFactory);
 
         // --- Helpers ----
         string memory json = artifacts.serialize("collateralHelper", r.collateralHelper);
