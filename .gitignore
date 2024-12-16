@@ -376,6 +376,7 @@ forge-cache/
 out_mcd
 out_pht
 script/output/31337**/*
+broadcast/*/31337/**/*
 # broadcast
 
 # Hardhat
