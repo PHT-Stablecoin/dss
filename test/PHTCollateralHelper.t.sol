@@ -76,13 +76,13 @@ contract PHTCollateralHelperTest is Test {
         vm.startPrank(eve);
         PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
-        (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
+        (prevIlkDuty,) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
         assertTrue(prevIlk != geNextIlkName(res.ilkRegistry), "prev ilk should not be the same as the next ilk");
 
         PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
-        (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
+        (prevIlkDuty,) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
 
         PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
@@ -100,8 +100,8 @@ contract PHTCollateralHelperTest is Test {
         uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
 
         vm.startPrank(eve);
-        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
-            .addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) =
+            PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");

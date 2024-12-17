@@ -21,6 +21,7 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 /// @title An on-chain governance-managed contract registry
 /// @notice Publicly readable data; mutating functions must be called by an authorized user
+
 contract ChainLog {
     event Rely(address usr);
     event Deny(address usr);
@@ -31,15 +32,18 @@ contract ChainLog {
     event RemoveAddress(bytes32 key);
 
     // --- Auth ---
-    mapping(address => uint) public wards;
+    mapping(address => uint256) public wards;
+
     function rely(address usr) external auth {
         wards[usr] = 1;
         emit Rely(usr);
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
         emit Deny(usr);
     }
+
     modifier auth() {
         require(wards[msg.sender] == 1, "ChainLog/not-authorized");
         _;
@@ -49,6 +53,7 @@ contract ChainLog {
         uint256 pos;
         address addr;
     }
+
     mapping(bytes32 => Location) location;
 
     bytes32[] public keys;

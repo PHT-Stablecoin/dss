@@ -78,11 +78,10 @@ contract PHTCollateralHelper is DSAuth {
         // address feed;
         // FactoryLike factory;
         // bytes payload;
-
         PriceFeedFactory factory;
         PriceJoinFeedFactory joinFactory;
         address feed; // (optional)
-        int initialPrice; // (optional) feed price
+        int256 initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
         address numeratorFeed; // (optional)
         address denominatorFeed;
@@ -115,7 +114,10 @@ contract PHTCollateralHelper is DSAuth {
         authority = DSAuthority(pause.authority());
     }
 
-    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_) public auth {
+    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_)
+        public
+        auth
+    {
         require(address(calcFab) == address(0), "pht-collateral-helper-fabs-init");
         calcFab = calcFab_;
         clipFab = clipFab_;
@@ -123,12 +125,10 @@ contract PHTCollateralHelper is DSAuth {
         gemJoin5Fab = gemJoin5Fab_;
     }
 
-    function deployCollateralClip(
-        bytes32 ilk,
-        address join,
-        address pip,
-        address calc
-    ) internal returns (Clipper clip) {
+    function deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
+        internal
+        returns (Clipper clip)
+    {
         require(ilk != bytes32(""), "Missing ilk name");
         require(join != address(0), "Missing join address");
         require(pip != address(0), "Missing pip address");
@@ -191,9 +191,8 @@ contract PHTCollateralHelper is DSAuth {
                 owner: owner
             });
 
-            (address implementation, address proxy, address masterMinter) = ITokenFactory(tokenParams.factory).create(
-                info
-            );
+            (address implementation, address proxy, address masterMinter) =
+                ITokenFactory(tokenParams.factory).create(info);
 
             // newToken.setOwner(owner);
             _token = address(proxy);
@@ -249,7 +248,7 @@ contract PHTCollateralHelper is DSAuth {
         }
 
         {
-            (address clip, , , ) = dog.ilks(ilkParams.ilk);
+            (address clip,,,) = dog.ilks(ilkParams.ilk);
             Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
         }
 
@@ -284,5 +283,7 @@ interface CalcFabLike {
 }
 
 interface ClipFabLike {
-    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk) external returns (address);
+    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk)
+        external
+        returns (address);
 }

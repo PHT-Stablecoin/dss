@@ -32,13 +32,8 @@ contract PriceJoinFeedFactory is DSAuth {
         bool invertDenominator,
         string memory description
     ) external returns (PriceJoinFeedAggregator feed) {
-        feed = new PriceJoinFeedAggregator(
-            numeratorFeed,
-            denominatorFeed,
-            invertNumerator,
-            invertDenominator,
-            description
-        );
+        feed =
+            new PriceJoinFeedAggregator(numeratorFeed, denominatorFeed, invertNumerator, invertDenominator, description);
 
         feedRegistry[address(feed)] = PriceFeedInfo({
             numeratorFeed: numeratorFeed,
@@ -52,12 +47,7 @@ contract PriceJoinFeedFactory is DSAuth {
         feed.setOwner(msg.sender);
 
         emit PriceFeedJoinCreated(
-            numeratorFeed,
-            invertNumerator,
-            denominatorFeed,
-            invertDenominator,
-            description,
-            msg.sender
+            numeratorFeed, invertNumerator, denominatorFeed, invertDenominator, description, msg.sender
         );
     }
 

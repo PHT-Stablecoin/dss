@@ -51,18 +51,18 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         PHTCollateralHelper h = PHTCollateralHelper(res.collateralHelper);
 
         // @TODO move this to a per-chain json as global config above
-        (address join, , address token, ) = h.addCollateral(
+        (address join,, address token,) = h.addCollateral(
             address(dssDeploy.pause().proxy()),
             res.ilkRegistry,
             PHTCollateralHelper.IlkParams({
                 ilk: ILK_NAME,
-                line: uint(5_000_000 * RAD), // Set PHP-A limit to 5 million DAI (RAD units)
-                dust: uint(0),
+                line: uint256(5_000_000 * RAD), // Set PHP-A limit to 5 million DAI (RAD units)
+                dust: uint256(0),
                 tau: 1 hours,
-                mat: uint(1050000000 ether), // Liquidation Ratio (105%),
+                mat: uint256(1050000000 ether), // Liquidation Ratio (105%),
                 hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
+                buf: 1.2e27, // Set a 20% increase in auctions (RAY)
                 // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
                 duty: 1.0000000012436807e27 // => 4%
             }),
@@ -80,7 +80,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 joinFactory: PriceJoinFeedFactory(res.joinFeedFactory),
                 feed: address(0),
                 decimals: 6,
-                initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
+                initialPrice: int256(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
                 numeratorFeed: address(0),
                 invertNumerator: false,
                 denominatorFeed: address(0),
@@ -98,13 +98,9 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         writeArtifacts(res);
     }
 
-    function _test_openLockGemAndDraw(
-        PHTDeployResult memory res,
-        address bob,
-        bytes32 ilk,
-        address token,
-        address join
-    ) private {
+    function _test_openLockGemAndDraw(PHTDeployResult memory res, address bob, bytes32 ilk, address token, address join)
+        private
+    {
         vm.prank(msg.sender);
         IERC20(token).transfer(bob, 1000 * 10 ** 6);
 
@@ -119,9 +115,8 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
 
     function writeArtifacts(PHTDeployResult memory r) public {
         string memory root = vm.projectRoot();
-        string memory path = string(
-            abi.encodePacked(root, "/script/output/", vm.toString(chainId()), "/dssDeploy.artifacts.json")
-        );
+        string memory path =
+            string(abi.encodePacked(root, "/script/output/", vm.toString(chainId()), "/dssDeploy.artifacts.json"));
 
         console.log("[PHTDeploymentScript] writing artifacts to", path);
 
