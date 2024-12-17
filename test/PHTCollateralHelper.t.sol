@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {DssDeploy, Clipper} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
+import {DssDeploy, Clipper, Spotter} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -16,7 +16,7 @@ import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
 import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
-import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
+import {ChainlinkPip, AggregatorV3Interface, PipLike} from "../pht/helpers/ChainlinkPip.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 
 import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
@@ -66,7 +66,7 @@ contract PHTCollateralHelperTest is Test {
         return keccak256(abi.encodePacked(ILK_PREFIX, IlkRegistry(ilkRegistry).count() - 1));
     }
 
-    function geNextIlkName(address ilkRegistry) internal returns (bytes32) {
+    function getNextIlkName(address ilkRegistry) internal returns (bytes32) {
         return keccak256(abi.encodePacked(ILK_PREFIX, IlkRegistry(ilkRegistry).count()));
     }
 
@@ -74,23 +74,23 @@ contract PHTCollateralHelperTest is Test {
         bytes32 prevIlk;
         uint256 prevIlkDuty;
         vm.startPrank(eve);
-        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
         (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
-        assertTrue(prevIlk != geNextIlkName(res.ilkRegistry), "prev ilk should not be the same as the next ilk");
+        assertTrue(prevIlk != getNextIlkName(res.ilkRegistry), "prev ilk should not be the same as the next ilk");
 
-        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
         (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
 
-        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
-        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
 
         assertEq(
-            geNextIlkName(res.ilkRegistry),
+            getNextIlkName(res.ilkRegistry),
             keccak256(abi.encodePacked(ILK_PREFIX, uint256(4))),
             "ilk name correct for multiple adds"
         );
@@ -100,8 +100,9 @@ contract PHTCollateralHelperTest is Test {
         uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
 
         vm.startPrank(eve);
+        bytes32 ilk = getNextIlkName(res.ilkRegistry);
         (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
-            .addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+            .addCollateral(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
@@ -110,21 +111,43 @@ contract PHTCollateralHelperTest is Test {
         // ensure eve received the token balance
         assertEq(IERC20(token).balanceOf(eve), 1000 * 10 ** 6, "eve should have received the token balance");
         assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef + 1, "[PHTCollateralHelperTest] ilksCount");
+        assertEq(address(pip), IlkRegistry(res.ilkRegistry).pip(ilk), "Same Pip");
+    }
+
+    function test_addsIlk_join() public {
+         uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
+
+        vm.startPrank(eve);
+        bytes32 ilk = getNextIlkName(res.ilkRegistry);
+        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
+            .addCollateralJoin(ilk, res, h, eve);
+        vm.stopPrank();
+
+        assertEq(IERC20Metadata(token).name(), "pDAI", "token name");
+        assertEq(IERC20Metadata(token).symbol(), "pDAI", "token symbol");
+        assertEq(uint256(IERC20Metadata(token).decimals()), 18, "token decimals");
+        // ensure eve received the token balance
+        assertEq(IERC20(token).balanceOf(eve), 1000 * 10 ** 18, "eve should have received the token balance");
+        assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef + 1, "[PHTCollateralHelperTest] ilksCount");
+        assertEq(address(pip), IlkRegistry(res.ilkRegistry).pip(ilk), "Same Pip");
+
+        (bytes32 answer,) = pip.peek();
+        assertApproxEqAbsDecimal(uint256(answer), 58e18, 0.2e18, 18, "1 DAI should be approx 58 PHT");
     }
 
     function test_rootCanAddCollateral() public {
         vm.startPrank(eve);
-        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
     }
 
     function testFail_shouldFailWithAuth() public {
-        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, alice);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, alice);
     }
 
     function testFail_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
-        PHTCollateralTestLib.addCollateral(geNextIlkName(res.ilkRegistry), res, h, alice);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, alice);
         vm.stopPrank();
     }
 }
