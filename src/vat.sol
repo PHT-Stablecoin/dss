@@ -19,8 +19,6 @@
 
 pragma solidity ^0.6.12;
 
-import "forge-std/console.sol";
-
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
@@ -179,15 +177,6 @@ contract Vat {
         int dtab = _mul(ilk.rate, dart);
         uint tab = _mul(ilk.rate, urn.art);
         debt = _add(debt, dtab);
-
-        console.log("tab:", tab);
-        console.log("_mul(urn.ink, ilk.spot):", _mul(urn.ink, ilk.spot));
-        console.log("dart:", dart);
-        console.log("ilk.rate", ilk.rate);
-        console.log("_mul(ilk.Art, ilk.rate)", _mul(ilk.Art, ilk.rate));
-        console.log("ilk.line", ilk.line);
-        console.log("debt", debt);
-        console.log("Line", Line);
 
         // either debt has decreased, or debt ceilings are not exceeded
         require(
