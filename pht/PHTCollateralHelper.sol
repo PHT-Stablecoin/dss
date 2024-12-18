@@ -220,7 +220,7 @@ contract PHTCollateralHelper is DSAuth {
         _pip = new ChainlinkPip(address(_feed));
 
         // @TODO deny this ward in GemJoin(s)
-        if (tokenParams.decimals < 18) {
+        if (TokenLike(_token).decimals() < 18) {
             _join = address(gemJoin5Fab.newJoin(owner, address(vat), ilkParams.ilk, _token));
         } else {
             _join = address(gemJoinFab.newJoin(owner, address(vat), ilkParams.ilk, _token));
