@@ -17,14 +17,17 @@ import {PriceFeedFactory} from "../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {PHTOpsTestLib} from "../test/helpers/PHTOpsTestLib.sol";
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
-
+import {PHTDeploymentConfigJsonHelper, IPHTDeployConfigJson} from "../test/helpers/PHTDeploymentConfigJsonHelper.sol";
 contract PHTDeploymentScript is Script, PHTDeploy, Test {
     using ArrayHelpers for *;
     using stdJson for string;
 
     bytes32 constant ILK_NAME = bytes32("PHP-A");
 
-    function run() public {
+    function run(string memory jsonFileName) public {
+        PHTDeploymentConfigJsonHelper helper = new PHTDeploymentConfigJsonHelper();
+        IPHTDeployConfigJson.Root memory config = helper.readDeploymentConfig(jsonFileName);
+
         vm.startBroadcast();
 
         console.log("[PHTDeploymentScript] starting...");
@@ -39,7 +42,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             PHTDeployConfig({
                 govTokenSymbol: "APC",
                 phtUsdFeed: address(0), // only for sepolia / local testing
-                dogHoleRad: 10_000_000,
+                dogHoleRad: config.dogHoleRad,
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 authorityOwner: msg.sender,
