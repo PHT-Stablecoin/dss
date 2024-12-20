@@ -17,6 +17,8 @@ import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
+import {PHTTokenHelper} from "../pht/PHTTokenHelper.sol";
+
 import {PHTOpsTestLib} from "./helpers/PHTOpsTestLib.sol";
 
 import {FiatTokenFactory} from "../fiattoken/FiatTokenFactory.sol";
@@ -74,33 +76,23 @@ contract PHTDeployIntegrationTest is Test {
         address minter = makeAddr("minter");
 
         // Test #1: Create a token
-        FiatTokenInfo memory info = FiatTokenInfo({
+        PHTTokenHelper.TokenInfo memory info = PHTTokenHelper.TokenInfo({
             tokenName: "Stable1",
             tokenSymbol: "ST1",
             tokenDecimals: 6,
             tokenCurrency: "USD",
             initialSupply: 100_000 * 1e6,
-            initialSupplyMintTo: bob,
-            masterMinterOwner: masterMinterOwner,
-            proxyAdmin: proxyAdmin,
-            pauser: owner,
-            blacklister: owner,
-            owner: owner
+            initialSupplyMintTo: bob
         });
 
-        (address implementation, address proxy, address masterMinter) = FiatTokenFactory(res.tokenFactory).create(info);
+        vm.startPrank(eve);
+        (address implementation, address proxy, address masterMinter) = PHTTokenHelper(res.tokenHelper).createToken(info);
 
         // Verify initial balance
         assertEq(IERC20(proxy).balanceOf(bob), 100_000 * 1e6, "bob should have 100,000 tokens");
 
-        vm.prank(masterMinterOwner);
-        IMasterMinter(masterMinter).configureController(controller, minter);
 
-        vm.prank(controller);
-        IMasterMinter(masterMinter).configureMinter(1e9);
-
-        vm.prank(minter);
-        IFiatToken(proxy).mint(bob, 1e9);
+        PHTTokenHelper(res.tokenHelper).mint(proxy, bob, 1e9);
 
         assertEq(IERC20(proxy).balanceOf(bob), (100_000 * 1e6) + 1e9, "bob should have 100,000 + 1000 tokens");
     }

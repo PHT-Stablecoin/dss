@@ -20,6 +20,7 @@ import {LinearDecrease} from "dss/abaci.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
+import { PHTTokenHelper } from "./PHTTokenHelper.sol";
 
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
@@ -63,6 +64,8 @@ contract PHTCollateralHelper is DSAuth {
     ClipFab clipFab;
     GemJoinFab gemJoinFab;
     GemJoin5Fab gemJoin5Fab;
+    
+    PHTTokenHelper public tokenHelper;
 
     struct TokenParams {
         ITokenFactory factory;
@@ -123,6 +126,10 @@ contract PHTCollateralHelper is DSAuth {
         gemJoin5Fab = gemJoin5Fab_;
     }
 
+    function setTokenHelper(PHTTokenHelper tokenHelper_) public auth {
+        tokenHelper = tokenHelper_;
+    }
+
     function deployCollateralClip(
         bytes32 ilk,
         address join,
@@ -168,9 +175,6 @@ contract PHTCollateralHelper is DSAuth {
         TokenParams memory tokenParams,
         FeedParams memory feedParams
     ) public auth returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
-        // require(tokenParams.decimals <= 18, "token-factory-max-decimals");
-        // @TODO why not extend DSAuth instead?
-        // require(IlkRegistryLike(ilkRegistry).wards(address(this)) == 1, "pht-collateral-helper-ilkreg-not-authorized");
 
         _token = tokenParams.token;
         if (_token == address(0)) {
@@ -182,18 +186,21 @@ contract PHTCollateralHelper is DSAuth {
                 tokenCurrency: "",
                 initialSupply: tokenParams.initialSupply,
                 initialSupplyMintTo: msg.sender,
-                masterMinterOwner: owner,
+                masterMinterOwner: address(tokenHelper),
                 // @TODO proxyAdmin cannot be the same as owner
                 // update Proxy actions to allow update of implementation of FiatProxy
                 proxyAdmin: address(pause.proxy()),
-                pauser: owner,
-                blacklister: owner,
-                owner: owner
+                // Ideally this should be PHTTokenHelper
+                pauser: address(tokenHelper),
+                blacklister: address(tokenHelper),
+                owner: address(tokenHelper)
             });
 
             (address implementation, address proxy, address masterMinter) = ITokenFactory(tokenParams.factory).create(
                 info
             );
+
+            tokenHelper.configureMinter(masterMinter);
 
             // newToken.setOwner(owner);
             _token = address(proxy);

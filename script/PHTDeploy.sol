@@ -44,6 +44,8 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
+import {PHTTokenHelper } from "../pht/PHTTokenHelper.sol";
+
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
 interface IThingAdmin {
@@ -112,6 +114,7 @@ struct PHTDeployResult {
     address tokenFactory;
     // --- Helpers ----
     address collateralHelper;
+    address tokenHelper;
     // --- Chainlink ---
     address feedPhpUsd;
 }
@@ -135,6 +138,8 @@ contract PHTDeploy is StdCheats {
     GemJoin5Fab gemJoin5Fab;
 
     PHTCollateralHelper collateralHelper;
+    PHTTokenHelper tokenHelper;
+    FiatTokenFactory tokenFactory;
 
     ChainLog clog;
     DssAutoLine autoline;
@@ -144,6 +149,7 @@ contract PHTDeploy is StdCheats {
     // -- ROLES --
     uint8 constant ROLE_GOV_MINT_BURN = 10;
     uint8 constant ROLE_GOV_ADD_COLLATERAL = 10;
+    uint8 constant ROLE_GOV_CREATE_TOKEN = 10;
 
     uint8 constant ROLE_CAN_PLOT = 11;
     uint8 constant ROLE_CAN_EXEC = 12;
@@ -156,8 +162,6 @@ contract PHTDeploy is StdCheats {
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory result) {
         require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
         require(_c.authorityOwner != address(0), "authorityOwner required");
-
-        result.tokenFactory = deployFiatTokenFactory();
 
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
@@ -211,6 +215,8 @@ contract PHTDeploy is StdCheats {
             result.feedPhpUsd = feedPhpUsd;
             result.joinFeedFactory = address(joinFeedFactory);
             result.collateralHelper = address(collateralHelper);
+            result.tokenHelper = address(tokenHelper);
+            result.tokenFactory = address(tokenFactory);
         }
 
         // ChainLog
@@ -245,7 +251,7 @@ contract PHTDeploy is StdCheats {
         return result;
     }
 
-    function deployFiatTokenFactory() private returns (address) {
+    function deployFiatTokenFactory() private returns (FiatTokenFactory) {
         ImplementationDeployer implementationDeployer = new ImplementationDeployer();
         MasterMinterDeployer masterMinterDeployer = new MasterMinterDeployer();
         ProxyInitializer proxyInitializer = new ProxyInitializer();
@@ -256,7 +262,7 @@ contract PHTDeploy is StdCheats {
             address(proxyInitializer)
         );
 
-        return address(factory);
+        return factory;
     }
 
     function deployAuthority(address[] memory _rootUsers) private returns (DSRoles authority) {
@@ -398,6 +404,24 @@ contract PHTDeploy is StdCheats {
             true
         );
 
+
+        {
+            // Setup Token Factory
+            tokenFactory = deployFiatTokenFactory();
+            tokenFactory.rely(address(dssDeploy.pause().proxy()));
+            tokenFactory.deny(address(this));
+        }
+
+        {
+            // Setup TokenHelper
+            tokenHelper = new PHTTokenHelper(
+                dssDeploy.pause(),
+                tokenFactory
+            );
+
+            proxyActions.rely(address(tokenFactory), address(tokenHelper));
+        }
+
         {
             // Setup CollateralHelper
             collateralHelper = new PHTCollateralHelper(
@@ -412,13 +436,25 @@ contract PHTDeploy is StdCheats {
             );
 
             collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab, gemJoin5Fab);
+            collateralHelper.setTokenHelper(tokenHelper);
 
             proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.spotter()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.dog()), address(collateralHelper));
             proxyActions.rely(address(ilkRegistry), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.jug()), address(collateralHelper));
+            proxyActions.rely(address(tokenFactory), address(collateralHelper));
+
+            DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_GOV_CREATE_TOKEN, true);
+            DSRoles(address(_authority)).setRoleCapability(
+                ROLE_GOV_CREATE_TOKEN,
+                address(tokenHelper),
+                tokenHelper.configureMinter.selector,
+                true
+            );
         }
+
+ 
 
         // DSRoles(address(_authority)).setRoleCapability(
         //     ROLE_CAN_EXEC,

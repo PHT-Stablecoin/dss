@@ -24,6 +24,19 @@ contract FiatTokenFactory is ITokenFactory {
     IMasterMinterDeployer public immutable MASTER_MINTER_DEPLOYER;
     IProxyInitializer public immutable PROXY_INITIALIZER;
 
+    // --- Auth ---
+    mapping(address => uint) public wards;
+    function rely(address usr) external auth {
+        wards[usr] = 1;
+    }
+    function deny(address usr) external auth {
+        wards[usr] = 0;
+    }
+    modifier auth() {
+        require(wards[msg.sender] == 1, "FiatTokenFactory/not-authorized");
+        _;
+    }
+
     // proxy address => FactoryToken
     mapping(address => FactoryToken) public tokens;
     // list of all proxy token addresses
@@ -33,14 +46,26 @@ contract FiatTokenFactory is ITokenFactory {
         IMPLEMENTATION_DEPLOYER = IImplementationDeployer(_implementationDeployer);
         MASTER_MINTER_DEPLOYER = IMasterMinterDeployer(_masterMinterDeployer);
         PROXY_INITIALIZER = IProxyInitializer(_proxyInitializer);
+        wards[msg.sender] = 1;
     }
 
     function create(
         FiatTokenInfo memory tokenInfo
-    ) external override returns (address implementation, address proxy, address masterMinter) {
+    ) external auth override returns (address implementation, address proxy, address masterMinter) {
         (implementation, proxy, masterMinter) = _deployAndInitialize(tokenInfo);
+        tokenAddresses.push(proxy);
+        tokens[proxy] = FactoryToken({
+            implementation: implementation,
+            masterMinter: masterMinter
+        });
+
         emit TokenCreated(implementation, proxy, msg.sender);
+
         return (implementation, proxy, masterMinter);
+    }
+
+    function lastToken() view public returns (uint256) {
+        return tokenAddresses.length -1;
     }
 
     function _deployAndInitialize(
