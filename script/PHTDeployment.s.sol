@@ -154,7 +154,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         artifacts.serialize("cure", r.cure);
         artifacts.serialize("end", r.end);
         artifacts.serialize("esm", r.esm);
-        // --- ChainLog ---
         artifacts.serialize("clog", r.clog);
 
         // --- Factories ---
@@ -165,7 +164,12 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         artifacts.serialize("feedPhpUsd", r.feedPhpUsd);
 
         // --- Helpers ----
-        string memory json = artifacts.serialize("collateralHelper", r.collateralHelper);
+        artifacts.serialize("collateralHelper", r.collateralHelper);
+        artifacts.serialize("tokenHelper", r.tokenHelper);
+
+        // --- ChainLog ---
+        string memory json = artifacts.serialize("clog", r.clog);
+
 
         json.write(path);
     }
