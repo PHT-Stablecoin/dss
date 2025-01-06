@@ -1,23 +1,26 @@
 {
-  "_notes": "The _notes field is used to store any additional information about the configuration. It is not used for any other purpose.",
-  "authorityOwner": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
-  "authorityRootUsers": ["0xa959355654849CbEAbBf65235f8235833b9e031D"],
+  "_notes": "One of the PHT Wallets: 0xDdfc99E5C7c5880A57236883ff6855dE7ddd0a0F; PHT Staging Deployer is also root user: 0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB",
+  "authorityOwner": "0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB",
+  "authorityRootUsers": [
+    "0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB",
+    "0xDdfc99E5C7c5880A57236883ff6855dE7ddd0a0F"
+  ],
   "collaterals": [
     {
       "feedParams": {
         "decimals": 6,
-        "denominatorFeed": "0x1111111111111111111111111111111111111111",
-        "feed": "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED",
-        "feedDescription": "Test feed",
+        "denominatorFeed": "0x0000000000000000000000000000000000000000",
+        "feed": "0x0000000000000000000000000000000000000000",
+        "feedDescription": "PHT/USD Feed",
         "initialPrice": 1000000,
-        "invertDenominator": true,
+        "invertDenominator": false,
         "invertNumerator": false,
-        "numeratorFeed": "0x2222222222222222222222222222222222222222"
+        "numeratorFeed": "0x0000000000000000000000000000000000000000"
       },
       "ilkParams": {
         "buf": 1.2e27,
         "chop": 1.13e18,
-        "dust": 11,
+        "dust": 0,
         "duty": 1.0000000012436807e27,
         "holeRad": 5000000,
         "ilk": "0x5048502d41000000000000000000000000000000000000000000000000000000",
@@ -28,10 +31,10 @@
       "tokenParams": {
         "decimals": 6,
         "initialSupply": 1000000000,
-        "maxSupply": 333,
+        "maxSupply": 0,
         "name": "Testtttttttt PHP",
         "symbol": "tstPHP",
-        "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE"
+        "token": "0x0000000000000000000000000000000000000000"
       }
     }
   ],

@@ -1,3 +1,3 @@
 # Deployment Config folder
 
-This folder stores all the json files that define all the paramters and values for the deployments.
+This folder stores the json files that define the parameters and values for different deployment environments.

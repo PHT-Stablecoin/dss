@@ -46,6 +46,21 @@ forge script ./script/PHTDeployment.s.sol --broadcast --rpc-url http://127.0.0.1
 └── test/               # Test suites
 ```
 
+## Deployment
+
+### Deployment Config
+
+All deployment configurations are stored in json files under `./config/` folder.
+
+The `collaterals[x].ilkParams.ilk` is a bytes32 encoded string. You can use cast command as such to convert from string to bytes32 (then assing the output to the `ilk` param):
+
+```sh
+❯ cast format-bytes32-string "PHP-A"
+0x5048502d41000000000000000000000000000000000000000000000000000000
+```
+
+See [./config/tests.json](./config/tests.json) for an example.
+
 ## Acknowledgments
 
 This project builds upon:
