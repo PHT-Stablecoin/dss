@@ -479,7 +479,7 @@ contract PHTDeploy is StdCheats {
         return deployCode("./out_pht/DssProxyRegistry.sol/DssProxyRegistry.json");
     }
 
-    function chainId() internal view returns (uint256 _chainId) {
+    function chainId() internal pure returns (uint256 _chainId) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             _chainId := chainid()

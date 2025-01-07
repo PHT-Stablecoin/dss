@@ -86,10 +86,9 @@ contract PHTDeployIntegrationTest is Test {
 
         // Verify initial balance
         assertEq(IERC20(proxy).balanceOf(bob), 100_000 * 1e6, "bob should have 100,000 tokens");
-
         PHTTokenHelper(res.tokenHelper).mint(proxy, bob, 1e9);
-
         assertEq(IERC20(proxy).balanceOf(bob), (100_000 * 1e6) + 1e9, "bob should have 100,000 + 1000 tokens");
+        vm.stopPrank();
     }
 
     function test_openLockGemAndDraw() public {
