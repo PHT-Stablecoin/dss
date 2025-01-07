@@ -14,6 +14,7 @@ import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
+
 contract PHTDeployTest is Test {
     using ArrayHelpers for *;
 
@@ -58,10 +59,7 @@ contract PHTDeployTest is Test {
         Dog(res.dog).file("Hole", 10_000_000 * RAD); // Set global limit to 10 million DAI (RAD units)
 
         uint256 currentHole = Dog(res.dog).Hole();
-        console.log("currentHole", currentHole);
         uint256 newHole = currentHole + 10_000_000 * RAD;
-
-        console.log("proxyActions", res.proxyActions);
 
         ProxyActions(res.proxyActions).file(res.dog, "Hole", newHole);
 

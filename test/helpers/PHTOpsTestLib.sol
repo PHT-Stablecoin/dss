@@ -8,13 +8,9 @@ import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {ProxyRegistryLike, ProxyLike, DssProxyActionsLike} from "../../script/PHTDeploy.sol";
 
 library PHTOpsTestLib {
-    function openLockGemAndDraw(
-        PHTDeployResult memory res,
-        address user,
-        bytes32 ilk,
-        address token,
-        address join
-    ) internal {
+    function openLockGemAndDraw(PHTDeployResult memory res, address user, bytes32 ilk, address token, address join)
+        internal
+    {
         address proxy = ProxyRegistryLike(res.dssProxyRegistry).build(user);
         // user approves the proxy to spend his tokens
         IERC20(token).approve(address(proxy), 1000 * 10 ** 6);

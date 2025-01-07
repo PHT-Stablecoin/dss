@@ -20,7 +20,7 @@ import {LinearDecrease} from "dss/abaci.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
-import { PHTTokenHelper } from "./PHTTokenHelper.sol";
+import {PHTTokenHelper} from "./PHTTokenHelper.sol";
 
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
@@ -64,7 +64,7 @@ contract PHTCollateralHelper is DSAuth {
     ClipFab clipFab;
     GemJoinFab gemJoinFab;
     GemJoin5Fab gemJoin5Fab;
-    
+
     PHTTokenHelper public tokenHelper;
 
     struct TokenParams {
@@ -81,11 +81,10 @@ contract PHTCollateralHelper is DSAuth {
         // address feed;
         // FactoryLike factory;
         // bytes payload;
-
         PriceFeedFactory factory;
         PriceJoinFeedFactory joinFactory;
         address feed; // (optional)
-        int initialPrice; // (optional) feed price
+        int256 initialPrice; // (optional) feed price
         uint8 decimals; // Default: (6 decimals)
         address numeratorFeed; // (optional)
         address denominatorFeed;
@@ -118,7 +117,10 @@ contract PHTCollateralHelper is DSAuth {
         authority = DSAuthority(pause.authority());
     }
 
-    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_) public auth {
+    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_)
+        public
+        auth
+    {
         require(address(calcFab) == address(0), "pht-collateral-helper-fabs-init");
         calcFab = calcFab_;
         clipFab = clipFab_;
@@ -130,12 +132,10 @@ contract PHTCollateralHelper is DSAuth {
         tokenHelper = tokenHelper_;
     }
 
-    function deployCollateralClip(
-        bytes32 ilk,
-        address join,
-        address pip,
-        address calc
-    ) internal returns (Clipper clip) {
+    function deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
+        internal
+        returns (Clipper clip)
+    {
         require(ilk != bytes32(""), "Missing ilk name");
         require(join != address(0), "Missing join address");
         require(pip != address(0), "Missing pip address");
@@ -175,7 +175,6 @@ contract PHTCollateralHelper is DSAuth {
         TokenParams memory tokenParams,
         FeedParams memory feedParams
     ) public auth returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
-
         _token = tokenParams.token;
         if (_token == address(0)) {
             FiatTokenInfo memory info = FiatTokenInfo({
@@ -196,9 +195,8 @@ contract PHTCollateralHelper is DSAuth {
                 owner: address(tokenHelper)
             });
 
-            (address implementation, address proxy, address masterMinter) = ITokenFactory(tokenParams.factory).create(
-                info
-            );
+            (address implementation, address proxy, address masterMinter) =
+                ITokenFactory(tokenParams.factory).create(info);
 
             tokenHelper.configureMinter(masterMinter);
 
@@ -256,7 +254,7 @@ contract PHTCollateralHelper is DSAuth {
         }
 
         {
-            (address clip, , , ) = dog.ilks(ilkParams.ilk);
+            (address clip,,,) = dog.ilks(ilkParams.ilk);
             Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
         }
 
@@ -291,5 +289,7 @@ interface CalcFabLike {
 }
 
 interface ClipFabLike {
-    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk) external returns (address);
+    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk)
+        external
+        returns (address);
 }

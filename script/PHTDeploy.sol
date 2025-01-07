@@ -52,7 +52,7 @@ interface IThingAdmin {
     // --- Administration ---
     function file(bytes32 what, address data) external;
     function file(bytes32 what, bool data) external;
-    function file(bytes32 what, uint data) external;
+    function file(bytes32 what, uint256 data) external;
 }
 
 interface RelyLike {
@@ -67,10 +67,10 @@ interface GemLike {
 }
 
 interface GemJoinLike {
-    function dec() external returns (uint);
+    function dec() external returns (uint256);
     function gem() external returns (GemLike);
-    function join(address, uint) external payable;
-    function exit(address, uint) external;
+    function join(address, uint256) external payable;
+    function exit(address, uint256) external;
 }
 
 interface PipLike {
@@ -257,9 +257,7 @@ contract PHTDeploy is StdCheats {
         ProxyInitializer proxyInitializer = new ProxyInitializer();
 
         FiatTokenFactory factory = new FiatTokenFactory(
-            address(implementationDeployer),
-            address(masterMinterDeployer),
-            address(proxyInitializer)
+            address(implementationDeployer), address(masterMinterDeployer), address(proxyInitializer)
         );
 
         return factory;
@@ -281,13 +279,7 @@ contract PHTDeploy is StdCheats {
 
     function deployFabs() private {
         dssDeploy.addFabs1(
-            new VatFab(),
-            new JugFab(),
-            new VowFab(),
-            new CatFab(),
-            new DogFab(),
-            new DaiFab(),
-            new DaiJoinFab()
+            new VatFab(), new JugFab(), new VowFab(), new CatFab(), new DogFab(), new DaiFab(), new DaiJoinFab()
         );
 
         dssDeploy.addFabs2(
@@ -389,19 +381,13 @@ contract PHTDeploy is StdCheats {
 
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(
-            address(dssDeploy.vat()),
-            address(dssDeploy.dog()),
-            address(dssDeploy.cat()),
-            address(dssDeploy.spotter())
+            address(dssDeploy.vat()), address(dssDeploy.dog()), address(dssDeploy.cat()), address(dssDeploy.spotter())
         );
         ilkRegistry.rely(address(dssDeploy.pause().proxy()));
 
         DSRoles(address(_authority)).setUserRole(address(proxyActions), ROLE_CAN_PLOT, true);
         DSRoles(address(_authority)).setRoleCapability(
-            ROLE_CAN_PLOT,
-            address(dssDeploy.pause()),
-            bytes4(keccak256("plot(address,bytes32,bytes,uint256)")),
-            true
+            ROLE_CAN_PLOT, address(dssDeploy.pause()), bytes4(keccak256("plot(address,bytes32,bytes,uint256)")), true
         );
 
 
@@ -464,17 +450,14 @@ contract PHTDeploy is StdCheats {
         // );
 
         DSRoles(address(_authority)).setRoleCapability(
-            ROLE_GOV_ADD_COLLATERAL,
-            address(collateralHelper),
-            collateralHelper.addCollateral.selector,
-            true
+            ROLE_GOV_ADD_COLLATERAL, address(collateralHelper), collateralHelper.addCollateral.selector, true
         );
 
         {
             // Set Liquidation/Auction Rules (Dog)
             proxyActions.file(address(dssDeploy.dog()), "Hole", _c.dogHoleRad * RAD); // Set global limit to 10 million DAI (RAD units)
             // Set Params for debt ceiling
-            proxyActions.file(address(dssDeploy.vat()), "Line", uint(_c.vatLineRad * RAD)); // 10M PHT
+            proxyActions.file(address(dssDeploy.vat()), "Line", uint256(_c.vatLineRad * RAD)); // 10M PHT
             // Set Global Base Fee
             proxyActions.file(address(dssDeploy.jug()), "base", _c.jugBase); // 0.00000006279% => 2% base global fee
 
@@ -493,16 +476,10 @@ contract PHTDeploy is StdCheats {
             DSRoles(address(_authority)).setUserRole(address(dssDeploy.flop()), ROLE_GOV_MINT_BURN, true);
             DSRoles(address(_authority)).setUserRole(address(dssDeploy.flap()), ROLE_GOV_MINT_BURN, true);
             DSRoles(address(_authority)).setRoleCapability(
-                ROLE_GOV_MINT_BURN,
-                address(gov),
-                bytes4(keccak256("mint(address,uint256)")),
-                true
+                ROLE_GOV_MINT_BURN, address(gov), bytes4(keccak256("mint(address,uint256)")), true
             );
             DSRoles(address(_authority)).setRoleCapability(
-                ROLE_GOV_MINT_BURN,
-                address(gov),
-                bytes4(keccak256("burn(address,uint256)")),
-                true
+                ROLE_GOV_MINT_BURN, address(gov), bytes4(keccak256("burn(address,uint256)")), true
             );
         }
     }
@@ -535,7 +512,7 @@ interface ProxyLike {
  * @dev Interface for the Common contract
  */
 interface CommonLike {
-    function daiJoin_join(address apt, address urn, uint wad) external;
+    function daiJoin_join(address apt, address urn, uint256 wad) external;
 }
 
 /**
@@ -544,71 +521,60 @@ interface CommonLike {
  */
 interface DssProxyActionsLike is CommonLike {
     // Transfer Functions
-    function transfer(address gem, address dst, uint amt) external;
+    function transfer(address gem, address dst, uint256 amt) external;
 
     // Join Functions
     function ethJoin_join(address apt, address urn) external payable;
-    function gemJoin_join(address apt, address urn, uint amt, bool transferFrom) external;
+    function gemJoin_join(address apt, address urn, uint256 amt, bool transferFrom) external;
 
     // Permission Functions
     function hope(address obj, address usr) external;
     function nope(address obj, address usr) external;
 
     // CDP Management Functions
-    function open(address manager, bytes32 ilk, address usr) external returns (uint cdp);
-    function give(address manager, uint cdp, address usr) external;
-    function giveToProxy(address proxyRegistry, address manager, uint cdp, address dst) external;
-    function cdpAllow(address manager, uint cdp, address usr, uint ok) external;
-    function urnAllow(address manager, address usr, uint ok) external;
+    function open(address manager, bytes32 ilk, address usr) external returns (uint256 cdp);
+    function give(address manager, uint256 cdp, address usr) external;
+    function giveToProxy(address proxyRegistry, address manager, uint256 cdp, address dst) external;
+    function cdpAllow(address manager, uint256 cdp, address usr, uint256 ok) external;
+    function urnAllow(address manager, address usr, uint256 ok) external;
 
     // CDP Operations
-    function flux(address manager, uint cdp, address dst, uint wad) external;
-    function move(address manager, uint cdp, address dst, uint rad) external;
-    function frob(address manager, uint cdp, int dink, int dart) external;
-    function quit(address manager, uint cdp, address dst) external;
-    function enter(address manager, address src, uint cdp) external;
-    function shift(address manager, uint cdpSrc, uint cdpOrg) external;
+    function flux(address manager, uint256 cdp, address dst, uint256 wad) external;
+    function move(address manager, uint256 cdp, address dst, uint256 rad) external;
+    function frob(address manager, uint256 cdp, int256 dink, int256 dart) external;
+    function quit(address manager, uint256 cdp, address dst) external;
+    function enter(address manager, address src, uint256 cdp) external;
+    function shift(address manager, uint256 cdpSrc, uint256 cdpOrg) external;
 
     // Bag Management
     function makeGemBag(address gemJoin) external returns (address bag);
 
     // Locking Collateral
-    function lockETH(address manager, address ethJoin, uint cdp) external payable;
-    function safeLockETH(address manager, address ethJoin, uint cdp, address owner) external payable;
-    function lockGem(address manager, address gemJoin, uint cdp, uint amt, bool transferFrom) external;
-    function safeLockGem(
-        address manager,
-        address gemJoin,
-        uint cdp,
-        uint amt,
-        bool transferFrom,
-        address owner
-    ) external;
+    function lockETH(address manager, address ethJoin, uint256 cdp) external payable;
+    function safeLockETH(address manager, address ethJoin, uint256 cdp, address owner) external payable;
+    function lockGem(address manager, address gemJoin, uint256 cdp, uint256 amt, bool transferFrom) external;
+    function safeLockGem(address manager, address gemJoin, uint256 cdp, uint256 amt, bool transferFrom, address owner)
+        external;
 
     // Freeing Collateral
-    function freeETH(address manager, address ethJoin, uint cdp, uint wad) external;
-    function freeGem(address manager, address gemJoin, uint cdp, uint amt) external;
+    function freeETH(address manager, address ethJoin, uint256 cdp, uint256 wad) external;
+    function freeGem(address manager, address gemJoin, uint256 cdp, uint256 amt) external;
 
     // Exiting Collateral
-    function exitETH(address manager, address ethJoin, uint cdp, uint wad) external;
-    function exitGem(address manager, address gemJoin, uint cdp, uint amt) external;
+    function exitETH(address manager, address ethJoin, uint256 cdp, uint256 wad) external;
+    function exitGem(address manager, address gemJoin, uint256 cdp, uint256 amt) external;
 
     // Debt Management
-    function draw(address manager, address jug, address daiJoin, uint cdp, uint wad) external;
-    function wipe(address manager, address daiJoin, uint cdp, uint wad) external;
-    function safeWipe(address manager, address daiJoin, uint cdp, uint wad, address owner) external;
-    function wipeAll(address manager, address daiJoin, uint cdp) external;
-    function safeWipeAll(address manager, address daiJoin, uint cdp, address owner) external;
+    function draw(address manager, address jug, address daiJoin, uint256 cdp, uint256 wad) external;
+    function wipe(address manager, address daiJoin, uint256 cdp, uint256 wad) external;
+    function safeWipe(address manager, address daiJoin, uint256 cdp, uint256 wad, address owner) external;
+    function wipeAll(address manager, address daiJoin, uint256 cdp) external;
+    function safeWipeAll(address manager, address daiJoin, uint256 cdp, address owner) external;
 
     // Combined Operations
-    function lockETHAndDraw(
-        address manager,
-        address jug,
-        address ethJoin,
-        address daiJoin,
-        uint cdp,
-        uint wadD
-    ) external payable;
+    function lockETHAndDraw(address manager, address jug, address ethJoin, address daiJoin, uint256 cdp, uint256 wadD)
+        external
+        payable;
 
     function openLockETHAndDraw(
         address manager,
@@ -616,17 +582,17 @@ interface DssProxyActionsLike is CommonLike {
         address ethJoin,
         address daiJoin,
         bytes32 ilk,
-        uint wadD
-    ) external payable returns (uint cdp);
+        uint256 wadD
+    ) external payable returns (uint256 cdp);
 
     function lockGemAndDraw(
         address manager,
         address jug,
         address gemJoin,
         address daiJoin,
-        uint cdp,
-        uint amtC,
-        uint wadD,
+        uint256 cdp,
+        uint256 amtC,
+        uint256 wadD,
         bool transferFrom
     ) external;
 
@@ -636,10 +602,10 @@ interface DssProxyActionsLike is CommonLike {
         address gemJoin,
         address daiJoin,
         bytes32 ilk,
-        uint amtC,
-        uint wadD,
+        uint256 amtC,
+        uint256 wadD,
         bool transferFrom
-    ) external returns (uint cdp);
+    ) external returns (uint256 cdp);
 
     function openLockGNTAndDraw(
         address manager,
@@ -647,18 +613,20 @@ interface DssProxyActionsLike is CommonLike {
         address gntJoin,
         address daiJoin,
         bytes32 ilk,
-        uint amtC,
-        uint wadD
-    ) external returns (address bag, uint cdp);
+        uint256 amtC,
+        uint256 wadD
+    ) external returns (address bag, uint256 cdp);
 
     // Wipe and Free Operations
-    function wipeAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC, uint wadD) external;
+    function wipeAndFreeETH(address manager, address ethJoin, address daiJoin, uint256 cdp, uint256 wadC, uint256 wadD)
+        external;
 
-    function wipeAllAndFreeETH(address manager, address ethJoin, address daiJoin, uint cdp, uint wadC) external;
+    function wipeAllAndFreeETH(address manager, address ethJoin, address daiJoin, uint256 cdp, uint256 wadC) external;
 
-    function wipeAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC, uint wadD) external;
+    function wipeAndFreeGem(address manager, address gemJoin, address daiJoin, uint256 cdp, uint256 amtC, uint256 wadD)
+        external;
 
-    function wipeAllAndFreeGem(address manager, address gemJoin, address daiJoin, uint cdp, uint amtC) external;
+    function wipeAllAndFreeGem(address manager, address gemJoin, address daiJoin, uint256 cdp, uint256 amtC) external;
 }
 
 /**
@@ -667,15 +635,15 @@ interface DssProxyActionsLike is CommonLike {
  */
 interface DssProxyActionsEndLike is CommonLike {
     // Freeing Collateral via End
-    function freeETH(address manager, address ethJoin, address end, uint cdp) external;
-    function freeGem(address manager, address gemJoin, address end, uint cdp) external;
+    function freeETH(address manager, address ethJoin, address end, uint256 cdp) external;
+    function freeGem(address manager, address gemJoin, address end, uint256 cdp) external;
 
     // Packing DAI
-    function pack(address daiJoin, address end, uint wad) external;
+    function pack(address daiJoin, address end, uint256 wad) external;
 
     // Cashing Out Collateral
-    function cashETH(address ethJoin, address end, bytes32 ilk, uint wad) external;
-    function cashGem(address gemJoin, address end, bytes32 ilk, uint wad) external;
+    function cashETH(address ethJoin, address end, bytes32 ilk, uint256 wad) external;
+    function cashGem(address gemJoin, address end, bytes32 ilk, uint256 wad) external;
 }
 
 /**
@@ -684,9 +652,9 @@ interface DssProxyActionsEndLike is CommonLike {
  */
 interface DssProxyActionsDsrLike is CommonLike {
     // Joining to DSR
-    function join(address daiJoin, address pot, uint wad) external;
+    function join(address daiJoin, address pot, uint256 wad) external;
 
     // Exiting from DSR
-    function exit(address daiJoin, address pot, uint wad) external;
+    function exit(address daiJoin, address pot, uint256 wad) external;
     function exitAll(address daiJoin, address pot) external;
 }

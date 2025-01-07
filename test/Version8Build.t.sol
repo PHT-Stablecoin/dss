@@ -6,8 +6,7 @@ import "dss-proxy/DssProxyRegistry.sol";
 
 contract Version8BuildTest is Test {
     function testVersion8Build() public {
-        console.log("Hello, world!");
         DssProxyRegistry registry = new DssProxyRegistry();
-        console.log("registry", address(registry));
+        console.log("Built DssProxyRegistry artifact for version ^0.8.13: ", address(registry));
     }
 }
