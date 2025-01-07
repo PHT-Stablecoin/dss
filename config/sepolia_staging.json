@@ -5,42 +5,10 @@
     "0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB",
     "0xDdfc99E5C7c5880A57236883ff6855dE7ddd0a0F"
   ],
-  "collaterals": [
-    {
-      "feedParams": {
-        "decimals": 6,
-        "denominatorFeed": "0x0000000000000000000000000000000000000000",
-        "feed": "0x0000000000000000000000000000000000000000",
-        "feedDescription": "PHT/USD Feed",
-        "initialPrice": 1000000,
-        "invertDenominator": false,
-        "invertNumerator": false,
-        "numeratorFeed": "0x0000000000000000000000000000000000000000"
-      },
-      "ilkParams": {
-        "buf": 1.2e27,
-        "chop": 1.13e18,
-        "dust": 0,
-        "duty": 1.0000000012436807e27,
-        "holeRad": 5000000,
-        "ilk": "0x5048502d41000000000000000000000000000000000000000000000000000000",
-        "lineRad": 5000000,
-        "matEther": 1050000000,
-        "tau": 3600
-      },
-      "tokenParams": {
-        "decimals": 6,
-        "initialSupply": 1000000000,
-        "maxSupply": 0,
-        "name": "Testtttttttt PHP",
-        "symbol": "tstPHP",
-        "token": "0x0000000000000000000000000000000000000000"
-      }
-    }
-  ],
+  "collaterals": [],
   "dogHoleRad": 10000000,
   "govTokenSymbol": "APC",
   "jugBase": 0.0000000006279e27,
-  "phtUsdFeed": "0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd",
+  "phtUsdFeed": "0x0000000000000000000000000000000000000000",
   "vatLineRad": 13000000
 }

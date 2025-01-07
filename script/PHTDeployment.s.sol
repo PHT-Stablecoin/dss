@@ -43,6 +43,8 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             console.log("[PHTDeploymentScript] block.number \t", block.number);
         }
 
+        _sanitizeConfig(config);
+
         vm.startBroadcast();
 
         PHTDeployResult memory res = deploy(
@@ -122,6 +124,21 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         _test_openLockGemAndDraw(res, collateralOutputs);
     }
 
+    function _sanitizeConfig(IPHTDeployConfigJson.Root memory config) private {
+        console.log("[PHTDeploymentScript] _sanitizeConfig starting...");
+        if (config.phtUsdFeed != address(0)) {
+            AggregatorV3Interface feed = AggregatorV3Interface(config.phtUsdFeed);
+            assertTrue(feed.decimals() >= 0, "phtUsdFeed decimals");
+            (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) =
+                feed.latestRoundData();
+            assertTrue(startedAt > 0, "phtUsdFeed startedAt");
+            assertTrue(updatedAt > 0, "phtUsdFeed updatedAt");
+            assertTrue(answeredInRound > 0, "phtUsdFeed answeredInRound");
+            assertTrue(answer > 0, "phtUsdFeed answer");
+        }
+        console.log("[PHTDeploymentScript] _sanitizeConfig done");
+    }
+
     function _test_openLockGemAndDraw(PHTDeployResult memory res, CollateralOutput[] memory collateralOutputs)
         private
     {
@@ -192,4 +209,13 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
 
         json.write(path);
     }
+}
+
+interface AggregatorV3Interface {
+    function decimals() external view returns (uint8);
+
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
