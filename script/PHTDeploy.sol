@@ -148,11 +148,10 @@ contract PHTDeploy is StdCheats {
 
     // -- ROLES --
     uint8 constant ROLE_GOV_MINT_BURN = 10;
-    uint8 constant ROLE_GOV_ADD_COLLATERAL = 10;
-    uint8 constant ROLE_GOV_CREATE_TOKEN = 10;
-
-    uint8 constant ROLE_CAN_PLOT = 11;
-    uint8 constant ROLE_CAN_EXEC = 12;
+    uint8 constant ROLE_GOV_ADD_COLLATERAL = 11;
+    uint8 constant ROLE_GOV_CREATE_TOKEN = 12;
+    uint8 constant ROLE_CAN_PLOT = 13;
+    uint8 constant ROLE_CAN_EXEC = 14;
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
