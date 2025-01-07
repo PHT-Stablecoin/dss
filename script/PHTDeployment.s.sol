@@ -17,110 +17,127 @@ import {PriceFeedFactory} from "../pht/factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {PHTOpsTestLib} from "../test/helpers/PHTOpsTestLib.sol";
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
-
+import {PHTDeploymentConfigJsonHelper, IPHTDeployConfigJson} from "../test/helpers/PHTDeploymentConfigJsonHelper.sol";
 contract PHTDeploymentScript is Script, PHTDeploy, Test {
     using ArrayHelpers for *;
     using stdJson for string;
 
-    bytes32 constant ILK_NAME = bytes32("PHP-A");
+    struct CollateralOutput {
+        bytes32 ilk;
+        address join;
+        address token;
+        uint256 tokenDecimals;
+    }
 
-    function run() public {
+    function run(string memory jsonFileName) public {
+        IPHTDeployConfigJson.Root memory config;
+        {
+            PHTDeploymentConfigJsonHelper helper = new PHTDeploymentConfigJsonHelper();
+            config = helper.readDeploymentConfig(jsonFileName);
+            console.log("[PHTDeploymentScript] starting...");
+            console.log("[PHTDeploymentScript] msg.sender \t", msg.sender);
+            console.log("[PHTDeploymentScript] address(this) \t", address(this));
+            console.log("[PHTDeploymentScript] chainId \t", chainId());
+            console.log("[PHTDeploymentScript] block.timestamp ", block.timestamp);
+            console.log("[PHTDeploymentScript] block.number \t", block.number);
+        }
+
         vm.startBroadcast();
 
-        console.log("[PHTDeploymentScript] starting...");
-        console.log("[PHTDeploymentScript] msg.sender \t", msg.sender);
-        console.log("[PHTDeploymentScript] address(this) \t", address(this));
-        console.log("[PHTDeploymentScript] chainId \t", chainId());
-        console.log("[PHTDeploymentScript] block.timestamp ", block.timestamp);
-        console.log("[PHTDeploymentScript] block.number \t", block.number);
-
-        // @TODO move this to a per-chain json
         PHTDeployResult memory res = deploy(
             PHTDeployConfig({
-                govTokenSymbol: "APC",
-                phtUsdFeed: address(0), // only for sepolia / local testing
-                dogHoleRad: 10_000_000,
-                vatLineRad: 10_000_000,
-                jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
-                authorityOwner: msg.sender,
+                govTokenSymbol: config.govTokenSymbol,
+                phtUsdFeed: config.phtUsdFeed, // only for sepolia / local testing
+                dogHoleRad: config.dogHoleRad,
+                vatLineRad: config.vatLineRad,
+                // jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
+                jugBase: config.jugBase, // 0.00000006279% => 2% base global fee
+                authorityOwner: config.authorityOwner,
                 // this is needed in order to be able to call addCollateral() in PHTDeploymentHelper
-                authorityRootUsers: [msg.sender].toMemoryArray()
+                authorityRootUsers: config.authorityRootUsers
             })
         );
 
         PHTCollateralHelper h = PHTCollateralHelper(res.collateralHelper);
+        CollateralOutput[] memory collateralOutputs = new CollateralOutput[](config.collaterals.length);
+        for (uint256 i = 0; i < config.collaterals.length; i++) {
+            console.log("[PHTDeploymentScript] adding collateral \t", i);
+            IPHTDeployConfigJson.Collateral memory collateral = config.collaterals[i];
+            IPHTDeployConfigJson.FeedParams memory feedParams = collateral.feedParams;
+            IPHTDeployConfigJson.IlkParams memory ilkParams = collateral.ilkParams;
+            IPHTDeployConfigJson.TokenParams memory tokenParams = collateral.tokenParams;
 
-        // @TODO move this to a per-chain json as global config above
-        (address join, , address token, ) = h.addCollateral(
-            address(dssDeploy.pause().proxy()),
-            res.ilkRegistry,
-            PHTCollateralHelper.IlkParams({
-                ilk: ILK_NAME,
-                line: uint(5_000_000 * RAD), // Set PHP-A limit to 5 million DAI (RAD units)
-                dust: uint(0),
-                tau: 1 hours,
-                mat: uint(1050000000 ether), // Liquidation Ratio (105%),
-                hole: 5_000_000 * RAD, // Set PHP-A limit to 5 million DAI (RAD units)
-                chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
-                buf: 1.20e27, // Set a 20% increase in auctions (RAY)
-                // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
-                duty: 1.0000000012436807e27 // => 4%
-            }),
-            PHTCollateralHelper.TokenParams({
-                factory: ITokenFactory(res.tokenFactory),
+            collateralOutputs[i] = CollateralOutput({
+                ilk: ilkParams.ilk,
+                join: address(0),
                 token: address(0),
-                symbol: "tstPHP",
-                name: "Testtttttttt PHP",
-                decimals: 6,
-                maxSupply: 0,
-                initialSupply: 1000 * 10 ** 6
-            }),
-            PHTCollateralHelper.FeedParams({
-                factory: PriceFeedFactory(res.priceFeedFactory),
-                joinFactory: PriceJoinFeedFactory(res.joinFeedFactory),
-                feed: address(0),
-                decimals: 6,
-                initialPrice: int(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
-                numeratorFeed: address(0),
-                invertNumerator: false,
-                denominatorFeed: address(0),
-                invertDenominator: false,
-                feedDescription: ""
-            })
-        );
+                tokenDecimals: tokenParams.decimals
+            });
+
+            (collateralOutputs[i].join, , collateralOutputs[i].token, ) = h.addCollateral(
+                address(dssDeploy.pause().proxy()),
+                res.ilkRegistry,
+                PHTCollateralHelper.IlkParams({
+                    buf: ilkParams.buf, // already in RAY units
+                    chop: ilkParams.chop, // already in WAD units since cannot set 1.13 as value (float values are not supported)
+                    dust: ilkParams.dust,
+                    duty: ilkParams.duty,
+                    hole: ilkParams.holeRad * RAD,
+                    ilk: ilkParams.ilk,
+                    line: ilkParams.lineRad * RAD,
+                    mat: ilkParams.matEther * 1e18, // Liquidation Ratio
+                    tau: ilkParams.tau
+                }),
+                PHTCollateralHelper.TokenParams({
+                    factory: ITokenFactory(res.tokenFactory),
+                    token: tokenParams.token,
+                    symbol: tokenParams.symbol,
+                    name: tokenParams.name,
+                    decimals: tokenParams.decimals,
+                    maxSupply: tokenParams.maxSupply,
+                    initialSupply: tokenParams.initialSupply
+                }),
+                PHTCollateralHelper.FeedParams({
+                    factory: PriceFeedFactory(res.priceFeedFactory),
+                    joinFactory: PriceJoinFeedFactory(res.joinFeedFactory),
+                    feed: feedParams.feed,
+                    decimals: feedParams.decimals,
+                    initialPrice: feedParams.initialPrice,
+                    numeratorFeed: feedParams.numeratorFeed,
+                    invertNumerator: feedParams.invertNumerator,
+                    denominatorFeed: feedParams.denominatorFeed,
+                    invertDenominator: feedParams.invertDenominator,
+                    feedDescription: feedParams.feedDescription
+                })
+            );
+        }
+        // only write artifacts if we're in broadcast mode
+        writeArtifacts(jsonFileName, res);
+
         vm.stopBroadcast();
 
-        assertEq(IERC20(token).balanceOf(msg.sender), 1000 * 10 ** 6, "msg.sender should have 1000 tstPHP");
         assertTrue(DSRoles(res.authority).isUserRoot(msg.sender), "msg.sender is root");
 
-        _test_openLockGemAndDraw(res, msg.sender, ILK_NAME, token, join);
-
-        writeArtifacts(res);
+        _test_openLockGemAndDraw(res, collateralOutputs);
     }
 
-    function _test_openLockGemAndDraw(
-        PHTDeployResult memory res,
-        address bob,
-        bytes32 ilk,
-        address token,
-        address join
-    ) private {
-        vm.prank(msg.sender);
-        IERC20(token).transfer(bob, 1000 * 10 ** 6);
-
-        // Move Blocktime to 10 blocks ahead
-        vm.warp(now + 100);
-
-        // normal user opens a CDP
-        vm.startPrank(bob);
-        PHTOpsTestLib.openLockGemAndDraw(res, bob, ilk, token, join);
-        vm.stopPrank();
+    function _test_openLockGemAndDraw(PHTDeployResult memory res, CollateralOutput[] memory collateralOutputs) private {
+        address bob = makeAddr("bob");
+        for (uint256 i = 0; i < collateralOutputs.length; i++) {
+            CollateralOutput memory collateral = collateralOutputs[i];
+            deal(collateral.token, bob, 1000 * 10 ** collateral.tokenDecimals);
+            // Move Blocktime
+            vm.warp(now + 1);
+            vm.startPrank(bob);
+            PHTOpsTestLib.openLockGemAndDraw(res, bob, collateral.ilk, collateral.token, collateral.join);
+            vm.stopPrank();
+        }
     }
 
-    function writeArtifacts(PHTDeployResult memory r) public {
+    function writeArtifacts(string memory jsonFileName, PHTDeployResult memory r) public {
         string memory root = vm.projectRoot();
         string memory path = string(
-            abi.encodePacked(root, "/script/output/", vm.toString(chainId()), "/dssDeploy.artifacts.json")
+            abi.encodePacked(root, "/script/output/", vm.toString(chainId()), "/dssDeploy.artifacts.", jsonFileName)
         );
 
         console.log("[PHTDeploymentScript] writing artifacts to", path);
