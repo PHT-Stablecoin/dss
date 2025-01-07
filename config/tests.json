@@ -38,6 +38,37 @@
         "symbol": "tstPHP",
         "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE"
       }
+    },
+    {
+      "feedParams": {
+        "decimals": 9,
+        "denominatorFeed": "0x2111111111111111111111111111111111111111",
+        "feed": "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED",
+        "feedDescription": "Test feed2",
+        "initialPrice": 2000000,
+        "invertDenominator": false,
+        "invertNumerator": true,
+        "numeratorFeed": "0x3222222222222222222222222222222222222222"
+      },
+      "ilkParams": {
+        "buf": 2.2e27,
+        "chop": 2.13e18,
+        "dust": 12,
+        "duty": 2.0000000012436807e27,
+        "holeRad": 6000000,
+        "ilk": "0x5048502d42000000000000000000000000000000000000000000000000000000",
+        "lineRad": 6000000,
+        "matEther": 2050000000,
+        "tau": 4600
+      },
+      "tokenParams": {
+        "decimals": 7,
+        "initialSupply": 2000000000,
+        "maxSupply": 666,
+        "name": "Testtttttttt PHP2",
+        "symbol": "tstPHP2",
+        "token": "0x80CE70CE70CE70CE70CE70CE70CE70CE70CE70CE"
+      }
     }
   ],
   "dogHoleRad": 10000000,
