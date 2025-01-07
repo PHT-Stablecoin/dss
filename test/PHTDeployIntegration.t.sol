@@ -42,11 +42,6 @@ contract PHTDeployIntegrationTest is Test {
         alice = makeAddr("alice");
         bob = makeAddr("bob");
 
-        console.log("alice", alice);
-        console.log("eve", eve);
-        console.log("bob", bob);
-        console.log("jugBase", uint256(0.0000000006279e27));
-
         res = d.deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
@@ -108,7 +103,7 @@ contract PHTDeployIntegrationTest is Test {
     function test_openLockGemAndDraw() public {
         (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
         vm.startPrank(eve);
-        (address join, , address token, ) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
+        (address join,, address token,) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
         // transfer some tokens to bob
         IERC20(token).transfer(bob, 1e9);
 

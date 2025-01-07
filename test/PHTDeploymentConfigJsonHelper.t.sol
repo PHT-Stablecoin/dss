@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {PHTDeploymentConfigJsonHelper, IPHTDeployConfigJson} from "./helpers/PHTDeploymentConfigJsonHelper.sol";
+
 contract PHTDeploymentConfigJsonHelperTest is Test {
     address alice; // authority owner
     address eve; // authority root user
@@ -38,11 +39,7 @@ contract PHTDeploymentConfigJsonHelperTest is Test {
         IPHTDeployConfigJson.TokenParams memory tokenParams0 = collateral0.tokenParams;
 
         assertEq(uint256(feedParams0.decimals), 6, "feedParams0.decimals");
-        assertEq(
-            feedParams0.denominatorFeed,
-            0x1111111111111111111111111111111111111111,
-            "feedParams0.denominatorFeed"
-        );
+        assertEq(feedParams0.denominatorFeed, 0x1111111111111111111111111111111111111111, "feedParams0.denominatorFeed");
         assertEq(feedParams0.feed, 0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd, "feedParams0.feed");
         assertEq(feedParams0.feedDescription, "Test feed", "feedParams0.feedDescription");
         assertEq(uint256(feedParams0.initialPrice), 1000000, "feedParams0.initialPrice");
@@ -73,11 +70,7 @@ contract PHTDeploymentConfigJsonHelperTest is Test {
         IPHTDeployConfigJson.TokenParams memory tokenParams1 = collateral1.tokenParams;
 
         assertEq(uint256(feedParams1.decimals), 9, "feedParams1.decimals");
-        assertEq(
-            feedParams1.denominatorFeed,
-            0x2111111111111111111111111111111111111111,
-            "feedParams1.denominatorFeed"
-        );
+        assertEq(feedParams1.denominatorFeed, 0x2111111111111111111111111111111111111111, "feedParams1.denominatorFeed");
         assertEq(feedParams1.feed, 0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd, "feedParams1.feed");
         assertEq(feedParams1.feedDescription, "Test feed2", "feedParams1.feedDescription");
         assertEq(uint256(feedParams1.initialPrice), 2000000, "feedParams1.initialPrice");
