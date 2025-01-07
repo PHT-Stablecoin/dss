@@ -20,8 +20,11 @@ contract PHTDeploymentConfigJsonHelperTest is Test {
         );
 
         assertEq(root.authorityOwner, 0x328809Bc894f92807417D2dAD6b7C998c1aFdac6, "authorityOwner");
-        assertEq(root.authorityRootUsers.length, 1, "authorityRootUsers.length");
-        assertEq(root.authorityRootUsers[0], 0xa959355654849CbEAbBf65235f8235833b9e031D, "authorityRootUsers[0]");
+        assertEq(root.authorityRootUsers.length, 4, "authorityRootUsers.length");
+        assertEq(root.authorityRootUsers[0], 0x328809Bc894f92807417D2dAD6b7C998c1aFdac6, "authorityRootUsers[0]");
+        assertEq(root.authorityRootUsers[1], 0xa959355654849CbEAbBf65235f8235833b9e031D, "authorityRootUsers[1]");
+        assertEq(root.authorityRootUsers[2], 0x1111111111111111111111111111111111111111, "authorityRootUsers[2]");
+        assertEq(root.authorityRootUsers[3], 0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd, "authorityRootUsers[3]");
         assertEq(root.dogHoleRad, 10000000, "dogHoleRad");
         assertEq(root.govTokenSymbol, "APC", "govTokenSymbol");
         assertEq(root.jugBase, 0.0000000006279e27, "jugBase");

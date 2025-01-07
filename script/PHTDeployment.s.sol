@@ -52,9 +52,9 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 vatLineRad: config.vatLineRad,
                 // jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 jugBase: config.jugBase, // 0.00000006279% => 2% base global fee
-                authorityOwner: msg.sender,
+                authorityOwner: config.authorityOwner,
                 // this is needed in order to be able to call addCollateral() in PHTDeploymentHelper
-                authorityRootUsers: [msg.sender].toMemoryArray()
+                authorityRootUsers: config.authorityRootUsers
             })
         );
 

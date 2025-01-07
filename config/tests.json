@@ -1,7 +1,12 @@
 {
   "_notes": "The _notes field is used to store any additional information about the configuration. It is not used for any other purpose.",
   "authorityOwner": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
-  "authorityRootUsers": ["0xa959355654849CbEAbBf65235f8235833b9e031D"],
+  "authorityRootUsers": [
+    "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
+    "0xa959355654849CbEAbBf65235f8235833b9e031D",
+    "0x1111111111111111111111111111111111111111",
+    "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED"
+  ],
   "collaterals": [
     {
       "feedParams": {

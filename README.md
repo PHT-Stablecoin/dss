@@ -62,7 +62,7 @@ The `collaterals[x].ilkParams.ilk` is a bytes32 encoded string. You can use cast
 Deploying to Sepolia Staging environment example:
 
 ```sh
-# without `--isolate` this reverts (at least on Sepolia) with `-32000: future transaction tries to replace pending`
+# without `--slow` this reverts (at least on Sepolia) with `-32000: future transaction tries to replace pending`
 # PHTSTG is the label given to a wallet, imported via `cast wallet import "PHTSTG" --interactive`
 forge script ./script/PHTDeployment.s.sol \
 --sig "run(string)" \
@@ -70,7 +70,7 @@ forge script ./script/PHTDeployment.s.sol \
 --account PHTSTG \
 --broadcast \
 --rpc-url $SEPOLIA_RPC_URL \
---verify --isolate --batch-size 15 \
+--verify --isolate --slow \
 "sepolia_staging.json"
 
 ```
