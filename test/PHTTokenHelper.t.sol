@@ -59,12 +59,8 @@ contract PHTTokenHelperTest is Test {
 
     function test_createToken() public {
         vm.startPrank(eve);
-        
-        (
-            address implementation,
-            address proxy,
-            address masterMinter
-        ) = h.createToken(
+
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             PHTTokenHelper.TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -77,16 +73,11 @@ contract PHTTokenHelperTest is Test {
 
         assertEq(h.tokenAddresses(h.lastToken()), proxy);
         assertEqDecimal(IERC20(proxy).balanceOf(eve), 1000000e18, 18);
-
     }
 
     function test_tokenHelper_mint() public {
         vm.startPrank(eve);
-        (
-            address implementation,
-            address proxy,
-            address masterMinter
-        ) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             PHTTokenHelper.TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -106,11 +97,7 @@ contract PHTTokenHelperTest is Test {
 
     function test_tokenHelper_blacklist() public {
         vm.startPrank(eve);
-        (
-            address implementation,
-            address proxy,
-            address masterMinter
-        ) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             PHTTokenHelper.TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -125,7 +112,6 @@ contract PHTTokenHelperTest is Test {
 
         h.mint(proxy, alice, 100e18);
         assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
-        
 
         vm.startPrank(eve);
         h.blacklist(proxy, alice);
@@ -136,7 +122,6 @@ contract PHTTokenHelperTest is Test {
             assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
         }
 
-
         vm.startPrank(eve);
         h.unBlacklist(proxy, alice);
         {
@@ -144,9 +129,7 @@ contract PHTTokenHelperTest is Test {
             IERC20(proxy).transfer(eve, 10e18);
             assertEqDecimal(IERC20(proxy).balanceOf(alice), 90e18, 18);
         }
-
     }
-    
 }
 
 interface IERC20Metadata is IERC20 {

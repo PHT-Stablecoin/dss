@@ -190,7 +190,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         // --- ChainLog ---
         string memory json = artifacts.serialize("clog", r.clog);
 
-
         json.write(path);
     }
 }

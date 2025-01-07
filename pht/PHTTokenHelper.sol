@@ -16,7 +16,6 @@ interface IFiatToken is IERC20 {
 }
 
 contract PHTTokenHelper is DSAuth {
-
     struct TokenInfo {
         string tokenName;
         string tokenSymbol;
@@ -31,25 +30,29 @@ contract PHTTokenHelper is DSAuth {
 
     constructor(DSPause pause_, FiatTokenFactory tokenFactory_) public {
         tokenFactory = tokenFactory_;
-        pause  = pause_;
+        pause = pause_;
         authority = DSAuthority(pause.authority());
     }
 
-    function tokenAddresses(uint256 index) view public returns (address) {
+    function tokenAddresses(uint256 index) public view returns (address) {
         return tokenFactory.tokenAddresses(index);
     }
 
-    function tokens(address token) view public returns (FactoryToken memory t) {
+    function tokens(address token) public view returns (FactoryToken memory t) {
         (t.implementation, t.masterMinter) = tokenFactory.tokens(token);
     }
 
-    function lastToken() view public returns (uint256) {
+    function lastToken() public view returns (uint256) {
         return tokenFactory.lastToken();
     }
 
-    function createToken(TokenInfo memory info) auth public returns (address implementation, address proxy, address masterMinter) {
-
-        (implementation, proxy, masterMinter) = tokenFactory.create(FiatTokenInfo({
+    function createToken(TokenInfo memory info)
+        public
+        auth
+        returns (address implementation, address proxy, address masterMinter)
+    {
+        (implementation, proxy, masterMinter) = tokenFactory.create(
+            FiatTokenInfo({
                 tokenName: info.tokenName,
                 tokenSymbol: info.tokenSymbol,
                 tokenDecimals: info.tokenDecimals,
@@ -61,27 +64,27 @@ contract PHTTokenHelper is DSAuth {
                 pauser: address(this),
                 blacklister: address(this),
                 owner: address(this)
-        }));
+            })
+        );
 
-        IMasterMinter(masterMinter).configureMinter(uint(-1));
+        IMasterMinter(masterMinter).configureMinter(uint256(-1));
         IMasterMinter(masterMinter).configureController(address(this), address(this));
     }
 
-    function configureMinter(address masterMinter) auth public {
-        IMasterMinter(masterMinter).configureMinter(uint(-1));
+    function configureMinter(address masterMinter) public auth {
+        IMasterMinter(masterMinter).configureMinter(uint256(-1));
         IMasterMinter(masterMinter).configureController(address(this), address(this));
     }
 
-    function mint(address token, address to, uint256 val) auth public returns (bool) {
+    function mint(address token, address to, uint256 val) public auth returns (bool) {
         return IFiatToken(token).mint(to, val);
     }
 
-    function blacklist(address token, address target) auth public {
+    function blacklist(address token, address target) public auth {
         return IFiatToken(token).blacklist(target);
     }
 
-    function unBlacklist(address token, address target) auth public {
+    function unBlacklist(address token, address target) public auth {
         return IFiatToken(token).unBlacklist(target);
     }
-
 }

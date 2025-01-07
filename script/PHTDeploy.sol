@@ -44,7 +44,7 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
-import {PHTTokenHelper } from "../pht/PHTTokenHelper.sol";
+import {PHTTokenHelper} from "../pht/PHTTokenHelper.sol";
 
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
@@ -390,7 +390,6 @@ contract PHTDeploy is StdCheats {
             ROLE_CAN_PLOT, address(dssDeploy.pause()), bytes4(keccak256("plot(address,bytes32,bytes,uint256)")), true
         );
 
-
         {
             // Setup Token Factory
             tokenFactory = deployFiatTokenFactory();
@@ -400,10 +399,7 @@ contract PHTDeploy is StdCheats {
 
         {
             // Setup TokenHelper
-            tokenHelper = new PHTTokenHelper(
-                dssDeploy.pause(),
-                tokenFactory
-            );
+            tokenHelper = new PHTTokenHelper(dssDeploy.pause(), tokenFactory);
 
             proxyActions.rely(address(tokenFactory), address(tokenHelper));
         }
@@ -433,14 +429,9 @@ contract PHTDeploy is StdCheats {
 
             DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_GOV_CREATE_TOKEN, true);
             DSRoles(address(_authority)).setRoleCapability(
-                ROLE_GOV_CREATE_TOKEN,
-                address(tokenHelper),
-                tokenHelper.configureMinter.selector,
-                true
+                ROLE_GOV_CREATE_TOKEN, address(tokenHelper), tokenHelper.configureMinter.selector, true
             );
         }
-
- 
 
         // DSRoles(address(_authority)).setRoleCapability(
         //     ROLE_CAN_EXEC,
