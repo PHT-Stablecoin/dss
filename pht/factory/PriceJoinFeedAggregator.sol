@@ -1,6 +1,7 @@
 pragma solidity >=0.6.12;
 
 import {DSThing} from "ds-thing/thing.sol";
+
 interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
 
@@ -8,9 +9,7 @@ interface AggregatorV3Interface {
 
     function version() external view returns (uint256);
 
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
@@ -25,7 +24,7 @@ interface IThingAdmin {
     // --- Administration ---
     function file(bytes32 what, address data) external;
     function file(bytes32 what, bool data) external;
-    function file(bytes32 what, uint data) external;
+    function file(bytes32 what, uint256 data) external;
 }
 
 contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing {
@@ -37,10 +36,12 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
     bool public invertDenominator;
 
     // --- Auth ---
-    mapping(address => uint) public wards;
+    mapping(address => uint256) public wards;
+
     function rely(address guy) external auth {
         wards[guy] = 1;
     }
+
     function deny(address guy) external auth {
         wards[guy] = 0;
     }
@@ -83,14 +84,12 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
         else revert("PriceJoinFeedAggregator/file-unrecognized-param");
     }
 
-    function file(bytes32 what, uint data) external override auth {
+    function file(bytes32 what, uint256 data) external override auth {
         if (what == "decimals") decimals = uint8(data);
         else revert("PriceJoinFeedAggregator/file-unrecognized-param");
     }
 
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         external
         view
         override

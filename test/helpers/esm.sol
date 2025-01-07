@@ -29,7 +29,7 @@ interface GemLike {
 
 interface EndLike {
     function live() external view returns (uint256);
-    function vat()  external view returns (address);
+    function vat() external view returns (address);
     function cage() external;
 }
 
@@ -38,18 +38,17 @@ interface DenyLike {
 }
 
 contract ESM {
-
     uint256 constant WAD = 10 ** 18;
 
-    GemLike public immutable gem;   // collateral (MKR token)
+    GemLike public immutable gem; // collateral (MKR token)
     address public immutable proxy; // Pause proxy
 
     mapping(address => uint256) public wards; // auth
-    mapping(address => uint256) public sum;   // per-address balance
+    mapping(address => uint256) public sum; // per-address balance
 
-    uint256 public Sum;  // total balance
-    uint256 public min;  // minimum activation threshold [wad]
-    EndLike public end;  // cage module
+    uint256 public Sum; // total balance
+    uint256 public min; // minimum activation threshold [wad]
+    EndLike public end; // cage module
     uint256 public live; // active flag
 
     event Fire();
@@ -87,12 +86,14 @@ contract ESM {
 
         emit Rely(usr);
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
 
         emit Deny(usr);
     }
-    modifier auth {
+
+    modifier auth() {
         require(wards[msg.sender] == 1, "ESM/not-authorized");
         _;
     }
@@ -125,7 +126,7 @@ contract ESM {
 
     function fire() external {
         require(live == 1, "ESM/permanently-disabled");
-        require(Sum >= min,  "ESM/min-not-reached");
+        require(Sum >= min, "ESM/min-not-reached");
 
         if (proxy != address(0)) {
             DenyLike(end.vat()).deny(proxy);
@@ -137,7 +138,7 @@ contract ESM {
 
     function denyProxy(address target) external {
         require(live == 1, "ESM/permanently-disabled");
-        require(Sum >= min,  "ESM/min-not-reached");
+        require(Sum >= min, "ESM/min-not-reached");
 
         DenyLike(target).deny(proxy);
         emit DenyProxy(target, proxy);

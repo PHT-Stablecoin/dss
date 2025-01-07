@@ -18,6 +18,7 @@ import {PriceJoinFeedFactory} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {PHTOpsTestLib} from "../test/helpers/PHTOpsTestLib.sol";
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 import {PHTDeploymentConfigJsonHelper, IPHTDeployConfigJson} from "../test/helpers/PHTDeploymentConfigJsonHelper.sol";
+
 contract PHTDeploymentScript is Script, PHTDeploy, Test {
     using ArrayHelpers for *;
     using stdJson for string;
@@ -74,7 +75,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 tokenDecimals: tokenParams.decimals
             });
 
-            (collateralOutputs[i].join, , collateralOutputs[i].token, ) = h.addCollateral(
+            (collateralOutputs[i].join,, collateralOutputs[i].token,) = h.addCollateral(
                 address(dssDeploy.pause().proxy()),
                 res.ilkRegistry,
                 PHTCollateralHelper.IlkParams({
@@ -121,7 +122,9 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         _test_openLockGemAndDraw(res, collateralOutputs);
     }
 
-    function _test_openLockGemAndDraw(PHTDeployResult memory res, CollateralOutput[] memory collateralOutputs) private {
+    function _test_openLockGemAndDraw(PHTDeployResult memory res, CollateralOutput[] memory collateralOutputs)
+        private
+    {
         address bob = makeAddr("bob");
         for (uint256 i = 0; i < collateralOutputs.length; i++) {
             CollateralOutput memory collateral = collateralOutputs[i];
