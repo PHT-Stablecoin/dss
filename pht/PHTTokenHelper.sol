@@ -71,6 +71,11 @@ contract PHTTokenHelper is DSAuth {
         IMasterMinter(masterMinter).configureController(address(this), address(this));
     }
 
+    function transferMinterOwner(address masterMinter, address newOwner) public auth {
+        IMasterMinter(masterMinter).configureController(address(newOwner), address(newOwner));
+        IMasterMinter(masterMinter).transferOwnership(newOwner);
+    }
+
     function configureMinter(address masterMinter) public auth {
         IMasterMinter(masterMinter).configureMinter(uint256(-1));
         IMasterMinter(masterMinter).configureController(address(this), address(this));

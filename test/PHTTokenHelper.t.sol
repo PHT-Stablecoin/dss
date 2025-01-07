@@ -114,4 +114,30 @@ contract PHTTokenHelperTest is Test {
             vm.stopPrank();
         }
     }
+
+    function test_tokenHelper_transferOwnership() public {
+        vm.startPrank(eve);
+        (address implementation, address proxy, address masterMinter) = h.createToken(
+            PHTTokenHelper.TokenInfo({
+                tokenName: "TEST",
+                tokenSymbol: "TST",
+                tokenDecimals: 18,
+                tokenCurrency: "",
+                initialSupply: 1000000e18,
+                initialSupplyMintTo: eve // address to mint the initial supply to
+            })
+        );
+
+        assertEq(h.tokenAddresses(h.lastToken()), proxy);
+
+        h.mint(proxy, alice, 100e18);
+        assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
+
+        PHTTokenHelper nh = new PHTTokenHelper(h.pause(), h.tokenFactory());
+        h.transferMinterOwner(masterMinter, address(nh));
+        nh.configureMinter(masterMinter);
+
+        nh.mint(proxy, alice, 100e18);
+        assertEqDecimal(IERC20(proxy).balanceOf(alice), 200e18, 18);
+    }
 }
