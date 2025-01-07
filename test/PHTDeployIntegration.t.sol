@@ -42,11 +42,6 @@ contract PHTDeployIntegrationTest is Test {
         alice = makeAddr("alice");
         bob = makeAddr("bob");
 
-        console.log("alice", alice);
-        console.log("eve", eve);
-        console.log("bob", bob);
-        console.log("jugBase", uint256(0.0000000006279e27));
-
         res = d.deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
