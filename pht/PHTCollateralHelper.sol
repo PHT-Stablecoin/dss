@@ -195,8 +195,7 @@ contract PHTCollateralHelper is DSAuth {
                 owner: address(tokenHelper)
             });
 
-            (address implementation, address proxy, address masterMinter) =
-                ITokenFactory(tokenParams.factory).create(info);
+            (, address proxy, address masterMinter) = ITokenFactory(tokenParams.factory).create(info);
 
             tokenHelper.configureMinter(masterMinter);
 
