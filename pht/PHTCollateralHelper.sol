@@ -242,7 +242,6 @@ contract PHTCollateralHelper is DSAuth {
         {
             vat.file(ilkParams.ilk, bytes32("line"), ilkParams.line);
             vat.file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
-            vat.rely(address(_join));
             spotter.file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
         }
 
