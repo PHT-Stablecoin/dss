@@ -39,7 +39,7 @@ library PHTCollateralTestLib {
             duty: 1.0000000012436807e27, // => 4%
             tail: 100, // 200s before auction reset
             cusp: uint256(0.02e45), // 2% percentage drop (Rad units)
-            chip: uint64(0.01e45), // 1% of tab from vow to incentivize keepers
+            chip: uint64(0.01e18), // 1% of tab from vow to incentivize keepers
             tip: uint192(0) // 0 fee on flat fee since we have 0 for dust
         });
 
@@ -93,7 +93,7 @@ library PHTCollateralTestLib {
             duty: 1.0000000018477e27, // 0.00000018477% => 6% Annual duty
             tail: 100, // 200s before auction reset
             cusp: uint256(0.02e45), // 2% percentage drop (Rad units)
-            chip: uint64(0.01e45), // 1% of tab from vow to incentivize keepers
+            chip: uint64(0.01e18), // 1% of tab from vow to incentivize keepers
             tip: uint192(0) // 0 fee on flat fee since we have 0 for dust
         });
 

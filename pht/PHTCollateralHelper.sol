@@ -259,6 +259,11 @@ contract PHTCollateralHelper is DSAuth {
         {
             (address clip,,,) = dog.ilks(ilkParams.ilk);
             Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
+            Clipper(clip).file("tail", ilkParams.tail);
+            Clipper(clip).file("cusp", ilkParams.cusp);
+            Clipper(clip).file("chip", ilkParams.chip);
+            Clipper(clip).file("tip", ilkParams.tip);
+            Clipper(clip).upchost();
         }
 
         {

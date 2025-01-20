@@ -37,17 +37,17 @@ interface IPHTDeployConfigJson {
 
     struct IlkParams {
         uint256 buf;
+        uint64 chip;
         uint256 chop;
+        uint256 cusp;
         uint256 dust;
         uint256 duty;
         uint256 holeRad;
         bytes32 ilk;
         uint256 lineRad;
         uint256 matEther;
-        uint256 tau;
         uint256 tail;
-        uint256 cusp;
-        uint64 chip;
+        uint256 tau;
         uint192 tip;
     }
 
