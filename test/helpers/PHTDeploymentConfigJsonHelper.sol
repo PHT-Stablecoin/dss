@@ -6,14 +6,54 @@ import {CommonBase} from "forge-std/Base.sol";
 
 interface IPHTDeployConfigJson {
     struct Root {
+        string _notes;
         address authorityOwner;
         address[] authorityRootUsers;
+        Collateral[] collaterals;
         uint256 dogHoleRad;
         string govTokenSymbol;
         uint256 jugBase;
         // for prod specify the chainlink PHP/USD feed; for testing specify address(0)
         address phtUsdFeed;
         uint256 vatLineRad;
+    }
+
+    struct Collateral {
+        FeedParams feedParams;
+        IlkParams ilkParams;
+        TokenParams tokenParams;
+    }
+
+    struct FeedParams {
+        uint8 decimals;
+        address denominatorFeed;
+        address feed;
+        string feedDescription;
+        int256 initialPrice;
+        bool invertDenominator;
+        bool invertNumerator;
+        address numeratorFeed;
+    }
+
+    struct IlkParams {
+        uint256 buf;
+        uint256 chop;
+        uint256 dust;
+        uint256 duty;
+        uint256 holeRad;
+        bytes32 ilk;
+        uint256 lineRad;
+        uint256 matEther;
+        uint256 tau;
+    }
+
+    struct TokenParams {
+        uint8 decimals;
+        uint256 initialSupply;
+        uint256 maxSupply;
+        string name;
+        string symbol;
+        address token;
     }
 }
 

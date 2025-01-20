@@ -76,13 +76,13 @@ contract PHTCollateralHelperTest is Test {
         vm.startPrank(eve);
         PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
-        (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
+        (prevIlkDuty,) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
         assertTrue(prevIlk != getNextIlkName(res.ilkRegistry), "prev ilk should not be the same as the next ilk");
 
         PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
-        (prevIlkDuty, ) = Jug(res.jug).ilks(prevIlk);
+        (prevIlkDuty,) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
 
         PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
@@ -101,8 +101,8 @@ contract PHTCollateralHelperTest is Test {
 
         vm.startPrank(eve);
         bytes32 ilk = getNextIlkName(res.ilkRegistry);
-        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
-            .addCollateral(ilk, res, h, eve);
+        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) =
+            PHTCollateralTestLib.addCollateral(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
@@ -115,12 +115,12 @@ contract PHTCollateralHelperTest is Test {
     }
 
     function test_addsIlk_join() public {
-         uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
+        uint256 ilksCountBef = IlkRegistry(res.ilkRegistry).count();
 
         vm.startPrank(eve);
         bytes32 ilk = getNextIlkName(res.ilkRegistry);
-        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) = PHTCollateralTestLib
-            .addCollateralJoin(ilk, res, h, eve);
+        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) =
+            PHTCollateralTestLib.addCollateralJoin(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "pDAI", "token name");

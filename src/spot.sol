@@ -17,7 +17,6 @@
 
 pragma solidity ^0.6.12;
 
-import {console} from "forge-std/console.sol";
 // FIXME: This contract was altered compared to the production version.
 // It doesn't use LibNote anymore.
 // New deployments of this contract will need to include custom events (TO DO).
@@ -101,15 +100,9 @@ contract Spotter {
 
     // --- Update value ---
     function poke(bytes32 ilk) external {
-        console.log("Spotter.poke 0", string(abi.encodePacked(ilk)));
         (bytes32 val, bool has) = ilks[ilk].pip.peek();
-        console.log("Spotter.poke 1 val", uint256(val));
-        console.log("Spotter.poke 1 has", has);
-        console.log("ilks[ilk].mat", ilks[ilk].mat);
         uint256 spot = has ? rdiv(rdiv(mul(uint(val), 10 ** 9), par), ilks[ilk].mat) : 0;
-        console.log("Spotter.poke 2");
         vat.file(ilk, "spot", spot);
-        console.log("Spotter.poke 3");
         emit Poke(ilk, val, spot);
     }
 

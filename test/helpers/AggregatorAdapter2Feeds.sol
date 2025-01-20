@@ -1,5 +1,6 @@
 pragma solidity >=0.6.12;
 pragma experimental ABIEncoderV2;
+
 import {DSThing} from "ds-thing/thing.sol";
 
 interface AggregatorV3Interface {
@@ -9,9 +10,7 @@ interface AggregatorV3Interface {
 
     function version() external view returns (uint256);
 
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
@@ -31,10 +30,12 @@ contract AggregatorAdapter2Feeds is AggregatorV3Interface, DSThing {
     bool public invertDenominator;
 
     // --- Auth ---
-    mapping(address => uint) public wards;
+    mapping(address => uint256) public wards;
+
     function rely(address guy) external auth {
         wards[guy] = 1;
     }
+
     function deny(address guy) external auth {
         wards[guy] = 0;
     }
@@ -76,14 +77,12 @@ contract AggregatorAdapter2Feeds is AggregatorV3Interface, DSThing {
         else revert("AggregatorAdapter2Feeds/file-unrecognized-param");
     }
 
-    function file(bytes32 what, uint data) external auth {
+    function file(bytes32 what, uint256 data) external auth {
         if (what == "decimals") decimals = uint8(data);
         else revert("AggregatorAdapter2Feeds/file-unrecognized-param");
     }
 
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         external
         view
         override

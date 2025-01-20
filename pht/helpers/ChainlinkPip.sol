@@ -1,5 +1,6 @@
 pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
+
 interface PipLike {
     function has() external view returns (bool);
     function peek() external view returns (bytes32, bool);
@@ -14,9 +15,7 @@ interface AggregatorV3Interface {
 
     function version() external view returns (uint256);
 
-    function getRoundData(
-        uint80 _roundId
-    )
+    function getRoundData(uint80 _roundId)
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
@@ -40,7 +39,7 @@ contract ChainlinkPip is PipLike {
     }
 
     function read() external view override returns (bytes32 _answer) {
-        (_answer, ) = this.peek();
+        (_answer,) = this.peek();
         return _answer;
     }
 
@@ -50,8 +49,8 @@ contract ChainlinkPip is PipLike {
 
     /// Should convert answer (6 decimals) => answer (18 decimals)
     function peek() external view override returns (bytes32 _answer, bool _has) {
-        (, /* uint80 roundID */ int256 answer, , , ) = /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
-        dataFeed.latestRoundData();
+        (, /* uint80 roundID */ int256 answer,,,) = /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/
+            dataFeed.latestRoundData();
 
         if (answer < 0) {
             _has = false;

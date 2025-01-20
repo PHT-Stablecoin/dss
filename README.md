@@ -46,6 +46,37 @@ forge script ./script/PHTDeployment.s.sol --broadcast --rpc-url http://127.0.0.1
 └── test/               # Test suites
 ```
 
+## Deployment
+
+### Deployment Config
+
+All deployment configurations are stored in json files under `./config/` folder.
+
+The `collaterals[x].ilkParams.ilk` is a bytes32 encoded string. You can use cast command as such to convert from string to bytes32 (then assing the output to the `ilk` param):
+
+```sh
+❯ cast format-bytes32-string "PHP-A"
+0x5048502d41000000000000000000000000000000000000000000000000000000
+```
+
+Deploying to Sepolia Staging environment example:
+
+```sh
+# without `--slow` this reverts (at least on Sepolia) with `-32000: future transaction tries to replace pending`
+# PHTSTG is the label given to a wallet, imported via `cast wallet import "PHTSTG" --interactive`
+forge script ./script/PHTDeployment.s.sol \
+--sig "run(string)" \
+--sender 0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB \
+--account PHTSTG \
+--broadcast \
+--rpc-url $SEPOLIA_RPC_URL \
+--verify --isolate --slow \
+"sepolia_staging.json"
+
+```
+
+See [./config/tests.json](./config/tests.json) for an example.
+
 ## Acknowledgments
 
 This project builds upon:

@@ -9,9 +9,10 @@ import {FiatTokenProxy} from "stablecoin-evm/v1/FiatTokenProxy.sol";
 
 interface ITokenFactory {
     event TokenCreated(address implementation, address proxy, address creator);
-    function create(
-        FiatTokenInfo memory tokenInfo
-    ) external returns (address implementation, address proxy, address masterMinter);
+
+    function create(FiatTokenInfo memory tokenInfo)
+        external
+        returns (address implementation, address proxy, address masterMinter);
 }
 
 struct FactoryToken {
@@ -25,13 +26,16 @@ contract FiatTokenFactory is ITokenFactory {
     IProxyInitializer public immutable PROXY_INITIALIZER;
 
     // --- Auth ---
-    mapping(address => uint) public wards;
+    mapping(address => uint256) public wards;
+
     function rely(address usr) external auth {
         wards[usr] = 1;
     }
+
     function deny(address usr) external auth {
         wards[usr] = 0;
     }
+
     modifier auth() {
         require(wards[msg.sender] == 1, "FiatTokenFactory/not-authorized");
         _;
@@ -49,28 +53,29 @@ contract FiatTokenFactory is ITokenFactory {
         wards[msg.sender] = 1;
     }
 
-    function create(
-        FiatTokenInfo memory tokenInfo
-    ) external auth override returns (address implementation, address proxy, address masterMinter) {
+    function create(FiatTokenInfo memory tokenInfo)
+        external
+        override
+        auth
+        returns (address implementation, address proxy, address masterMinter)
+    {
         (implementation, proxy, masterMinter) = _deployAndInitialize(tokenInfo);
         tokenAddresses.push(proxy);
-        tokens[proxy] = FactoryToken({
-            implementation: implementation,
-            masterMinter: masterMinter
-        });
+        tokens[proxy] = FactoryToken({implementation: implementation, masterMinter: masterMinter});
 
         emit TokenCreated(implementation, proxy, msg.sender);
 
         return (implementation, proxy, masterMinter);
     }
 
-    function lastToken() view public returns (uint256) {
-        return tokenAddresses.length -1;
+    function lastToken() public view returns (uint256) {
+        return tokenAddresses.length - 1;
     }
 
-    function _deployAndInitialize(
-        FiatTokenInfo memory tokenInfo
-    ) internal returns (address implementation, address proxy, address masterMinter) {
+    function _deployAndInitialize(FiatTokenInfo memory tokenInfo)
+        internal
+        returns (address implementation, address proxy, address masterMinter)
+    {
         // Deploy the latest implementation contract code to the network.
         address implementation = IMPLEMENTATION_DEPLOYER.deployImplementation();
 
@@ -97,10 +102,12 @@ contract FiatTokenFactory is ITokenFactory {
         if (tokenInfo.initialSupply > 0) {
             // temporarily give permissions to the factory to mint tokens
             IMasterMinter(masterMinter).configureController(address(this), address(this));
-            IMasterMinter(masterMinter).configureMinter(tokenInfo.initialSupply);
+            require(
+                IMasterMinter(masterMinter).configureMinter(tokenInfo.initialSupply), "FiatTokenFactory/configureMinter"
+            );
             IFiatToken(address(proxy)).mint(tokenInfo.initialSupplyMintTo, tokenInfo.initialSupply);
             // remove permissions
-            IMasterMinter(masterMinter).removeMinter();
+            require(IMasterMinter(masterMinter).removeMinter(), "FiatTokenFactory/removeMinter");
             IMasterMinter(masterMinter).removeController(address(this));
             // undo MASTER_MINTER_DEPLOYER.deployMasterMinter permissions
             // Configure controller (adds owner as minter)

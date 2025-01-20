@@ -3,27 +3,11 @@ pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-
-import {DssDeploy, Clipper, Spotter} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
-import {Jug} from "../src/jug.sol";
-
-import {DSRoles} from "../pht/lib/Roles.sol";
 import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
 import {PHTTokenHelper} from "../pht/PHTTokenHelper.sol";
-import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
-
-import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFactory.sol";
-import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
-import {ChainlinkPip, AggregatorV3Interface, PipLike} from "../pht/helpers/ChainlinkPip.sol";
-import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
-
 import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
-
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 
 contract PHTTokenHelperTest is Test {
@@ -59,12 +43,8 @@ contract PHTTokenHelperTest is Test {
 
     function test_createToken() public {
         vm.startPrank(eve);
-        
-        (
-            address implementation,
-            address proxy,
-            address masterMinter
-        ) = h.createToken(
+
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             PHTTokenHelper.TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -77,16 +57,11 @@ contract PHTTokenHelperTest is Test {
 
         assertEq(h.tokenAddresses(h.lastToken()), proxy);
         assertEqDecimal(IERC20(proxy).balanceOf(eve), 1000000e18, 18);
-
     }
 
     function test_tokenHelper_mint() public {
         vm.startPrank(eve);
-        (
-            address implementation,
-            address proxy,
-            address masterMinter
-        ) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             PHTTokenHelper.TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -106,11 +81,7 @@ contract PHTTokenHelperTest is Test {
 
     function test_tokenHelper_blacklist() public {
         vm.startPrank(eve);
-        (
-            address implementation,
-            address proxy,
-            address masterMinter
-        ) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             PHTTokenHelper.TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -120,41 +91,33 @@ contract PHTTokenHelperTest is Test {
                 initialSupplyMintTo: eve // address to mint the initial supply to
             })
         );
-
         assertEq(h.tokenAddresses(h.lastToken()), proxy);
-
         h.mint(proxy, alice, 100e18);
         assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
-        
-
-        vm.startPrank(eve);
         h.blacklist(proxy, alice);
+        vm.stopPrank();
+
         {
             vm.startPrank(alice);
             vm.expectRevert("Blacklistable: account is blacklisted");
             IERC20(proxy).transfer(eve, 10e18);
             assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
+            vm.stopPrank();
         }
 
-
-        vm.startPrank(eve);
+        vm.prank(eve);
         h.unBlacklist(proxy, alice);
         {
             vm.startPrank(alice);
             IERC20(proxy).transfer(eve, 10e18);
             assertEqDecimal(IERC20(proxy).balanceOf(alice), 90e18, 18);
+            vm.stopPrank();
         }
-
     }
 
     function test_tokenHelper_transferOwnership() public {
-
         vm.startPrank(eve);
-        (
-            address implementation,
-            address proxy,
-            address masterMinter
-        ) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             PHTTokenHelper.TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -177,22 +140,4 @@ contract PHTTokenHelperTest is Test {
         nh.mint(proxy, alice, 100e18);
         assertEqDecimal(IERC20(proxy).balanceOf(alice), 200e18, 18);
     }
-    
-}
-
-interface IERC20Metadata is IERC20 {
-    /**
-     * @dev Returns the name of the token.
-     */
-    function name() external view returns (string memory);
-
-    /**
-     * @dev Returns the symbol of the token.
-     */
-    function symbol() external view returns (string memory);
-
-    /**
-     * @dev Returns the decimals places of the token.
-     */
-    function decimals() external view returns (uint8);
 }

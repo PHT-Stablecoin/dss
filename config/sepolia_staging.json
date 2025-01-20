@@ -1,0 +1,14 @@
+{
+  "_notes": "One of the PHT Wallets: 0xDdfc99E5C7c5880A57236883ff6855dE7ddd0a0F; PHT Staging Deployer is also root user: 0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB",
+  "authorityOwner": "0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB",
+  "authorityRootUsers": [
+    "0xE54813199Df6B33c0261fe9CD6eF4Efe660F13FB",
+    "0xDdfc99E5C7c5880A57236883ff6855dE7ddd0a0F"
+  ],
+  "collaterals": [],
+  "dogHoleRad": 10000000,
+  "govTokenSymbol": "APC",
+  "jugBase": 0.0000000006279e27,
+  "phtUsdFeed": "0x0000000000000000000000000000000000000000",
+  "vatLineRad": 13000000
+}
