@@ -10,6 +10,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {Jug} from "../src/jug.sol";
+import {Clipper} from "../src/clip.sol";
 
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
@@ -101,8 +102,15 @@ contract PHTCollateralHelperTest is Test {
 
         vm.startPrank(eve);
         bytes32 ilk = getNextIlkName(res.ilkRegistry);
-        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) =
-            PHTCollateralTestLib.addCollateral(ilk, res, h, eve);
+        (
+            address phpJoin,
+            AggregatorV3Interface feed,
+            address token,
+            ChainlinkPip pip,
+            PHTCollateralHelper.IlkParams memory ilkParams,
+            PHTCollateralHelper.TokenParams memory tokenParams,
+            PHTCollateralHelper.FeedParams memory feedParams
+        ) = PHTCollateralTestLib.addCollateral(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
@@ -119,8 +127,15 @@ contract PHTCollateralHelperTest is Test {
 
         vm.startPrank(eve);
         bytes32 ilk = getNextIlkName(res.ilkRegistry);
-        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) =
-            PHTCollateralTestLib.addCollateralJoin(ilk, res, h, eve);
+        (
+            address phpJoin,
+            AggregatorV3Interface feed,
+            address token,
+            ChainlinkPip pip,
+            PHTCollateralHelper.IlkParams memory ilkParams,
+            PHTCollateralHelper.TokenParams memory tokenParams,
+            PHTCollateralHelper.FeedParams memory feedParams
+        ) = PHTCollateralTestLib.addCollateralJoin(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "pDAI", "token name");
@@ -133,6 +148,14 @@ contract PHTCollateralHelperTest is Test {
 
         (bytes32 answer,) = pip.peek();
         assertApproxEqAbsDecimal(uint256(answer), 58e18, 0.2e18, 18, "1 DAI should be approx 58 PHT");
+
+        Clipper ilkClip = Clipper(IlkRegistry(res.ilkRegistry).xlip(ilk));
+        assertEq(ilkClip.buf(), ilkParams.buf);
+        assertEq(ilkClip.tail(), ilkParams.tail);
+        assertEq(ilkClip.cusp(), ilkParams.cusp);
+        assertEq(uint256(ilkClip.chip()), uint256(ilkParams.chip));
+        assertEq(uint256(ilkClip.tip()), uint256(ilkParams.tip));
+        assertEq(ilkClip.chost(), ilkParams.dust * ilkParams.chop);
     }
 
     function test_rootCanAddCollateral() public {

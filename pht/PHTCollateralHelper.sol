@@ -95,14 +95,19 @@ contract PHTCollateralHelper is DSAuth {
 
     struct IlkParams {
         bytes32 ilk;
-        uint256 line; // Ilk Debt ceiling [RAD]
-        uint256 dust; // Ilk Urn Debt floor [RAD]
+        uint256 line; // Ilk Debt ceiling                                                  [rad]
+        uint256 dust; // Ilk Urn Debt floor                                                [rad]
         uint256 tau; // Default: 1 hours
-        uint256 mat; // Liquidation Ratio [RAY]
-        uint256 hole; // Gem-limit [RAD]
-        uint256 chop; // Liquidation-penalty [WAD]
-        uint256 buf; // Initial Auction Increase [RAY]
-        uint256 duty; // Jug: ilk fee [RAY]
+        uint256 mat; // Liquidation Ratio                                                  [ray]
+        uint256 hole; // Gem-limit                                                         [rad]
+        uint256 chop; // Liquidation-penalty                                               [wad]
+        uint256 buf; // Multiplicative factor to increase starting price                   [ray]
+        uint256 duty; // Jug: ilk fee                                                      [ray]
+        uint256 tail; // Time elapsed before auction reset                                 [seconds]
+        uint256 cusp; // Percentage drop before auction reset                              [ray]
+        uint64 chip; // Percentage of tab to suck from vow to incentivize keepers          [wad]
+        uint192 tip; // Flat fee to suck from vow to incentivize keepers                   [rad]
+            // uint256 chost;  // Cache the ilk dust times the ilk chop to prevent excessive SLOADs [rad]
     }
 
     constructor(Vat vat_, Spotter spotter_, Dog dog_, Vow vow_, Jug jug_, End end_, ESM esm_, DSPause pause_) public {

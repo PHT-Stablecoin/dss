@@ -89,7 +89,11 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                     ilk: ilkParams.ilk,
                     line: ilkParams.lineRad * RAD,
                     mat: ilkParams.matEther * 1e18, // Liquidation Ratio
-                    tau: ilkParams.tau
+                    tau: ilkParams.tau,
+                    tail: ilkParams.tail,
+                    cusp: ilkParams.cusp,
+                    chip: ilkParams.chip,
+                    tip: ilkParams.tip
                 }),
                 PHTCollateralHelper.TokenParams({
                     factory: ITokenFactory(res.tokenFactory),
