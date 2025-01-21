@@ -18,8 +18,6 @@ interface AggregatorV3Interface {
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
-
-    function latestAnswer() external view returns (int256);
 }
 
 interface IERC20Metadata {
@@ -146,11 +144,6 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
         returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
         return _getAnswer();
-    }
-
-    function latestAnswer() external view override returns (int256) {
-        (, int256 _answer,,,) = _getAnswer();
-        return _answer;
     }
 
     function _getAnswer()

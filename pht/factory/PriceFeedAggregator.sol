@@ -18,8 +18,6 @@ interface AggregatorV3Interface {
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
-    // @TODO add this
-    // function latestAnswer() external view returns (int256);
 }
 
 contract PriceFeedAggregator is AggregatorV3Interface, DSThing {

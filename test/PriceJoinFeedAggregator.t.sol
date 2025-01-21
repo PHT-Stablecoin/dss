@@ -155,7 +155,7 @@ contract PriceJoinFeedAggregatorTest is Test {
             if (d.feedDecimals != aggregator.decimals()) {
                 aggregator.file("decimals", d.feedDecimals);
             }
-            int256 answer = aggregator.latestAnswer();
+            (, int256 answer,,,) = aggregator.latestRoundData();
             assertEq(answer, d.expectedAnswer, d.description);
 
             // simulate changing the numerator feed by changing the decimals
@@ -167,7 +167,7 @@ contract PriceJoinFeedAggregatorTest is Test {
                 numeratorFeed.file("decimals", d.numeratorDecimals - 2);
             }
             aggregator.file("numeratorFeed", address(numeratorFeed), d.invertNumerator);
-            answer = aggregator.latestAnswer();
+            (, answer,,,) = aggregator.latestRoundData();
             assertEq(answer, d.expectedAnswer, d.description);
         }
     }
