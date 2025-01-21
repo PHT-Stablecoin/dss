@@ -63,9 +63,13 @@ contract MockAggregatorV3 is AggregatorV3Interface, DSThing {
         external
         view
         override
-        returns (uint80, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
+        returns (uint80 roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
+        roundId = _roundId;
         _answer = answer;
+        _startedAt = block.timestamp;
+        _updatedAt = block.timestamp;
+        _answeredInRound = _roundId;
     }
 
     function latestRoundData()
@@ -75,5 +79,9 @@ contract MockAggregatorV3 is AggregatorV3Interface, DSThing {
         returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
         _answer = answer;
+        _roundId = 1;
+        _startedAt = block.timestamp;
+        _updatedAt = block.timestamp;
+        _answeredInRound = 1;
     }
 }
