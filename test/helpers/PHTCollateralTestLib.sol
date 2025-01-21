@@ -116,7 +116,7 @@ library PHTCollateralTestLib {
             numeratorFeed: address(PriceFeedFactory(res.priceFeedFactory).create(8, int256(1e8), "DAI/USD")),
             invertNumerator: false,
             denominatorFeed: address(PriceFeedFactory(res.priceFeedFactory).create(8, int256(0.0172e8), "PHP/USD")),
-            invertDenominator: false,
+            invertDenominator: true,
             feedDescription: "DAI/PHT"
         });
 

@@ -64,9 +64,13 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
         external
         view
         override
-        returns (uint80, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
+        returns (uint80 roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
         _answer = answer;
+        roundId = _roundId;
+        _startedAt = block.timestamp;
+        _updatedAt = block.timestamp;
+        _answeredInRound = _roundId;
     }
 
     function latestRoundData()
@@ -76,10 +80,9 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
         returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
         _answer = answer;
-        // @TODO add this & in getRoundData
-        // _updatedAt = block.timestamp;
-        // _startedAt = block.timestamp;
-        // _answeredInRound = 1;
-        // _roundId = 1;
+        _roundId = 1;
+        _startedAt = block.timestamp;
+        _updatedAt = block.timestamp;
+        _answeredInRound = 1;
     }
 }
