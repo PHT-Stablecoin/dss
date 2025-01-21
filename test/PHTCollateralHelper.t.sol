@@ -9,8 +9,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
+import {DSPause, DSPauseProxy} from "ds-pause/pause.sol";
+
 import {Jug} from "../src/jug.sol";
-import {Clipper} from "../src/clip.sol";
+import {LinearDecrease} from "dss/abaci.sol";
+import {GemJoin5} from "dss-gem-joins/join-5.sol";
+import {GemJoin} from "dss/join.sol";
 
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
@@ -19,6 +23,7 @@ import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFac
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface, PipLike} from "../pht/helpers/ChainlinkPip.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
+import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
 import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
@@ -116,10 +121,28 @@ contract PHTCollateralHelperTest is Test {
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
         assertEq(IERC20Metadata(token).symbol(), "tstPHP", "token symbol");
         assertEq(uint256(IERC20Metadata(token).decimals()), 6, "token decimals");
+
         // ensure eve received the token balance
-        assertEq(IERC20(token).balanceOf(eve), 1000 * 10 ** 6, "eve should have received the token balance");
+        assertEq(IERC20(token).balanceOf(eve), tokenParams.initialSupply, "eve should have received the token balance");
         assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef + 1, "[PHTCollateralHelperTest] ilksCount");
         assertEq(address(pip), IlkRegistry(res.ilkRegistry).pip(ilk), "Same Pip");
+
+        Clipper ilkClip = Clipper(IlkRegistry(res.ilkRegistry).xlip(ilk));
+        assertEq(ilkClip.buf(), ilkParams.buf);
+        assertEq(ilkClip.tail(), ilkParams.tail);
+        assertEq(ilkClip.cusp(), ilkParams.cusp);
+        assertEq(uint256(ilkClip.chip()), uint256(ilkParams.chip));
+        assertEq(uint256(ilkClip.tip()), uint256(ilkParams.tip));
+        assertEq(ilkClip.chost(), ilkParams.dust * ilkParams.chop);
+
+        // ensure pause.proxy auth
+        DSPauseProxy proxy = DSPause(res.pause).proxy();
+
+        vm.startPrank(eve);
+        ProxyActions(res.proxyActions).rely(phpJoin, alice);
+        assertEq(GemJoin(phpJoin).wards(address(proxy)), 1);
+        assertEq(GemJoin(phpJoin).wards(alice), 1);
+        assertEq(LinearDecrease(address(ilkClip.calc())).wards(address(proxy)), 1);
     }
 
     function test_addsIlk_join() public {
@@ -156,6 +179,15 @@ contract PHTCollateralHelperTest is Test {
         assertEq(uint256(ilkClip.chip()), uint256(ilkParams.chip));
         assertEq(uint256(ilkClip.tip()), uint256(ilkParams.tip));
         assertEq(ilkClip.chost(), ilkParams.dust * ilkParams.chop);
+
+        // ensure pause.proxy auth
+        DSPauseProxy proxy = DSPause(res.pause).proxy();
+
+        vm.startPrank(eve);
+        ProxyActions(res.proxyActions).rely(phpJoin, alice);
+        assertEq(GemJoin(phpJoin).wards(address(proxy)), 1);
+        assertEq(GemJoin(phpJoin).wards(alice), 1);
+        assertEq(LinearDecrease(address(ilkClip.calc())).wards(address(proxy)), 1);
     }
 
     function test_rootCanAddCollateral() public {

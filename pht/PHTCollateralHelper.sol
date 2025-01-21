@@ -210,6 +210,7 @@ contract PHTCollateralHelper is DSAuth {
 
         _feed = AggregatorV3Interface(feedParams.feed);
         if (address(_feed) == address(0)) {
+            address proxy = address(pause.proxy());
             if (feedParams.numeratorFeed != address(0)) {
                 PriceJoinFeedAggregator feed = feedParams.joinFactory.create(
                     feedParams.numeratorFeed,
@@ -218,11 +219,11 @@ contract PHTCollateralHelper is DSAuth {
                     feedParams.invertDenominator,
                     feedParams.feedDescription
                 );
-                feed.setOwner(owner);
+                feed.setOwner(proxy);
                 _feed = AggregatorV3Interface(address(feed));
             } else {
                 PriceFeedAggregator feed = feedParams.factory.create(feedParams.decimals, feedParams.initialPrice, "");
-                feed.setOwner(owner);
+                feed.setOwner(proxy);
                 _feed = AggregatorV3Interface(address(feed));
             }
         }
@@ -230,15 +231,15 @@ contract PHTCollateralHelper is DSAuth {
 
         // @TODO deny this ward in GemJoin(s)
         if (TokenLike(_token).decimals() < 18) {
-            _join = address(gemJoin5Fab.newJoin(owner, address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoin5Fab.newJoin(address(pause.proxy()), address(vat), ilkParams.ilk, _token));
         } else {
-            _join = address(gemJoinFab.newJoin(owner, address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoinFab.newJoin(address(pause.proxy()), address(vat), ilkParams.ilk, _token));
         }
 
         {
             LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
             _calc.file(bytes32("tau"), ilkParams.tau);
-            _calc.rely(owner);
+            _calc.rely(address(pause.proxy()));
             _calc.deny(address(this));
 
             deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
@@ -263,6 +264,7 @@ contract PHTCollateralHelper is DSAuth {
             Clipper(clip).file("cusp", ilkParams.cusp);
             Clipper(clip).file("chip", ilkParams.chip);
             Clipper(clip).file("tip", ilkParams.tip);
+            Clipper(clip).deny(address(this));
             Clipper(clip).upchost();
         }
 
