@@ -45,6 +45,10 @@ interface IPHTDeployConfigJson {
         uint256 lineRad;
         uint256 matEther;
         uint256 tau;
+        uint256 cusp;
+        uint256 chip;
+        uint256 tip;
+        uint256 tail;
     }
 
     struct TokenParams {

@@ -31,7 +31,11 @@ library PHTCollateralTestLib {
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "PHP-A" to 13% (1.13e18 in WAD units)
                 buf: 1.2e27, // Set a 20% increase in auctions (RAY)
                 // duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
-                duty: 1.0000000012436807e27 // => 4%
+                duty: 1.0000000012436807e27, // => 4%
+                cusp: 400000000000000000000000000,
+                chip: 1000000000000000,
+                tip: 300000000000000000000000000000000000000000000,
+                tail: 2 hours
             }),
             PHTCollateralHelper.TokenParams({
                 token: address(0),
@@ -73,7 +77,11 @@ library PHTCollateralTestLib {
                 hole: 5_000_000 * RAD, // Set USDT-A limit to 5 million DAI (RAD units)
                 chop: 1.13e18, // Set the liquidation penalty (chop) for "USDT-A" to 13% (1.13e18 in WAD units)
                 buf: 1.2e27, // Set a 20% increase in auctions (RAY)
-                duty: 1.0000000018477e27 // 0.00000018477% => 6% Annual duty
+                duty: 1.0000000018477e27, // 0.00000018477% => 6% Annual duty
+                cusp: 400000000000000000000000000,
+                chip: 1000000000000000,
+                tip: 300000000000000000000000000000000000000000000,
+                tail: 2 hours
             }),
             PHTCollateralHelper.TokenParams({
                 token: address(0),
