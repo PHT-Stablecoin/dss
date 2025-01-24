@@ -119,6 +119,7 @@ contract PriceJoinFeedAggregatorTest is Test {
             invertDenominator: false,
             expectedAnswer: 4269479180
         });
+        // test different feed decimals
         data[7] = Data({
             description: "USDC / USD * PHP / USD (inverted denominator): 8 decimals & feed 18 decimals",
             // price of USDC in USD (1e8 precision)

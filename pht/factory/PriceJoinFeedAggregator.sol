@@ -182,7 +182,7 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
     {
         (
             uint80 _numRoundId,
-            // NB: no underscores in the variable name to avoid shadowing the return variable
+            // NB: no underscore in the variable name to avoid shadowing the return variable
             int256 numAnswer,
             uint256 _numStartedAt,
             uint256 _numUpdatedAt,
@@ -191,13 +191,25 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
 
         (
             uint80 _denomRoundId,
-            // NB: no underscores in the variable name to avoid shadowing the return variable
+            // NB: no underscore in the variable name to avoid shadowing the return variable
             int256 denomAnswer,
             uint256 _denomStartedAt,
             uint256 _denomUpdatedAt,
             uint80 _denomAnsweredInRound
         ) = denominatorFeed.latestRoundData();
+
+        // sanity checks
+        require(_numAnsweredInRound >= _numRoundId, "PriceJoinFeedAggregator/round-incomplete");
+        require(_denomAnsweredInRound >= _denomRoundId, "PriceJoinFeedAggregator/round-incomplete");
+        require(_numUpdatedAt > 0, "PriceJoinFeedAggregator/round-incomplete");
+        require(_denomUpdatedAt > 0, "PriceJoinFeedAggregator/round-incomplete");
         require(numAnswer > 0 && denomAnswer > 0, "PriceJoinFeedAggregator/lte-zero-price-feed");
+
+        // NB: we DO NOT perform any heartbeat staleness checks here on purpose
+        // because liquididation auctions would stop working
+        // therefore we monitor Price feed aggregators staleness in off-chain
+        // scripts and alert on it
+
         // assign the return variables
         _numAnswer = numAnswer;
         _denomAnswer = denomAnswer;
