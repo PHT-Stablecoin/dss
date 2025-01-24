@@ -78,7 +78,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             });
 
             (collateralOutputs[i].join,, collateralOutputs[i].token,) = h.addCollateral(
-                address(dssDeploy.pause().proxy()),
                 res.ilkRegistry,
                 PHTCollateralHelper.IlkParams({
                     buf: ilkParams.buf, // already in RAY units

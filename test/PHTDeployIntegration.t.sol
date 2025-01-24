@@ -94,7 +94,7 @@ contract PHTDeployIntegrationTest is Test {
     function test_openLockGemAndDraw() public {
         (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
         vm.startPrank(eve);
-        (address join,, address token,,,,) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
+        (address join,, address token,,,,) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h);
         // transfer some tokens to bob
         IERC20(token).transfer(bob, 1e9);
 

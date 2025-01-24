@@ -185,11 +185,7 @@ contract PHTCollateralHelper is DSAuth {
         clip.rely(address(pause.proxy()));
     }
 
-    // @TODO return masterMinter
-    // @TODO reuse masterMinter?
     function addCollateral(
-        // @TOOD avoid shadowing owner from base class DSAuth
-        address owner,
         address ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
@@ -219,7 +215,6 @@ contract PHTCollateralHelper is DSAuth {
 
             tokenHelper.configureMinter(masterMinter);
 
-            // newToken.setOwner(owner);
             _token = address(proxy);
         }
 

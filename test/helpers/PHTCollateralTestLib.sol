@@ -14,7 +14,7 @@ import {ITokenFactory} from "../../fiattoken/FiatTokenFactory.sol";
 library PHTCollateralTestLib {
     uint256 constant RAD = 10 ** 45;
 
-    function addCollateral(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h, address owner)
+    function addCollateral(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h)
         internal
         returns (
             address join,
@@ -66,10 +66,10 @@ library PHTCollateralTestLib {
             feedDescription: ""
         });
 
-        (join, feed, token, pip) = h.addCollateral(owner, res.ilkRegistry, ilkParams, tokenParams, feedParams);
+        (join, feed, token, pip) = h.addCollateral(res.ilkRegistry, ilkParams, tokenParams, feedParams);
     }
 
-    function addCollateralJoin(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h, address owner)
+    function addCollateralJoin(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h)
         internal
         returns (
             address join,
@@ -120,6 +120,6 @@ library PHTCollateralTestLib {
             feedDescription: "DAI/PHT"
         });
 
-        (join, feed, token, pip) = h.addCollateral(owner, res.ilkRegistry, ilkParams, tokenParams, feedParams);
+        (join, feed, token, pip) = h.addCollateral(res.ilkRegistry, ilkParams, tokenParams, feedParams);
     }
 }
