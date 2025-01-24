@@ -53,17 +53,6 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
     bool public invertNumerator;
     bool public invertDenominator;
 
-    // --- Auth ---
-    mapping(address => uint256) public wards;
-
-    function rely(address guy) external auth {
-        wards[guy] = 1;
-    }
-
-    function deny(address guy) external auth {
-        wards[guy] = 0;
-    }
-
     uint256 public constant ONE = 1e18;
     string public override description = ""; // XSGD/USD-PHP/USD
     // feed decimals
@@ -84,7 +73,6 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
     ) public {
         require(_numeratorFeed != address(0), "PriceJoinFeedAggregator/null-address");
         require(_denominatorFeed != address(0), "PriceJoinFeedAggregator/null-address");
-        wards[msg.sender] = 1;
 
         uint256 decimalsDifference = 18 - decimals;
         _feedScalingFactor = 10 ** decimalsDifference;

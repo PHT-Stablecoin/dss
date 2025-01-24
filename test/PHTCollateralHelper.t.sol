@@ -66,6 +66,11 @@ contract PHTCollateralHelperTest is Test {
             })
         );
         h = PHTCollateralHelper(res.collateralHelper);
+        // allow this contract to create feeds through the feed factory
+        // we do this in the test helper PHTCollateralTestLib.addCollateralJoin
+        vm.startPrank(alice);
+        DSRoles(address(res.authority)).setUserRole(address(this), d.ROLE_FEED_FACTORY_CREATE(), true);
+        vm.stopPrank();
     }
 
     function geLastIlkName(address ilkRegistry) internal returns (bytes32) {
@@ -156,8 +161,9 @@ contract PHTCollateralHelperTest is Test {
             address token,
             ChainlinkPip pip,
             PHTCollateralHelper.IlkParams memory ilkParams,
-            PHTCollateralHelper.TokenParams memory tokenParams,
-            PHTCollateralHelper.FeedParams memory feedParams
+            /*PHTCollateralHelper.TokenParams memory tokenParams*/
+            ,
+            /*PHTCollateralHelper.FeedParams memory feedParams*/
         ) = PHTCollateralTestLib.addCollateralJoin(ilk, res, h, eve);
         vm.stopPrank();
 
@@ -188,6 +194,55 @@ contract PHTCollateralHelperTest is Test {
         assertEq(GemJoin(phpJoin).wards(address(proxy)), 1);
         assertEq(GemJoin(phpJoin).wards(alice), 1);
         assertEq(LinearDecrease(address(ilkClip.calc())).wards(address(proxy)), 1);
+        vm.stopPrank();
+
+        PriceJoinFeedAggregator feedObj = PriceJoinFeedAggregator(address(feed));
+        assertEq(feedObj.description(), "DAI/PHT");
+        assertEq(uint256(feedObj.decimals()), 8);
+        assertEq(feedObj.version(), 1);
+
+        // non-authority should not be able to admin feeds
+        vm.expectRevert("ds-auth-unauthorized");
+        feedObj.file("decimals", 12);
+
+        // ensure that authority can update the feeds
+        // created through the factory
+        vm.startPrank(eve);
+        feedObj.file("decimals", 12);
+        assertEq(uint256(feedObj.decimals()), 12);
+        vm.stopPrank();
+
+        // test numerator feed
+        PriceFeedAggregator numeratorFeed = PriceFeedAggregator(address(feedObj.numeratorFeed()));
+        assertEq(numeratorFeed.description(), "DAI/USD");
+        assertEq(uint256(numeratorFeed.decimals()), uint256(8));
+
+        // non-authority should not be able to admin feeds
+        vm.expectRevert("ds-auth-unauthorized");
+        numeratorFeed.file("description", "something");
+
+        // ensure that authority can update the feeds
+        // created through the factory
+        vm.startPrank(eve);
+        numeratorFeed.file("description", "something");
+        assertEq(numeratorFeed.description(), "something");
+        vm.stopPrank();
+
+        // test denominator feed
+        PriceFeedAggregator denominatorFeed = PriceFeedAggregator(address(feedObj.denominatorFeed()));
+        assertEq(denominatorFeed.description(), "PHP/USD");
+        assertEq(uint256(denominatorFeed.decimals()), uint256(8));
+
+        // non-authority should not be able to admin feeds
+        vm.expectRevert("ds-auth-unauthorized");
+        denominatorFeed.file("description", "something");
+
+        // ensure that authority can update the feeds
+        // created through the factory
+        vm.startPrank(eve);
+        denominatorFeed.file("description", "something");
+        assertEq(denominatorFeed.description(), "something");
+        vm.stopPrank();
     }
 
     function test_rootCanAddCollateral() public {

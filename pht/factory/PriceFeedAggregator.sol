@@ -21,18 +21,7 @@ interface AggregatorV3Interface {
 }
 
 contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
-    // --- Auth ---
-    mapping(address => uint256) public wards;
-
-    function rely(address guy) external auth {
-        wards[guy] = 1;
-    }
-
-    function deny(address guy) external auth {
-        wards[guy] = 0;
-    }
-
-    uint256 public override version = 0;
+    uint256 public override version = 1;
     string public override description = "";
     uint8 public override decimals = 8;
 
@@ -41,21 +30,26 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
 
     // --- Init ---
     constructor() public {
-        wards[msg.sender] = 1;
         live = 1;
     }
 
     // --- Administration ---
     function file(bytes32 what, uint256 data) external auth {
-        require(live == 1, "MockAggregatorV3/not-live");
+        require(live == 1, "PriceFeedAggregator/not-live");
         if (what == "decimals") decimals = uint8(data);
-        else revert("MockAggregatorV3/file-unrecognized-param");
+        else revert("PriceFeedAggregator/file-unrecognized-param");
     }
 
     function file(bytes32 what, int256 data) external auth {
-        require(live == 1, "MockAggregatorV3/not-live");
+        require(live == 1, "PriceFeedAggregator/not-live");
         if (what == "answer") answer = data;
-        else revert("MockAggregatorV3/file-unrecognized-param");
+        else revert("PriceFeedAggregator/file-unrecognized-param");
+    }
+
+    function file(bytes32 what, string memory data) external auth {
+        require(live == 1, "PriceFeedAggregator/not-live");
+        if (what == "description") description = data;
+        else revert("PriceFeedAggregator/file-unrecognized-param");
     }
 
     function getRoundData(uint80 _roundId)

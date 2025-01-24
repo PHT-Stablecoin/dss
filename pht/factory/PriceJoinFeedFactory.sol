@@ -31,7 +31,7 @@ contract PriceJoinFeedFactory is DSAuth {
         bool invertNumerator,
         bool invertDenominator,
         string memory description
-    ) external returns (PriceJoinFeedAggregator feed) {
+    ) external auth returns (PriceJoinFeedAggregator feed) {
         feed =
             new PriceJoinFeedAggregator(numeratorFeed, denominatorFeed, invertNumerator, invertDenominator, description);
 
@@ -42,6 +42,9 @@ contract PriceJoinFeedFactory is DSAuth {
             invertDenominator: invertDenominator,
             description: description
         });
+
+        // pass on the authority to any instances created from this factory
+        feed.setAuthority(authority);
 
         // Transfer feed ownership to caller
         feed.setOwner(msg.sender);

@@ -19,6 +19,7 @@ contract PriceFeedFactory is DSAuth {
 
     function create(uint8 decimals, int256 initialAnswer, string memory description)
         external
+        auth
         returns (PriceFeedAggregator feed)
     {
         feed = new PriceFeedAggregator();
@@ -26,8 +27,13 @@ contract PriceFeedFactory is DSAuth {
         feedRegistry[address(feed)] =
             PriceFeedInfo({feedAddress: address(feed), description: description, decimals: decimals, exists: true});
 
+        feed.file("description", description);
         feed.file("decimals", uint256(decimals));
         feed.file("answer", initialAnswer);
+
+        // pass on the authority to any instances created from this factory
+        feed.setAuthority(authority);
+
         // Transfer feed ownership to caller
         feed.setOwner(msg.sender);
 

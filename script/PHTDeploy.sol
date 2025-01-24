@@ -120,8 +120,6 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is StdCheats {
-    address constant THROWAWAY_ADDRESS = address(1);
-
     DssDeploy dssDeploy;
     DssProxyActions dssProxyActions;
     DssProxyActionsEnd dssProxyActionsEnd;
@@ -146,12 +144,16 @@ contract PHTDeploy is StdCheats {
     IlkRegistry ilkRegistry;
     address feedPhpUsd;
 
+    address constant THROWAWAY_ADDRESS = address(1);
+
     // -- ROLES --
-    uint8 constant ROLE_GOV_MINT_BURN = 10;
-    uint8 constant ROLE_GOV_ADD_COLLATERAL = 11;
-    uint8 constant ROLE_GOV_CREATE_TOKEN = 12;
-    uint8 constant ROLE_CAN_PLOT = 13;
-    uint8 constant ROLE_CAN_EXEC = 14;
+    uint8 public constant ROLE_GOV_MINT_BURN = 10;
+    uint8 public constant ROLE_GOV_ADD_COLLATERAL = 11;
+    uint8 public constant ROLE_GOV_CREATE_TOKEN = 12;
+    uint8 public constant ROLE_CAN_PLOT = 13;
+    uint8 public constant ROLE_CAN_EXEC = 14;
+    uint8 public constant ROLE_JOIN_FEED_FACTORY_CREATE = 15;
+    uint8 public constant ROLE_FEED_FACTORY_CREATE = 16;
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -371,10 +373,18 @@ contract PHTDeploy is StdCheats {
         priceFeedFactory = new PriceFeedFactory();
         feedPhpUsd = _c.phtUsdFeed;
         // in testing environments we can deploy a mock feed for PHP/USD
+        // this is done before we set authority and owner below
         if (feedPhpUsd == address(0)) {
             feedPhpUsd = address(priceFeedFactory.create(8, 0.018e8, "PHP/USD")); // PHP/USD: 1 PHP = 0.018 USD
         }
+
+        priceFeedFactory.setAuthority(DSRoles(_authority));
+        priceFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
+
         joinFeedFactory = new PriceJoinFeedFactory();
+        joinFeedFactory.setAuthority(DSRoles(_authority));
+        joinFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
+
         gemJoinFab = new GemJoinFab();
         gemJoin5Fab = new GemJoin5Fab();
 
@@ -426,9 +436,22 @@ contract PHTDeploy is StdCheats {
             proxyActions.rely(address(dssDeploy.jug()), address(collateralHelper));
             proxyActions.rely(address(tokenFactory), address(collateralHelper));
 
+            // allow collateralHelper to create tokens
             DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_GOV_CREATE_TOKEN, true);
             DSRoles(address(_authority)).setRoleCapability(
                 ROLE_GOV_CREATE_TOKEN, address(tokenHelper), tokenHelper.configureMinter.selector, true
+            );
+
+            // allow collateralHelper to create join feeds
+            DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_JOIN_FEED_FACTORY_CREATE, true);
+            DSRoles(address(_authority)).setRoleCapability(
+                ROLE_JOIN_FEED_FACTORY_CREATE, address(joinFeedFactory), joinFeedFactory.create.selector, true
+            );
+
+            // allow collateralHelper to create price feeds
+            DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_FEED_FACTORY_CREATE, true);
+            DSRoles(address(_authority)).setRoleCapability(
+                ROLE_FEED_FACTORY_CREATE, address(priceFeedFactory), priceFeedFactory.create.selector, true
             );
         }
 
