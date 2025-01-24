@@ -59,6 +59,8 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
     uint8 public override decimals = 8;
     uint256 public override version = 1;
 
+    uint256 public live = 0;
+
     uint256 private _feedScalingFactor;
     uint256 private _numeratorScalingFactor;
     uint256 private _denominatorScalingFactor;
@@ -73,6 +75,8 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
     ) public {
         require(_numeratorFeed != address(0), "PriceJoinFeedAggregator/null-address");
         require(_denominatorFeed != address(0), "PriceJoinFeedAggregator/null-address");
+
+        live = 1;
 
         uint256 decimalsDifference = 18 - decimals;
         _feedScalingFactor = 10 ** decimalsDifference;
@@ -111,6 +115,8 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
             decimals = uint8(data);
             uint256 decimalsDifference = 18 - decimals;
             _feedScalingFactor = 10 ** decimalsDifference;
+        } else if (what == "live") {
+            live = data;
         } else {
             revert("PriceJoinFeedAggregator/file-unrecognized-2-param");
         }
@@ -122,6 +128,7 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
         override
         returns (uint80 roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
+        require(live == 1, "PriceJoinFeedAggregator/not-live");
         return _getAnswer();
     }
 
@@ -131,6 +138,7 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
         override
         returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
+        require(live == 1, "PriceJoinFeedAggregator/not-live");
         return _getAnswer();
     }
 

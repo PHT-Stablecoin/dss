@@ -200,6 +200,7 @@ contract PHTCollateralHelperTest is Test {
         assertEq(feedObj.description(), "DAI/PHT");
         assertEq(uint256(feedObj.decimals()), 8);
         assertEq(feedObj.version(), 1);
+        assertEq(feedObj.live(), 1);
 
         // non-authority should not be able to admin feeds
         vm.expectRevert("ds-auth-unauthorized");
@@ -210,12 +211,19 @@ contract PHTCollateralHelperTest is Test {
         vm.startPrank(eve);
         feedObj.file("decimals", 12);
         assertEq(uint256(feedObj.decimals()), 12);
+        feedObj.file("live", uint256(0));
+        vm.expectRevert("PriceJoinFeedAggregator/not-live");
+        feedObj.latestRoundData();
         vm.stopPrank();
 
         // test numerator feed
         PriceFeedAggregator numeratorFeed = PriceFeedAggregator(address(feedObj.numeratorFeed()));
         assertEq(numeratorFeed.description(), "DAI/USD");
         assertEq(uint256(numeratorFeed.decimals()), uint256(8));
+        assertEq(numeratorFeed.live(), 1);
+        // can call latestRoundData
+        (, int256 numeratorAnswer,,,) = numeratorFeed.latestRoundData();
+        assertEq(uint256(numeratorAnswer), 1e8, "numeratorAnswer");
 
         // non-authority should not be able to admin feeds
         vm.expectRevert("ds-auth-unauthorized");
@@ -226,22 +234,37 @@ contract PHTCollateralHelperTest is Test {
         vm.startPrank(eve);
         numeratorFeed.file("description", "something");
         assertEq(numeratorFeed.description(), "something");
+
+        numeratorFeed.file("live", uint256(0));
+        vm.expectRevert("PriceFeedAggregator/not-live");
+        numeratorFeed.latestRoundData();
         vm.stopPrank();
 
         // test denominator feed
         PriceFeedAggregator denominatorFeed = PriceFeedAggregator(address(feedObj.denominatorFeed()));
         assertEq(denominatorFeed.description(), "PHP/USD");
         assertEq(uint256(denominatorFeed.decimals()), uint256(8));
+        assertEq(denominatorFeed.live(), 1);
+
+        // can call latestRoundData
+        (, int256 denominatorAnswer,,,) = denominatorFeed.latestRoundData();
+        assertEq(uint256(denominatorAnswer), 1720000, "denominatorAnswer");
 
         // non-authority should not be able to admin feeds
         vm.expectRevert("ds-auth-unauthorized");
         denominatorFeed.file("description", "something");
+
+        vm.expectRevert("ds-auth-unauthorized");
+        denominatorFeed.file("live", uint256(0));
 
         // ensure that authority can update the feeds
         // created through the factory
         vm.startPrank(eve);
         denominatorFeed.file("description", "something");
         assertEq(denominatorFeed.description(), "something");
+        denominatorFeed.file("live", uint256(0));
+        vm.expectRevert("PriceFeedAggregator/not-live");
+        denominatorFeed.latestRoundData();
         vm.stopPrank();
     }
 

@@ -26,7 +26,7 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
     uint8 public override decimals = 8;
 
     int256 internal answer = 0;
-    uint256 internal live = 0;
+    uint256 public live = 0;
 
     // --- Init ---
     constructor() public {
@@ -35,19 +35,17 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
 
     // --- Administration ---
     function file(bytes32 what, uint256 data) external auth {
-        require(live == 1, "PriceFeedAggregator/not-live");
         if (what == "decimals") decimals = uint8(data);
+        else if (what == "live") live = data;
         else revert("PriceFeedAggregator/file-unrecognized-param");
     }
 
     function file(bytes32 what, int256 data) external auth {
-        require(live == 1, "PriceFeedAggregator/not-live");
         if (what == "answer") answer = data;
         else revert("PriceFeedAggregator/file-unrecognized-param");
     }
 
     function file(bytes32 what, string memory data) external auth {
-        require(live == 1, "PriceFeedAggregator/not-live");
         if (what == "description") description = data;
         else revert("PriceFeedAggregator/file-unrecognized-param");
     }
@@ -58,6 +56,8 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
         override
         returns (uint80 roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
+        require(live == 1, "PriceFeedAggregator/not-live");
+
         _answer = answer;
         roundId = _roundId;
         _startedAt = block.timestamp;
@@ -71,6 +71,8 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
         override
         returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
+        require(live == 1, "PriceFeedAggregator/not-live");
+
         _answer = answer;
         _roundId = 1;
         _startedAt = block.timestamp;
