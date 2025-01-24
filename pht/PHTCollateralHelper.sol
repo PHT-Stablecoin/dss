@@ -51,10 +51,11 @@ contract GemJoin5Fab {
 
 contract PHTCollateralHelper is DSAuth {
     // Default auction parameters
-    uint256 constant cusp = 400000000000000000000000000; // 0.4 * RAY = 40%
+    uint256 constant buf = 1200000000000000000000000000; // 1.2 * RAY = 20% higher than the oracle/spot price
+    uint256 constant cusp = 500000000000000000000000000; // 0.5 * RAY = 50%
     uint256 constant chip = 1000000000000000; // 0.001 * WAD = 0.1%
     uint256 constant tip = 300000000000000000000000000000000000000000000; // 0.3 * RAD
-    uint256 constant tail = 2 hours;
+    uint256 constant tail = 2 hours; // 7200 seconds
 
     Vat public vat;
     Spotter public spotter;
@@ -135,7 +136,7 @@ contract PHTCollateralHelper is DSAuth {
         gemJoin5Fab = gemJoin5Fab_;
     }
 
-    function deployCollateralClip(bytes32 ilk, address join, address pip, address calc, IlkParams memory ilkParams)
+    function deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
         internal
         returns (Clipper clip)
     {
@@ -154,11 +155,6 @@ contract PHTCollateralHelper is DSAuth {
         dog.file(ilk, "clip", address(clip));
         clip.file("vow", address(vow));
         clip.file("calc", calc);
-
-        clip.file("cusp", ilkParams.cusp > 0 ? ilkParams.cusp : cusp); // How much price can drop before auction reset in percentage (50%)
-        clip.file("chip", ilkParams.chip > 0 ? ilkParams.chip : chip); // 1% of tab or total debt to give as incentives to keepers who manage auctions (bark -> kick / redo)
-        clip.file("tip", ilkParams.tip > 0 ? ilkParams.tip : tip); // Fixed amount of PHT paid to keepers on top of chip: 1% of total debt + 0.1 PHT
-        clip.file("tail", ilkParams.tail > 0 ? ilkParams.tail : tail); // Seconds before auction reset
 
         vat.init(ilk);
         jug.init(ilk);
@@ -246,7 +242,7 @@ contract PHTCollateralHelper is DSAuth {
             _calc.rely(owner);
             _calc.deny(address(this));
 
-            deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc), ilkParams);
+            deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
         }
 
         {
@@ -264,7 +260,11 @@ contract PHTCollateralHelper is DSAuth {
 
         {
             (address clip,,,) = dog.ilks(ilkParams.ilk);
-            Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
+            Clipper(clip).file("buf", ilkParams.buf > 0 ? ilkParams.buf : buf); // Set a 20% increase in auctions (RAY)
+            Clipper(clip).file("cusp", ilkParams.cusp > 0 ? ilkParams.cusp : cusp); // How much price can drop before auction reset in percentage (50%)
+            Clipper(clip).file("chip", ilkParams.chip > 0 ? ilkParams.chip : chip); // 1% of tab or total debt to give as incentives to keepers who manage auctions (bark -> kick / redo)
+            Clipper(clip).file("tip", ilkParams.tip > 0 ? ilkParams.tip : tip); // Fixed amount of PHT paid to keepers on top of chip: 1% of total debt + 0.1 PHT
+            Clipper(clip).file("tail", ilkParams.tail > 0 ? ilkParams.tail : tail); // Seconds before auction reset
         }
 
         {
