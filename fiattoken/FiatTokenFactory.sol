@@ -47,6 +47,10 @@ contract FiatTokenFactory is ITokenFactory {
     address[] public tokenAddresses;
 
     constructor(address _implementationDeployer, address _masterMinterDeployer, address _proxyInitializer) public {
+        require(_implementationDeployer != address(0), "FiatTokenFactory/implementation-deployer-not-set");
+        require(_masterMinterDeployer != address(0), "FiatTokenFactory/master-minter-deployer-not-set");
+        require(_proxyInitializer != address(0), "FiatTokenFactory/proxy-initializer-not-set");
+
         IMPLEMENTATION_DEPLOYER = IImplementationDeployer(_implementationDeployer);
         MASTER_MINTER_DEPLOYER = IMasterMinterDeployer(_masterMinterDeployer);
         PROXY_INITIALIZER = IProxyInitializer(_proxyInitializer);

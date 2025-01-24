@@ -21,6 +21,9 @@ contract ProxyActions is DSAuth {
     GovActions public govActions;
 
     constructor(address _pause, address _govActions) public {
+        require(address(_pause) != address(0), "ProxyActions/pause-not-set");
+        require(address(_govActions) != address(0), "ProxyActions/govActions-not-set");
+
         pause = DSPause(_pause);
         govActions = GovActions(_govActions);
         authority = DSAuthority(address(pause.authority()));

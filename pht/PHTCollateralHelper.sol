@@ -111,6 +111,15 @@ contract PHTCollateralHelper is DSAuth {
     }
 
     constructor(Vat vat_, Spotter spotter_, Dog dog_, Vow vow_, Jug jug_, End end_, ESM esm_, DSPause pause_) public {
+        require(address(vat_) != address(0), "PHTCollateralHelper/vat-not-set");
+        require(address(spotter_) != address(0), "PHTCollateralHelper/spotter-not-set");
+        require(address(dog_) != address(0), "PHTCollateralHelper/dog-not-set");
+        require(address(vow_) != address(0), "PHTCollateralHelper/vow-not-set");
+        require(address(jug_) != address(0), "PHTCollateralHelper/jug-not-set");
+        require(address(end_) != address(0), "PHTCollateralHelper/end-not-set");
+        require(address(esm_) != address(0), "PHTCollateralHelper/esm-not-set");
+        require(address(pause_) != address(0), "PHTCollateralHelper/pause-not-set");
+
         vat = vat_;
         spotter = spotter_;
         dog = dog_;
@@ -126,7 +135,12 @@ contract PHTCollateralHelper is DSAuth {
         public
         auth
     {
-        require(address(calcFab) == address(0), "pht-collateral-helper-fabs-init");
+        require(address(calcFab) == address(0), "PHTCollateralHelper/calcFab-inited");
+        require(address(calcFab_) != address(0), "PHTCollateralHelper/calcFab-not-set");
+        require(address(clipFab_) != address(0), "PHTCollateralHelper/clipFab-not-set");
+        require(address(gemJoinFab_) != address(0), "PHTCollateralHelper/gemJoinFab-not-set");
+        require(address(gemJoin5Fab_) != address(0), "PHTCollateralHelper/gemJoin5Fab-not-set");
+
         calcFab = calcFab_;
         clipFab = clipFab_;
         gemJoinFab = gemJoinFab_;
@@ -134,6 +148,7 @@ contract PHTCollateralHelper is DSAuth {
     }
 
     function setTokenHelper(PHTTokenHelper tokenHelper_) public auth {
+        require(address(tokenHelper_) != address(0), "PHTCollateralHelper/token-helper-not-set");
         tokenHelper = tokenHelper_;
     }
 

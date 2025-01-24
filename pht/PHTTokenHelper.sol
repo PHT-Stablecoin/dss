@@ -29,6 +29,9 @@ contract PHTTokenHelper is DSAuth {
     DSPause public pause;
 
     constructor(DSPause pause_, FiatTokenFactory tokenFactory_) public {
+        require(address(tokenFactory_) != address(0), "PHTTokenHelper/token-factory-not-set");
+        require(address(pause_) != address(0), "PHTTokenHelper/pause-not-set");
+
         tokenFactory = tokenFactory_;
         pause = pause_;
         authority = DSAuthority(pause.authority());
