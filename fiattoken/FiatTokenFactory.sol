@@ -109,7 +109,10 @@ contract FiatTokenFactory is ITokenFactory {
             require(
                 IMasterMinter(masterMinter).configureMinter(tokenInfo.initialSupply), "FiatTokenFactory/configureMinter"
             );
-            IFiatToken(address(proxy)).mint(tokenInfo.initialSupplyMintTo, tokenInfo.initialSupply);
+            require(
+                IFiatToken(address(proxy)).mint(tokenInfo.initialSupplyMintTo, tokenInfo.initialSupply),
+                "FiatTokenFactory/mint"
+            );
             // remove permissions
             require(IMasterMinter(masterMinter).removeMinter(), "FiatTokenFactory/removeMinter");
             IMasterMinter(masterMinter).removeController(address(this));
