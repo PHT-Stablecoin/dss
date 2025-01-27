@@ -17,7 +17,7 @@ import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
-import {PHTTokenHelper} from "../pht/PHTTokenHelper.sol";
+import {PHTTokenHelper, TokenInfo} from "../pht/PHTTokenHelper.sol";
 
 import {PHTOpsTestLib} from "./helpers/PHTOpsTestLib.sol";
 
@@ -71,17 +71,18 @@ contract PHTDeployIntegrationTest is Test {
         address minter = makeAddr("minter");
 
         // Test #1: Create a token
-        PHTTokenHelper.TokenInfo memory info = PHTTokenHelper.TokenInfo({
+        TokenInfo memory info = TokenInfo({
             tokenName: "Stable1",
             tokenSymbol: "ST1",
             tokenDecimals: 6,
             tokenCurrency: "USD",
             initialSupply: 100_000 * 1e6,
-            initialSupplyMintTo: bob
+            initialSupplyMintTo: bob,
+            tokenAdmin: bob
         });
 
         vm.startPrank(eve);
-        (address implementation, address proxy, address masterMinter) =
+        (, address implementation, address proxy, address masterMinter) =
             PHTTokenHelper(res.tokenHelper).createToken(info);
 
         // Verify initial balance
@@ -94,7 +95,7 @@ contract PHTDeployIntegrationTest is Test {
     function test_openLockGemAndDraw() public {
         (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
         vm.startPrank(eve);
-        (address join,, address token,,,,) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h);
+        (address join,, address token,,,,) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
         // transfer some tokens to bob
         IERC20(token).transfer(bob, 1e9);
 

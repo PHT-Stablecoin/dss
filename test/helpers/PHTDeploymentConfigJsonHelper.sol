@@ -52,12 +52,15 @@ interface IPHTDeployConfigJson {
     }
 
     struct TokenParams {
+        string currency;
         uint8 decimals;
         uint256 initialSupply;
+        address initialSupplyMintTo;
         uint256 maxSupply;
         string name;
         string symbol;
         address token;
+        address tokenAdmin;
     }
 }
 

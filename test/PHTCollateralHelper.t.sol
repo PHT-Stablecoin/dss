@@ -85,19 +85,19 @@ contract PHTCollateralHelperTest is Test {
         bytes32 prevIlk;
         uint256 prevIlkDuty;
         vm.startPrank(eve);
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
         (prevIlkDuty,) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
         assertTrue(prevIlk != getNextIlkName(res.ilkRegistry), "prev ilk should not be the same as the next ilk");
 
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         prevIlk = geLastIlkName(res.ilkRegistry);
         (prevIlkDuty,) = Jug(res.jug).ilks(prevIlk);
         assertGt(prevIlkDuty, 0, "prev ilk duty should not be zero");
 
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h);
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
 
         assertEq(
@@ -120,7 +120,7 @@ contract PHTCollateralHelperTest is Test {
             PHTCollateralHelper.IlkParams memory ilkParams,
             PHTCollateralHelper.TokenParams memory tokenParams,
             PHTCollateralHelper.FeedParams memory feedParams
-        ) = PHTCollateralTestLib.addCollateral(ilk, res, h);
+        ) = PHTCollateralTestLib.addCollateral(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
@@ -164,7 +164,7 @@ contract PHTCollateralHelperTest is Test {
             /*PHTCollateralHelper.TokenParams memory tokenParams*/
             ,
             /*PHTCollateralHelper.FeedParams memory feedParams*/
-        ) = PHTCollateralTestLib.addCollateralJoin(ilk, res, h);
+        ) = PHTCollateralTestLib.addCollateralJoin(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "pDAI", "token name");
@@ -270,17 +270,17 @@ contract PHTCollateralHelperTest is Test {
 
     function test_rootCanAddCollateral() public {
         vm.startPrank(eve);
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
         vm.stopPrank();
     }
 
     function testFail_shouldFailWithAuth() public {
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
     }
 
     function testFail_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, alice);
         vm.stopPrank();
     }
 }

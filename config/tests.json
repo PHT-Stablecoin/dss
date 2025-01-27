@@ -35,12 +35,15 @@
                 "tip": 0
             },
             "tokenParams": {
+                "currency": "PHP",
                 "decimals": 6,
                 "initialSupply": 1000000000,
+                "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
                 "maxSupply": 333,
                 "name": "Testtttttttt PHP",
                 "symbol": "tstPHP",
-                "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE"
+                "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
+                "tokenAdmin": "0x1111111111111111111111111111111111111111"
             }
         },
         {
@@ -70,12 +73,15 @@
                 "tip": 0
             },
             "tokenParams": {
+                "currency": "PHP",
                 "decimals": 7,
                 "initialSupply": 2000000000,
+                "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
                 "maxSupply": 666,
                 "name": "Testtttttttt PHP2",
                 "symbol": "tstPHP2",
-                "token": "0x80CE70CE70CE70CE70CE70CE70CE70CE70CE70CE"
+                "token": "0x80CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
+                "tokenAdmin": "0x1111111111111111111111111111111111111111"
             }
         }
     ],

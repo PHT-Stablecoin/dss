@@ -100,8 +100,11 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                     symbol: tokenParams.symbol,
                     name: tokenParams.name,
                     decimals: tokenParams.decimals,
+                    currency: tokenParams.currency,
                     maxSupply: tokenParams.maxSupply,
-                    initialSupply: tokenParams.initialSupply
+                    initialSupply: tokenParams.initialSupply,
+                    initialSupplyMintTo: tokenParams.initialSupplyMintTo,
+                    tokenAdmin: tokenParams.tokenAdmin
                 }),
                 PHTCollateralHelper.FeedParams({
                     factory: PriceFeedFactory(res.priceFeedFactory),

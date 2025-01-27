@@ -15,24 +15,72 @@ interface IFiatToken is IERC20 {
     function isBlacklisted(address _account) external view returns (bool);
 }
 
-contract PHTTokenHelper is DSAuth {
-    struct TokenInfo {
-        string tokenName;
-        string tokenSymbol;
-        uint8 tokenDecimals;
-        string tokenCurrency;
-        uint256 initialSupply;
-        address initialSupplyMintTo; // address to mint the initial supply to
+struct DelayedAction {
+    address usr;
+    bytes32 tag;
+    uint256 eta;
+    bytes fax;
+}
+
+struct TokenInfo {
+    string tokenName;
+    string tokenSymbol;
+    uint8 tokenDecimals;
+    string tokenCurrency;
+    uint256 initialSupply;
+    address initialSupplyMintTo; // address to mint the initial supply to
+    address tokenAdmin; // address to give token admin rights
+}
+
+contract TokenActions {
+    function createToken(FiatTokenFactory tokenFactory, TokenInfo memory info)
+        public
+        returns (address implementation, address proxy, address masterMinter)
+    {
+        (implementation, proxy, masterMinter) = tokenFactory.create(
+            FiatTokenInfo({
+                tokenName: info.tokenName,
+                tokenSymbol: info.tokenSymbol,
+                tokenDecimals: info.tokenDecimals,
+                tokenCurrency: info.tokenCurrency,
+                initialSupply: info.initialSupply,
+                initialSupplyMintTo: info.initialSupplyMintTo, // address to mint the initial supply to
+                masterMinterOwner: address(this), // this is pause.proxy()
+                proxyAdmin: info.tokenAdmin,
+                pauser: address(this),
+                blacklister: address(this),
+                owner: address(this)
+            })
+        );
+
+        IMasterMinter(masterMinter).configureMinter(uint256(-1));
+        IMasterMinter(masterMinter).configureController(address(this), address(this));
     }
 
+    function mint(address token, address to, uint256 val) public returns (bool done) {
+        return IFiatToken(token).mint(to, val);
+    }
+
+    function blacklist(address token, address target) public {
+        return IFiatToken(token).blacklist(target);
+    }
+
+    function unBlacklist(address token, address target) public {
+        return IFiatToken(token).unBlacklist(target);
+    }
+}
+
+contract PHTTokenHelper is DSAuth {
     FiatTokenFactory public tokenFactory;
+    TokenActions public tokenActions;
     DSPause public pause;
 
-    constructor(DSPause pause_, FiatTokenFactory tokenFactory_) public {
+    constructor(DSPause pause_, TokenActions tokenActions_, FiatTokenFactory tokenFactory_) public {
         require(address(tokenFactory_) != address(0), "PHTTokenHelper/token-factory-not-set");
         require(address(pause_) != address(0), "PHTTokenHelper/pause-not-set");
 
         tokenFactory = tokenFactory_;
+        tokenActions = TokenActions(tokenActions_);
         pause = pause_;
         authority = DSAuthority(pause.authority());
     }
@@ -52,47 +100,69 @@ contract PHTTokenHelper is DSAuth {
     function createToken(TokenInfo memory info)
         public
         auth
-        returns (address implementation, address proxy, address masterMinter)
+        returns (DelayedAction memory a, address implementation, address proxy, address masterMinter)
     {
-        (implementation, proxy, masterMinter) = tokenFactory.create(
-            FiatTokenInfo({
-                tokenName: info.tokenName,
-                tokenSymbol: info.tokenSymbol,
-                tokenDecimals: info.tokenDecimals,
-                tokenCurrency: info.tokenCurrency,
-                initialSupply: info.initialSupply,
-                initialSupplyMintTo: info.initialSupplyMintTo, // address to mint the initial supply to
-                masterMinterOwner: address(this),
-                proxyAdmin: address(pause.proxy()),
-                pauser: address(this),
-                blacklister: address(this),
-                owner: address(this)
-            })
-        );
+        address usr = address(tokenActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSelector(tokenActions.createToken.selector, tokenFactory, info);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
 
-        IMasterMinter(masterMinter).configureMinter(uint256(-1));
-        IMasterMinter(masterMinter).configureController(address(this), address(this));
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) {
+            (implementation, proxy, masterMinter) =
+                abi.decode(pause.exec(usr, tag, fax, eta), (address, address, address));
+        }
+        a = DelayedAction(usr, tag, eta, fax);
     }
 
-    function transferMinterOwner(address masterMinter, address newOwner) public auth {
-        IMasterMinter(masterMinter).configureController(address(newOwner), address(newOwner));
-        IMasterMinter(masterMinter).transferOwnership(newOwner);
+    function mint(address token, address to, uint256 val) public auth returns (DelayedAction memory a, bool c) {
+        address usr = address(tokenActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSelector(tokenActions.mint.selector, token, to, val);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
+
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) {
+            c = abi.decode(pause.exec(usr, tag, fax, eta), (bool));
+        }
+        a = DelayedAction(usr, tag, eta, fax);
     }
 
-    function configureMinter(address masterMinter) public auth {
-        IMasterMinter(masterMinter).configureMinter(uint256(-1));
-        IMasterMinter(masterMinter).configureController(address(this), address(this));
+    function blacklist(address token, address target) public auth returns (DelayedAction memory a) {
+        address usr = address(tokenActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSelector(tokenActions.blacklist.selector, token, target);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
+
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) pause.exec(usr, tag, fax, eta);
+        a = DelayedAction(usr, tag, eta, fax);
     }
 
-    function mint(address token, address to, uint256 val) public auth returns (bool) {
-        return IFiatToken(token).mint(to, val);
-    }
+    function unBlacklist(address token, address target) public auth returns (DelayedAction memory a) {
+        address usr = address(tokenActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSelector(tokenActions.unBlacklist.selector, token, target);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
 
-    function blacklist(address token, address target) public auth {
-        return IFiatToken(token).blacklist(target);
-    }
-
-    function unBlacklist(address token, address target) public auth {
-        return IFiatToken(token).unBlacklist(target);
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) pause.exec(usr, tag, fax, eta);
+        a = DelayedAction(usr, tag, eta, fax);
     }
 }

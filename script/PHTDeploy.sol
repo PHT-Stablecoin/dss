@@ -44,7 +44,7 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
-import {PHTTokenHelper} from "../pht/PHTTokenHelper.sol";
+import {PHTTokenHelper, TokenActions} from "../pht/PHTTokenHelper.sol";
 
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
@@ -408,8 +408,8 @@ contract PHTDeploy is StdCheats {
 
         {
             // Setup TokenHelper
-            tokenHelper = new PHTTokenHelper(dssDeploy.pause(), tokenFactory);
-
+            tokenHelper = new PHTTokenHelper(dssDeploy.pause(), new TokenActions(), tokenFactory);
+            DSRoles(address(_authority)).setUserRole(address(tokenHelper), ROLE_CAN_PLOT, true);
             proxyActions.rely(address(tokenFactory), address(tokenHelper));
         }
 
@@ -439,7 +439,7 @@ contract PHTDeploy is StdCheats {
             // allow collateralHelper to create tokens
             DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_GOV_CREATE_TOKEN, true);
             DSRoles(address(_authority)).setRoleCapability(
-                ROLE_GOV_CREATE_TOKEN, address(tokenHelper), tokenHelper.configureMinter.selector, true
+                ROLE_GOV_CREATE_TOKEN, address(tokenHelper), tokenHelper.createToken.selector, true
             );
 
             // allow collateralHelper to create join feeds

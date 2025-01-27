@@ -73,8 +73,11 @@ contract PHTCollateralHelper is DSAuth {
         string name;
         string symbol;
         uint8 decimals;
+        string currency;
         uint256 maxSupply; // maxSupply == 0 => unlimited supply
         uint256 initialSupply; // initialSupply == 0 => no initial supply
+        address initialSupplyMintTo;
+        address tokenAdmin;
     }
 
     struct FeedParams {
@@ -198,22 +201,20 @@ contract PHTCollateralHelper is DSAuth {
                 tokenSymbol: tokenParams.symbol,
                 tokenDecimals: tokenParams.decimals,
                 // @TODO needs FE update
-                tokenCurrency: "",
+                tokenCurrency: tokenParams.currency,
                 initialSupply: tokenParams.initialSupply,
-                initialSupplyMintTo: msg.sender,
-                masterMinterOwner: address(tokenHelper),
+                initialSupplyMintTo: tokenParams.initialSupplyMintTo,
+                masterMinterOwner: address(pause.proxy()),
                 // @TODO proxyAdmin cannot be the same as owner
                 // update Proxy actions to allow update of implementation of FiatProxy
-                proxyAdmin: address(pause.proxy()),
+                proxyAdmin: tokenParams.tokenAdmin,
                 // Ideally this should be PHTTokenHelper
-                pauser: address(tokenHelper),
-                blacklister: address(tokenHelper),
-                owner: address(tokenHelper)
+                pauser: address(pause.proxy()),
+                blacklister: address(pause.proxy()),
+                owner: address(pause.proxy())
             });
 
             (, address proxy, address masterMinter) = ITokenFactory(tokenParams.factory).create(info);
-
-            tokenHelper.configureMinter(masterMinter);
 
             _token = address(proxy);
         }

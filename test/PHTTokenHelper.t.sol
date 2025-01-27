@@ -3,12 +3,17 @@ pragma experimental ABIEncoderV2;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+
+import {DSRoles} from "../pht/lib/Roles.sol";
+
+import {DSPause} from "ds-pause/pause.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
-import {PHTTokenHelper} from "../pht/PHTTokenHelper.sol";
+import {PHTTokenHelper, TokenActions, TokenInfo} from "../pht/PHTTokenHelper.sol";
 import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
+import {FiatTokenProxy} from "stablecoin-evm/v1/FiatTokenProxy.sol";
 
 contract PHTTokenHelperTest is Test {
     using ArrayHelpers for *;
@@ -22,11 +27,12 @@ contract PHTTokenHelperTest is Test {
     address eve; // authority root user
     PHTDeployResult res;
     PHTTokenHelper h;
+    PHTDeploy d;
 
     function setUp() public {
         eve = makeAddr("eve");
         alice = makeAddr("alice");
-        PHTDeploy d = new PHTDeploy();
+        d = new PHTDeploy();
         res = d.deploy(
             PHTDeployConfig({
                 govTokenSymbol: "APC",
@@ -44,51 +50,58 @@ contract PHTTokenHelperTest is Test {
     function test_createToken() public {
         vm.startPrank(eve);
 
-        (address implementation, address proxy, address masterMinter) = h.createToken(
-            PHTTokenHelper.TokenInfo({
+        (, address implementation, address proxy, address masterMinter) = h.createToken(
+            TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
                 tokenDecimals: 18,
                 tokenCurrency: "",
                 initialSupply: 1000000e18,
-                initialSupplyMintTo: eve // address to mint the initial supply to
+                initialSupplyMintTo: eve, // address to mint the initial supply to
+                tokenAdmin: alice
             })
         );
 
         assertEq(h.tokenAddresses(h.lastToken()), proxy);
+        assertEq(FiatTokenProxy(payable(proxy)).admin(), alice);
         assertEqDecimal(IERC20(proxy).balanceOf(eve), 1000000e18, 18);
     }
 
     function test_tokenHelper_mint() public {
         vm.startPrank(eve);
-        (address implementation, address proxy, address masterMinter) = h.createToken(
-            PHTTokenHelper.TokenInfo({
+        (, address implementation, address proxy, address masterMinter) = h.createToken(
+            TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
                 tokenDecimals: 18,
                 tokenCurrency: "",
                 initialSupply: 1000000e18,
-                initialSupplyMintTo: eve // address to mint the initial supply to
+                initialSupplyMintTo: eve, // address to mint the initial supply to
+                tokenAdmin: address(1)
             })
         );
 
         assertEq(h.tokenAddresses(h.lastToken()), proxy);
+        assertEq(FiatTokenProxy(payable(proxy)).admin(), address(1));
 
         h.mint(proxy, alice, 100e18);
+        vm.stopPrank();
 
+        vm.startPrank(alice);
         assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
     }
 
     function test_tokenHelper_blacklist() public {
         vm.startPrank(eve);
-        (address implementation, address proxy, address masterMinter) = h.createToken(
-            PHTTokenHelper.TokenInfo({
+        (, address implementation, address proxy, address masterMinter) = h.createToken(
+            TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
                 tokenDecimals: 18,
                 tokenCurrency: "",
                 initialSupply: 1000000e18,
-                initialSupplyMintTo: eve // address to mint the initial supply to
+                initialSupplyMintTo: eve, // address to mint the initial supply to
+                tokenAdmin: address(1)
             })
         );
         assertEq(h.tokenAddresses(h.lastToken()), proxy);
@@ -115,16 +128,17 @@ contract PHTTokenHelperTest is Test {
         }
     }
 
-    function test_tokenHelper_transferOwnership() public {
+    function test_tokenHelper_new_helper() public {
         vm.startPrank(eve);
-        (address implementation, address proxy, address masterMinter) = h.createToken(
-            PHTTokenHelper.TokenInfo({
+        (, address implementation, address proxy, address masterMinter) = h.createToken(
+            TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
                 tokenDecimals: 18,
                 tokenCurrency: "",
                 initialSupply: 1000000e18,
-                initialSupplyMintTo: eve // address to mint the initial supply to
+                initialSupplyMintTo: eve, // address to mint the initial supply to
+                tokenAdmin: address(1)
             })
         );
 
@@ -133,10 +147,15 @@ contract PHTTokenHelperTest is Test {
         h.mint(proxy, alice, 100e18);
         assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
 
-        PHTTokenHelper nh = new PHTTokenHelper(h.pause(), h.tokenFactory());
-        h.transferMinterOwner(masterMinter, address(nh));
-        nh.configureMinter(masterMinter);
+        PHTTokenHelper nh = new PHTTokenHelper(h.pause(), new TokenActions(), h.tokenFactory());
 
+        {
+            vm.startPrank(alice);
+            DSRoles(address(res.authority)).setUserRole(address(nh), d.ROLE_CAN_PLOT(), true);
+            vm.stopPrank();
+        }
+
+        vm.startPrank(eve);
         nh.mint(proxy, alice, 100e18);
         assertEqDecimal(IERC20(proxy).balanceOf(alice), 200e18, 18);
     }

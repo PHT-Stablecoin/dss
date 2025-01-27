@@ -14,7 +14,7 @@ import {ITokenFactory} from "../../fiattoken/FiatTokenFactory.sol";
 library PHTCollateralTestLib {
     uint256 constant RAD = 10 ** 45;
 
-    function addCollateral(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h)
+    function addCollateral(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h, address mintTo)
         internal
         returns (
             address join,
@@ -44,13 +44,16 @@ library PHTCollateralTestLib {
         });
 
         tokenParams = PHTCollateralHelper.TokenParams({
-            token: address(0),
             factory: ITokenFactory(res.tokenFactory),
-            symbol: "tstPHP",
+            token: address(0),
             name: "Test PHP",
+            symbol: "tstPHP",
             decimals: 6,
+            currency: "PHP",
             maxSupply: 0,
-            initialSupply: 1000 * 10 ** 6
+            initialSupply: 1000 * 10 ** 6,
+            initialSupplyMintTo: mintTo,
+            tokenAdmin: address(1)
         });
 
         feedParams = PHTCollateralHelper.FeedParams({
@@ -69,7 +72,7 @@ library PHTCollateralTestLib {
         (join, feed, token, pip) = h.addCollateral(res.ilkRegistry, ilkParams, tokenParams, feedParams);
     }
 
-    function addCollateralJoin(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h)
+    function addCollateralJoin(bytes32 ilkName, PHTDeployResult memory res, PHTCollateralHelper h, address mintTo)
         internal
         returns (
             address join,
@@ -102,9 +105,12 @@ library PHTCollateralTestLib {
             factory: ITokenFactory(res.tokenFactory),
             symbol: "pDAI",
             name: "pDAI",
+            currency: "PHP",
             decimals: 18,
             maxSupply: 0,
-            initialSupply: 1000e18
+            initialSupply: 1000e18,
+            initialSupplyMintTo: mintTo,
+            tokenAdmin: address(1)
         });
 
         feedParams = PHTCollateralHelper.FeedParams({
