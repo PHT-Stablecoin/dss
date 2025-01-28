@@ -7,6 +7,7 @@ import {DSPause} from "ds-pause/pause.sol";
 import {FactoryToken, FiatTokenFactory, IMasterMinter} from "../fiattoken/FiatTokenFactory.sol";
 import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {FiatTokenV1} from "stablecoin-evm/v1/FiatTokenV1.sol";
 
 interface IFiatToken is IERC20 {
     function mint(address _to, uint256 _amount) external returns (bool);
@@ -71,9 +72,10 @@ contract TokenActions {
 }
 
 contract PHTTokenHelper is DSAuth {
-    FiatTokenFactory public tokenFactory;
-    TokenActions public tokenActions;
     DSPause public pause;
+    TokenActions public tokenActions;
+
+    FiatTokenFactory public tokenFactory;
 
     constructor(DSPause pause_, TokenActions tokenActions_, FiatTokenFactory tokenFactory_) public {
         require(address(tokenFactory_) != address(0), "PHTTokenHelper/token-factory-not-set");
@@ -97,26 +99,56 @@ contract PHTTokenHelper is DSAuth {
         return tokenFactory.lastToken();
     }
 
+    // function createToken(TokenInfo memory info)
+    //     public
+    //     auth
+    //     returns (DelayedAction memory a, address implementation, address proxy, address masterMinter)
+    // {
+    //     address usr = address(tokenActions);
+    //     bytes32 tag;
+    //     assembly {
+    //         tag := extcodehash(usr)
+    //     }
+    //     bytes memory fax = abi.encodeWithSelector(tokenActions.createToken.selector, tokenFactory, info);
+    //     uint256 delay = pause.delay();
+    //     uint256 eta = now + delay;
+
+    //     pause.plot(usr, tag, fax, eta);
+    //     if (delay == 0) {
+    //         (implementation, proxy, masterMinter) =
+    //             abi.decode(pause.exec(usr, tag, fax, eta), (address, address, address));
+    //     }
+    //     a = DelayedAction(usr, tag, eta, fax);
+    // }
+
     function createToken(TokenInfo memory info)
         public
         auth
         returns (DelayedAction memory a, address implementation, address proxy, address masterMinter)
     {
-        address usr = address(tokenActions);
-        bytes32 tag;
-        assembly {
-            tag := extcodehash(usr)
-        }
-        bytes memory fax = abi.encodeWithSelector(tokenActions.createToken.selector, tokenFactory, info);
-        uint256 delay = pause.delay();
-        uint256 eta = now + delay;
+        address pauseProxy = address(pause.proxy());
+        (implementation, proxy, masterMinter) = tokenFactory.create(
+            FiatTokenInfo({
+                tokenName: info.tokenName,
+                tokenSymbol: info.tokenSymbol,
+                tokenDecimals: info.tokenDecimals,
+                tokenCurrency: info.tokenCurrency,
+                initialSupply: info.initialSupply,
+                initialSupplyMintTo: info.initialSupplyMintTo, // address to mint the initial supply to
+                masterMinterOwner: address(this), // this is proxy
+                proxyAdmin: info.tokenAdmin,
+                pauser: pauseProxy,
+                blacklister: pauseProxy,
+                owner: address(this)
+            })
+        );
 
-        pause.plot(usr, tag, fax, eta);
-        if (delay == 0) {
-            (implementation, proxy, masterMinter) =
-                abi.decode(pause.exec(usr, tag, fax, eta), (address, address, address));
-        }
-        a = DelayedAction(usr, tag, eta, fax);
+        IMasterMinter(masterMinter).configureController(pauseProxy, pauseProxy);
+        FiatTokenV1(proxy).updateMasterMinter(address(this));
+        FiatTokenV1(proxy).configureMinter(pauseProxy, uint256(-1));
+        IMasterMinter(masterMinter).transferOwnership(pauseProxy);
+        FiatTokenV1(proxy).updateMasterMinter(pauseProxy);
+        FiatTokenV1(proxy).transferOwnership(pauseProxy);
     }
 
     function mint(address token, address to, uint256 val) public auth returns (DelayedAction memory a, bool c) {

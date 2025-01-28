@@ -20,7 +20,7 @@ import {LinearDecrease} from "dss/abaci.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
-import {PHTTokenHelper} from "./PHTTokenHelper.sol";
+import {PHTTokenHelper, TokenInfo} from "./PHTTokenHelper.sol";
 
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
@@ -196,25 +196,17 @@ contract PHTCollateralHelper is DSAuth {
     ) public auth returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
         _token = tokenParams.token;
         if (_token == address(0)) {
-            FiatTokenInfo memory info = FiatTokenInfo({
+            TokenInfo memory info = TokenInfo({
                 tokenName: tokenParams.name,
                 tokenSymbol: tokenParams.symbol,
                 tokenDecimals: tokenParams.decimals,
-                // @TODO needs FE update
                 tokenCurrency: tokenParams.currency,
                 initialSupply: tokenParams.initialSupply,
                 initialSupplyMintTo: tokenParams.initialSupplyMintTo,
-                masterMinterOwner: address(pause.proxy()),
-                // @TODO proxyAdmin cannot be the same as owner
-                // update Proxy actions to allow update of implementation of FiatProxy
-                proxyAdmin: tokenParams.tokenAdmin,
-                // Ideally this should be PHTTokenHelper
-                pauser: address(pause.proxy()),
-                blacklister: address(pause.proxy()),
-                owner: address(pause.proxy())
+                tokenAdmin: tokenParams.tokenAdmin
             });
 
-            (, address proxy, address masterMinter) = ITokenFactory(tokenParams.factory).create(info);
+            (,, address proxy,) = PHTTokenHelper(tokenHelper).createToken(info);
 
             _token = address(proxy);
         }

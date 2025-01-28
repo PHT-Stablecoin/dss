@@ -27,6 +27,7 @@ import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
 import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
+import {PHTTokenHelper, TokenActions, TokenInfo} from "../pht/PHTTokenHelper.sol";
 
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 
@@ -282,6 +283,14 @@ contract PHTCollateralHelperTest is Test {
         vm.startPrank(alice);
         PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, alice);
         vm.stopPrank();
+    }
+
+    function test_tokenHelper_integration() public {
+        vm.startPrank(eve);
+        (,, address token,,,,) = PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
+
+        PHTTokenHelper(res.tokenHelper).mint(token, alice, 100e18);
+        assertEqDecimal(IERC20(token).balanceOf(alice), 100e18, 18);
     }
 }
 
