@@ -63,7 +63,12 @@ contract PHTCollateralHelperTest is Test {
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 authorityOwner: alice,
-                authorityRootUsers: [eve].toMemoryArray()
+                authorityRootUsers: [eve].toMemoryArray(),
+                vowWaitSeconds: uint256(0),
+                vowDumpWad: uint256(0),
+                vowSumpRad: uint256(0),
+                vowBumpRad: uint256(0),
+                vowHumpRad: uint256(0)
             })
         );
         h = PHTCollateralHelper(res.collateralHelper);

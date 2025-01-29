@@ -57,7 +57,12 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 jugBase: config.jugBase, // 0.00000006279% => 2% base global fee
                 authorityOwner: config.authorityOwner,
                 // this is needed in order to be able to call addCollateral() in PHTDeploymentHelper
-                authorityRootUsers: config.authorityRootUsers
+                authorityRootUsers: config.authorityRootUsers,
+                vowWaitSeconds: config.vowWaitSeconds,
+                vowDumpWad: config.vowDumpWad,
+                vowSumpRad: config.vowSumpRad,
+                vowBumpRad: config.vowBumpRad,
+                vowHumpRad: config.vowHumpRad
             })
         );
 

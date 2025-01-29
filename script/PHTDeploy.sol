@@ -474,6 +474,12 @@ contract PHTDeploy is StdCheats {
             // Set Global Base Fee
             proxyActions.file(address(dssDeploy.jug()), "base", _c.jugBase); // 0.00000006279% => 2% base global fee
 
+            proxyActions.file(address(dssDeploy.vow()), "wait", _c.vowWaitSeconds);
+            proxyActions.file(address(dssDeploy.vow()), "dump", _c.vowDumpWad);
+            proxyActions.file(address(dssDeploy.vow()), "sump", _c.vowSumpRad);
+            proxyActions.file(address(dssDeploy.vow()), "bump", _c.vowBumpRad);
+            proxyActions.file(address(dssDeploy.vow()), "hump", _c.vowHumpRad);
+
             /// Run initial drip
             // jug.drip("USDT-A");
             // jug.drip("PHP-A");

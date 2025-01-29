@@ -16,6 +16,11 @@ interface IPHTDeployConfigJson {
         // for prod specify the chainlink PHP/USD feed; for testing specify address(0)
         address phtUsdFeed;
         uint256 vatLineRad;
+        uint256 vowBumpRad;
+        uint256 vowDumpWad;
+        uint256 vowHumpRad;
+        uint256 vowSumpRad;
+        uint256 vowWaitSeconds;
     }
 
     struct Collateral {
