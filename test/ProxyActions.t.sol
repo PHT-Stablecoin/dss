@@ -92,7 +92,7 @@ contract ProxyActionsTest is Test {
         assertEq(Vat(res.vat).Line(), 999);
     }
 
-    function test_auth() public {
+    function test_auth_fail() public {
         address dog = res.dog;
         address randomUser = makeAddr("random");
         address pauseProxy = address(DSPause(res.pause).proxy());
@@ -101,5 +101,41 @@ contract ProxyActionsTest is Test {
         vm.startPrank(randomUser);
         vm.expectRevert("ds-auth-unauthorized");
         ProxyActions(res.proxyActions).rely(dog, randomUser);
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).deny(dog, randomUser);
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).init(dog, "");
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).file(dog, "", uint256(0));
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).file(dog, "", address(0));
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).file(dog, "", "", address(0));
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).file(dog, "", "", uint256(0));
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).dripAndFile(dog, "", uint256(0));
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).dripAndFile(dog, "", "", uint256(0));
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).cage(dog);
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).setAuthority2(dog);
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).setDelay(uint256(0));
+
+        vm.expectRevert("ds-auth-unauthorized");
+        ProxyActions(res.proxyActions).setAuthorityAndDelay(dog, uint256(0));
     }
 }

@@ -60,6 +60,22 @@ contract ProxyActions is DSAuth {
         return DelayedAction(usr, tag, eta, fax);
     }
 
+    function init(address who, bytes32 ilk) external auth returns (DelayedAction memory action) {
+        address usr = address(govActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSignature("init(address,bytes32)", who, ilk);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
+
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) pause.exec(usr, tag, fax, eta);
+
+        return DelayedAction(usr, tag, eta, fax);
+    }
+
     function file(address who, bytes32 what, uint256 data) external auth returns (DelayedAction memory action) {
         address usr = address(govActions);
         bytes32 tag;
@@ -67,6 +83,22 @@ contract ProxyActions is DSAuth {
             tag := extcodehash(usr)
         }
         bytes memory fax = abi.encodeWithSignature("file(address,bytes32,uint256)", who, what, data);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
+
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) pause.exec(usr, tag, fax, eta);
+
+        return DelayedAction(usr, tag, eta, fax);
+    }
+
+    function file(address who, bytes32 what, address data) external auth returns (DelayedAction memory action) {
+        address usr = address(govActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSignature("file(address,bytes32,address)", who, what, data);
         uint256 delay = pause.delay();
         uint256 eta = now + delay;
 
@@ -87,6 +119,26 @@ contract ProxyActions is DSAuth {
             tag := extcodehash(usr)
         }
         bytes memory fax = abi.encodeWithSignature("file(address,bytes32,bytes32,uint256)", who, ilk, what, data);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
+
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) pause.exec(usr, tag, fax, eta);
+
+        return DelayedAction(usr, tag, eta, fax);
+    }
+
+    function file(address who, bytes32 ilk, bytes32 what, address data)
+        external
+        auth
+        returns (DelayedAction memory action)
+    {
+        address usr = address(govActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSignature("file(address,bytes32,bytes32,address)", who, ilk, what, data);
         uint256 delay = pause.delay();
         uint256 eta = now + delay;
 
