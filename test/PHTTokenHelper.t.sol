@@ -50,7 +50,7 @@ contract PHTTokenHelperTest is Test {
     function test_createToken() public {
         vm.startPrank(eve);
 
-        (, address implementation, address proxy, address masterMinter) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -69,7 +69,7 @@ contract PHTTokenHelperTest is Test {
 
     function test_tokenHelper_mint() public {
         vm.startPrank(eve);
-        (, address implementation, address proxy, address masterMinter) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -93,7 +93,7 @@ contract PHTTokenHelperTest is Test {
 
     function test_tokenHelper_blacklist() public {
         vm.startPrank(eve);
-        (, address implementation, address proxy, address masterMinter) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",
@@ -130,7 +130,7 @@ contract PHTTokenHelperTest is Test {
 
     function test_tokenHelper_new_helper() public {
         vm.startPrank(eve);
-        (, address implementation, address proxy, address masterMinter) = h.createToken(
+        (address implementation, address proxy, address masterMinter) = h.createToken(
             TokenInfo({
                 tokenName: "TEST",
                 tokenSymbol: "TST",

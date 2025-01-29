@@ -95,7 +95,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                     tip: ilkParams.tip
                 }),
                 PHTCollateralHelper.TokenParams({
-                    factory: ITokenFactory(res.tokenFactory),
                     token: tokenParams.token,
                     symbol: tokenParams.symbol,
                     name: tokenParams.name,

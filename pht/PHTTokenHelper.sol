@@ -34,30 +34,6 @@ struct TokenInfo {
 }
 
 contract TokenActions {
-    function createToken(FiatTokenFactory tokenFactory, TokenInfo memory info)
-        public
-        returns (address implementation, address proxy, address masterMinter)
-    {
-        (implementation, proxy, masterMinter) = tokenFactory.create(
-            FiatTokenInfo({
-                tokenName: info.tokenName,
-                tokenSymbol: info.tokenSymbol,
-                tokenDecimals: info.tokenDecimals,
-                tokenCurrency: info.tokenCurrency,
-                initialSupply: info.initialSupply,
-                initialSupplyMintTo: info.initialSupplyMintTo, // address to mint the initial supply to
-                masterMinterOwner: address(this), // this is pause.proxy()
-                proxyAdmin: info.tokenAdmin,
-                pauser: address(this),
-                blacklister: address(this),
-                owner: address(this)
-            })
-        );
-
-        IMasterMinter(masterMinter).configureMinter(uint256(-1));
-        IMasterMinter(masterMinter).configureController(address(this), address(this));
-    }
-
     function mint(address token, address to, uint256 val) public returns (bool done) {
         return IFiatToken(token).mint(to, val);
     }
@@ -99,32 +75,10 @@ contract PHTTokenHelper is DSAuth {
         return tokenFactory.lastToken();
     }
 
-    // function createToken(TokenInfo memory info)
-    //     public
-    //     auth
-    //     returns (DelayedAction memory a, address implementation, address proxy, address masterMinter)
-    // {
-    //     address usr = address(tokenActions);
-    //     bytes32 tag;
-    //     assembly {
-    //         tag := extcodehash(usr)
-    //     }
-    //     bytes memory fax = abi.encodeWithSelector(tokenActions.createToken.selector, tokenFactory, info);
-    //     uint256 delay = pause.delay();
-    //     uint256 eta = now + delay;
-
-    //     pause.plot(usr, tag, fax, eta);
-    //     if (delay == 0) {
-    //         (implementation, proxy, masterMinter) =
-    //             abi.decode(pause.exec(usr, tag, fax, eta), (address, address, address));
-    //     }
-    //     a = DelayedAction(usr, tag, eta, fax);
-    // }
-
     function createToken(TokenInfo memory info)
         public
         auth
-        returns (DelayedAction memory a, address implementation, address proxy, address masterMinter)
+        returns (address implementation, address proxy, address masterMinter)
     {
         address pauseProxy = address(pause.proxy());
         (implementation, proxy, masterMinter) = tokenFactory.create(
@@ -135,20 +89,13 @@ contract PHTTokenHelper is DSAuth {
                 tokenCurrency: info.tokenCurrency,
                 initialSupply: info.initialSupply,
                 initialSupplyMintTo: info.initialSupplyMintTo, // address to mint the initial supply to
-                masterMinterOwner: address(this), // this is proxy
+                masterMinterOwner: pauseProxy, // this is proxy
                 proxyAdmin: info.tokenAdmin,
                 pauser: pauseProxy,
                 blacklister: pauseProxy,
-                owner: address(this)
+                owner: pauseProxy
             })
         );
-
-        IMasterMinter(masterMinter).configureController(pauseProxy, pauseProxy);
-        FiatTokenV1(proxy).updateMasterMinter(address(this));
-        FiatTokenV1(proxy).configureMinter(pauseProxy, uint256(-1));
-        IMasterMinter(masterMinter).transferOwnership(pauseProxy);
-        FiatTokenV1(proxy).updateMasterMinter(pauseProxy);
-        FiatTokenV1(proxy).transferOwnership(pauseProxy);
     }
 
     function mint(address token, address to, uint256 val) public auth returns (DelayedAction memory a, bool c) {

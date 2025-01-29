@@ -87,12 +87,7 @@ contract FiatTokenFactory is ITokenFactory {
         FiatTokenProxy proxy = new FiatTokenProxy(implementation);
 
         // Now that the proxy contract has been deployed, we can deploy the master minter.
-        if (tokenInfo.initialSupply > 0) {
-            // temporarily give permissions to the factory to mint tokens
-            masterMinter = MASTER_MINTER_DEPLOYER.deployMasterMinter(address(proxy), address(this));
-        } else {
-            masterMinter = MASTER_MINTER_DEPLOYER.deployMasterMinter(address(proxy), tokenInfo.masterMinterOwner);
-        }
+        masterMinter = MASTER_MINTER_DEPLOYER.deployMasterMinter(address(proxy), address(this));
 
         // Now that the master minter is set up, we can go back to setting up the proxy and
         // implementation contracts.
@@ -100,12 +95,16 @@ contract FiatTokenFactory is ITokenFactory {
         // since admin can only call methods in the proxy, and not forwarded methods
         proxy.changeAdmin(tokenInfo.proxyAdmin);
 
+        FiatTokenInfo memory copy = tokenInfo;
+        copy.owner = address(this);
+
         // Initialize the proxy contract.
-        PROXY_INITIALIZER.initialize(address(proxy), masterMinter, tokenInfo);
+        PROXY_INITIALIZER.initialize(address(proxy), masterMinter, copy);
+
+        IMasterMinter(masterMinter).configureController(address(this), address(this));
 
         if (tokenInfo.initialSupply > 0) {
             // temporarily give permissions to the factory to mint tokens
-            IMasterMinter(masterMinter).configureController(address(this), address(this));
             require(
                 IMasterMinter(masterMinter).configureMinter(tokenInfo.initialSupply), "FiatTokenFactory/configureMinter"
             );
@@ -115,20 +114,27 @@ contract FiatTokenFactory is ITokenFactory {
             );
             // remove permissions
             require(IMasterMinter(masterMinter).removeMinter(), "FiatTokenFactory/removeMinter");
-            IMasterMinter(masterMinter).removeController(address(this));
-            // undo MASTER_MINTER_DEPLOYER.deployMasterMinter permissions
-            // Configure controller (adds owner as minter)
-            IMasterMinter(masterMinter).configureController(tokenInfo.masterMinterOwner, tokenInfo.masterMinterOwner);
-            // Transfer ownership to owner after configuring (this contract loses control)
-            IMasterMinter(masterMinter).transferOwnership(tokenInfo.masterMinterOwner);
         }
+        // Configure controller (adds owner as minter)
+        IFiatToken(address(proxy)).updateMasterMinter(address(this));
+        // IMasterMinter(masterMinter).configureController(tokenInfo.masterMinterOwner, tokenInfo.masterMinterOwner);
+        IFiatToken(address(proxy)).configureMinter(tokenInfo.masterMinterOwner, uint256(-1));
+        IMasterMinter(masterMinter).removeController(address(this));
+        IMasterMinter(masterMinter).transferOwnership(tokenInfo.masterMinterOwner);
+        IFiatToken(address(proxy)).updateMasterMinter(tokenInfo.masterMinterOwner);
+        // Transfer ownership to owner after configuring (this contract loses control)
+        IFiatToken(address(proxy)).transferOwnership(tokenInfo.owner);
 
         return (implementation, address(proxy), masterMinter);
     }
 }
 
 interface IFiatToken {
+    function owner() external returns (address);
     function mint(address _to, uint256 _amount) external returns (bool);
+    function configureMinter(address minter, uint256 minterAllowedAmount) external returns (bool);
+    function transferOwnership(address newOwner) external;
+    function updateMasterMinter(address _newMasterMinter) external;
 }
 
 interface IMasterMinter {

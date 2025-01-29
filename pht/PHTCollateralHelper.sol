@@ -68,7 +68,6 @@ contract PHTCollateralHelper is DSAuth {
     PHTTokenHelper public tokenHelper;
 
     struct TokenParams {
-        ITokenFactory factory;
         address token; // optional
         string name;
         string symbol;
@@ -206,7 +205,7 @@ contract PHTCollateralHelper is DSAuth {
                 tokenAdmin: tokenParams.tokenAdmin
             });
 
-            (,, address proxy,) = PHTTokenHelper(tokenHelper).createToken(info);
+            (, address proxy,) = PHTTokenHelper(tokenHelper).createToken(info);
 
             _token = address(proxy);
         }

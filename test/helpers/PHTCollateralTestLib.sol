@@ -44,7 +44,6 @@ library PHTCollateralTestLib {
         });
 
         tokenParams = PHTCollateralHelper.TokenParams({
-            factory: ITokenFactory(res.tokenFactory),
             token: address(0),
             name: "Test PHP",
             symbol: "tstPHP",
@@ -102,7 +101,6 @@ library PHTCollateralTestLib {
 
         tokenParams = PHTCollateralHelper.TokenParams({
             token: address(0),
-            factory: ITokenFactory(res.tokenFactory),
             symbol: "pDAI",
             name: "pDAI",
             currency: "PHP",

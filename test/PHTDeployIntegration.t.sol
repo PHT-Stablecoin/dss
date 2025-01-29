@@ -82,7 +82,7 @@ contract PHTDeployIntegrationTest is Test {
         });
 
         vm.startPrank(eve);
-        (, address implementation, address proxy, address masterMinter) =
+        (address implementation, address proxy, address masterMinter) =
             PHTTokenHelper(res.tokenHelper).createToken(info);
 
         // Verify initial balance
