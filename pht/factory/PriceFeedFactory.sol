@@ -13,7 +13,7 @@ contract PriceFeedFactory is DSAuth {
         bool exists; // Exists flag for registration check
     }
 
-    mapping(address => PriceFeedInfo) public feedRegistry;
+    mapping(address => bool) public feedRegistry;
 
     event PriceFeedCreated(address indexed feed, string description, uint8 decimals, address indexed creator);
 
@@ -23,13 +23,11 @@ contract PriceFeedFactory is DSAuth {
         returns (PriceFeedAggregator feed)
     {
         feed = new PriceFeedAggregator();
-
-        feedRegistry[address(feed)] =
-            PriceFeedInfo({feedAddress: address(feed), description: description, decimals: decimals, exists: true});
-
         feed.file("description", description);
         feed.file("decimals", uint256(decimals));
         feed.file("answer", initialAnswer);
+
+        feedRegistry[address(feed)] = true;
 
         // pass on the authority to any instances created from this factory
         feed.setAuthority(authority);
@@ -42,7 +40,15 @@ contract PriceFeedFactory is DSAuth {
 
     function getFeedInfo(address feed) external view returns (PriceFeedInfo memory info) {
         require(feed != address(0), "PriceFeedFactory/invalid-address");
-        require(feedRegistry[feed].exists, "PriceFeedFactory/feed-not-registered");
-        return feedRegistry[feed];
+        require(feedRegistry[feed], "PriceFeedFactory/feed-not-registered");
+
+        PriceFeedAggregator feedInstance = PriceFeedAggregator(feed);
+
+        return PriceFeedInfo({
+            feedAddress: feed,
+            description: feedInstance.description(),
+            decimals: feedInstance.decimals(),
+            exists: true
+        });
     }
 }

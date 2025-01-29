@@ -14,7 +14,6 @@ struct DelayedAction {
 }
 
 // @TODO move this behind a TransparentUpgradeableProxy
-// @TODO add methods for managing GOV token (+ tests)
 
 contract ProxyActions is DSAuth {
     DSPause public pause;
