@@ -14,7 +14,7 @@ contract PriceJoinFeedFactory is DSAuth {
         string description;
     }
 
-    mapping(address => PriceFeedInfo) public feedRegistry;
+    mapping(address => bool) public feedRegistry;
 
     event PriceFeedJoinCreated(
         address numeratorFeed,
@@ -35,13 +35,7 @@ contract PriceJoinFeedFactory is DSAuth {
         feed =
             new PriceJoinFeedAggregator(numeratorFeed, denominatorFeed, invertNumerator, invertDenominator, description);
 
-        feedRegistry[address(feed)] = PriceFeedInfo({
-            numeratorFeed: numeratorFeed,
-            invertNumerator: invertNumerator,
-            denominatorFeed: denominatorFeed,
-            invertDenominator: invertDenominator,
-            description: description
-        });
+        feedRegistry[address(feed)] = true;
 
         // pass on the authority to any instances created from this factory
         feed.setAuthority(authority);
@@ -56,6 +50,16 @@ contract PriceJoinFeedFactory is DSAuth {
 
     function getFeedInfo(address feed) external view returns (PriceFeedInfo memory info) {
         require(feed != address(0), "PriceFeedJoinFactory/invalid-address");
-        return feedRegistry[feed];
+        require(feedRegistry[feed], "PriceFeedJoinFactory/feed-not-registered");
+
+        PriceJoinFeedAggregator feedInstance = PriceJoinFeedAggregator(feed);
+
+        return PriceFeedInfo({
+            numeratorFeed: address(feedInstance.numeratorFeed()),
+            invertNumerator: feedInstance.invertNumerator(),
+            denominatorFeed: address(feedInstance.denominatorFeed()),
+            invertDenominator: feedInstance.invertDenominator(),
+            description: feedInstance.description()
+        });
     }
 }
