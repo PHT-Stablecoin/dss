@@ -2,7 +2,6 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import {PriceFeedAggregator} from "./PriceFeedAggregator.sol";
-import {ChainlinkPip} from "../helpers/ChainlinkPip.sol";
 import {DSAuth} from "ds-auth/auth.sol";
 
 contract PriceFeedFactory is DSAuth {

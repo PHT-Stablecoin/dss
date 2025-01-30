@@ -117,7 +117,6 @@ contract FiatTokenFactory is ITokenFactory {
         }
         // Configure controller (adds owner as minter)
         IFiatToken(address(proxy)).updateMasterMinter(address(this));
-        // IMasterMinter(masterMinter).configureController(tokenInfo.masterMinterOwner, tokenInfo.masterMinterOwner);
         IFiatToken(address(proxy)).configureMinter(tokenInfo.masterMinterOwner, uint256(-1));
         IMasterMinter(masterMinter).removeController(address(this));
         IMasterMinter(masterMinter).transferOwnership(tokenInfo.masterMinterOwner);
