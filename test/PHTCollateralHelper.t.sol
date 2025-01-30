@@ -215,8 +215,6 @@ contract PHTCollateralHelperTest is Test {
         // ensure that authority can update the feeds
         // created through the factory
         vm.startPrank(eve);
-        feedObj.file("decimals", 12);
-        assertEq(uint256(feedObj.decimals()), 12);
         feedObj.file("live", uint256(0));
         vm.expectRevert("PriceJoinFeedAggregator/not-live");
         feedObj.latestRoundData();

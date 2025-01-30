@@ -87,7 +87,7 @@ contract PHTCollateralHelper is DSAuth {
         PriceJoinFeedFactory joinFactory;
         address feed; // (optional)
         int256 initialPrice; // (optional) feed price
-        uint8 decimals; // Default: (6 decimals)
+        uint8 decimals; // only used for PriceFeedAggregator
         address numeratorFeed; // (optional)
         address denominatorFeed;
         bool invertNumerator;

@@ -26,7 +26,6 @@ interface IERC20Metadata {
 
 interface IThingAdmin {
     // --- Administration ---
-    function file(bytes32 what, address data, bool invert) external;
     function file(bytes32 what, uint256 data) external;
 }
 
@@ -47,23 +46,24 @@ interface IThingAdmin {
  */
 contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing {
     // Ex: Feeds for XSGD/USD - PHP/USD
-    AggregatorV3Interface public numeratorFeed;
-    AggregatorV3Interface public denominatorFeed;
+    AggregatorV3Interface public immutable numeratorFeed;
+    AggregatorV3Interface public immutable denominatorFeed;
 
-    bool public invertNumerator;
-    bool public invertDenominator;
+    bool public immutable invertNumerator;
+    bool public immutable invertDenominator;
 
     uint256 public constant ONE = 1e18;
-    string public override description = ""; // XSGD/USD-PHP/USD
+    string public override description;
     // feed decimals
-    uint8 public override decimals = 8;
-    uint256 public override version = 1;
+    uint8 public immutable override decimals;
+    uint256 public constant override version = 1;
 
-    uint256 public live = 0;
+    uint256 public live;
 
-    uint256 private _feedScalingFactor;
-    uint256 private _numeratorScalingFactor;
-    uint256 private _denominatorScalingFactor;
+    // private variables
+    uint256 private immutable _feedScalingFactor;
+    uint256 private immutable _numeratorScalingFactor;
+    uint256 private immutable _denominatorScalingFactor;
 
     // --- Init ---
     constructor(
@@ -78,44 +78,34 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
 
         live = 1;
 
-        uint256 decimalsDifference = 18 - decimals;
-        _feedScalingFactor = 10 ** decimalsDifference;
+        uint8 numeratorDecimals;
+        uint8 denominatorDecimals;
+        uint256 numeratorScalingFactor;
+        uint256 denominatorScalingFactor;
 
-        _numeratorScalingFactor = _computeScalingFactor(_numeratorFeed);
-        _denominatorScalingFactor = _computeScalingFactor(_denominatorFeed);
+        (numeratorDecimals, numeratorScalingFactor) = _computeScalingFactor(_numeratorFeed);
+        (denominatorDecimals, denominatorScalingFactor) = _computeScalingFactor(_denominatorFeed);
+
+        // use the smaller scaling factor - this is the opposite of the decimals
+        // scaling factor is used to scale down the price feed, therefore we pick
+        // the smaller scaling factor to scale down the least
+        _feedScalingFactor =
+            numeratorScalingFactor < denominatorScalingFactor ? numeratorScalingFactor : denominatorScalingFactor;
+
+        decimals = numeratorDecimals > denominatorDecimals ? numeratorDecimals : denominatorDecimals;
 
         numeratorFeed = AggregatorV3Interface(_numeratorFeed);
         denominatorFeed = AggregatorV3Interface(_denominatorFeed);
 
+        _numeratorScalingFactor = numeratorScalingFactor;
+        _denominatorScalingFactor = denominatorScalingFactor;
         invertNumerator = _invertNumerator;
         invertDenominator = _invertDenominator;
         description = _description;
     }
 
-    // --- Administration ---
-    /// @dev The reason why we need to pass both the address and the bool is because,
-    /// if we update a feed without updating the invert flag, the calculations will be wrong
-    /// until the TX that updates the invert flag is sent and executed.
-    function file(bytes32 what, address data, bool invert) external override auth {
-        if (what == "numeratorFeed") {
-            numeratorFeed = AggregatorV3Interface(data);
-            _numeratorScalingFactor = _computeScalingFactor(data);
-            invertNumerator = invert;
-        } else if (what == "denominatorFeed") {
-            denominatorFeed = AggregatorV3Interface(data);
-            _denominatorScalingFactor = _computeScalingFactor(data);
-            invertDenominator = invert;
-        } else {
-            revert("PriceJoinFeedAggregator/file-unrecognized-3-param");
-        }
-    }
-
     function file(bytes32 what, uint256 data) external override auth {
-        if (what == "decimals") {
-            decimals = uint8(data);
-            uint256 decimalsDifference = 18 - decimals;
-            _feedScalingFactor = 10 ** decimalsDifference;
-        } else if (what == "live") {
+        if (what == "live") {
             live = data;
         } else {
             revert("PriceJoinFeedAggregator/file-unrecognized-2-param");
@@ -230,12 +220,12 @@ contract PriceJoinFeedAggregator is AggregatorV3Interface, IThingAdmin, DSThing 
         return _mulDown(amount, scalingFactor * ONE);
     }
 
-    function _computeScalingFactor(address token) internal view returns (uint256) {
+    function _computeScalingFactor(address token) internal view returns (uint8 decimals, uint256 scalingFactor) {
         uint256 tokenDecimals = IERC20Metadata(token).decimals();
         require(tokenDecimals <= 18, "PriceJoinFeedAggregator/token-decimals-gt-18");
 
         uint256 decimalsDifference = 18 - tokenDecimals;
-        return 10 ** decimalsDifference;
+        return (uint8(tokenDecimals), 10 ** decimalsDifference);
     }
 
     /**
