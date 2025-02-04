@@ -8,7 +8,7 @@
   ],
   "collaterals": [],
   "dogHoleRad": 10000000,
-  "govTokenSymbol": "APC",
+  "govTokenSymbol": "APX",
   "jugBase": 0.0000000006279e27,
   "phtUsdFeed": "0x0000000000000000000000000000000000000000",
   "vatLineRad": 13000000
