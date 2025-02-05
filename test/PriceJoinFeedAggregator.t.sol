@@ -41,13 +41,13 @@ contract PriceJoinFeedAggregatorTest is Test {
     PHTDeployResult res;
     PHTCollateralHelper h;
 
-      function setUp() public {
+    function setUp() public {
         eve = makeAddr("eve");
         alice = makeAddr("alice");
         PHTDeploy d = new PHTDeploy();
         res = d.deploy(
             PHTDeployConfig({
-               govTokenSymbol: "APX",
+                govTokenSymbol: "APX",
                 phtUsdFeed: address(0), // deploy a mock feed for testing
                 dogHoleRad: 10_000_000,
                 vatLineRad: 10_000_000,
@@ -207,36 +207,35 @@ contract PriceJoinFeedAggregatorTest is Test {
         }
     }
 
-    function test_PriceFeedAggregatorSpot() public{
+    function test_PriceFeedAggregatorSpot() public {
         vm.startPrank(eve);
-        ( ,AggregatorV3Interface feed,, ChainlinkPip pip,,,) = 
-            PHTCollateralTestLib.addCollateral("PHP-A", res, h, eve);          
-        vm.stopPrank();             
-        
-        uint256 expectedValue = 58.13953488 * 1e8;   
-        (,int256 _answer,,,) = feed.latestRoundData();
-        
-        assertEq(_answer,int256(expectedValue));   
-                                     
-         Spotter(res.spotter).poke("PHP-A");    
-        (,,uint256 spot,,) = Vat(res.vat).ilks("PHP-A");    
-             
-       assertEq(spot, expectedValue * RAY * RAY / (1050000000 *1e26));          
+        (, AggregatorV3Interface feed,, ChainlinkPip pip,,,) = PHTCollateralTestLib.addCollateral("PHP-A", res, h, eve);
+        vm.stopPrank();
+
+        uint256 expectedValue = 58.13953488 * 1e8;
+        (, int256 _answer,,,) = feed.latestRoundData();
+
+        assertEq(_answer, int256(expectedValue));
+
+        Spotter(res.spotter).poke("PHP-A");
+        (,, uint256 spot,,) = Vat(res.vat).ilks("PHP-A");
+
+        assertEq(spot, expectedValue * RAY * RAY / (1050000000 * 1e26));
     }
 
-    function test_PriceJoinFeedAggregatorSpot() public{
+    function test_PriceJoinFeedAggregatorSpot() public {
         vm.startPrank(eve);
-        ( ,AggregatorV3Interface feed,, ChainlinkPip pip,,,) = 
-            PHTCollateralTestLib.addCollateralJoin("PHP-A", res, h, eve);                    
-       vm.stopPrank();   
-        uint256 expectedValue = 58.13953488 * 1e8;   
+        (, AggregatorV3Interface feed,, ChainlinkPip pip,,,) =
+            PHTCollateralTestLib.addCollateralJoin("PHP-A", res, h, eve);
+        vm.stopPrank();
+        uint256 expectedValue = 58.13953488 * 1e8;
 
-        (,int256 _answer,,,) = feed.latestRoundData();
-        assertEq(_answer,int256(expectedValue));
-                         
-        Spotter(res.spotter).poke("PHP-A");    
-        (,,uint spot,,) = Vat(res.vat).ilks("PHP-A");       
-       
-          assertEq(spot, expectedValue * RAY * RAY / (1500000000 *1e26));             
-    }      
+        (, int256 _answer,,,) = feed.latestRoundData();
+        assertEq(_answer, int256(expectedValue));
+
+        Spotter(res.spotter).poke("PHP-A");
+        (,, uint256 spot,,) = Vat(res.vat).ilks("PHP-A");
+
+        assertEq(spot, expectedValue * RAY * RAY / (1500000000 * 1e26));
+    }
 }
