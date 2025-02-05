@@ -10,6 +10,13 @@ import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedAggregator.sol";
 
+import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
+import {PriceFeedAggregator} from "../pht/factory/PriceFeedAggregator.sol";
+import {Spotter} from "../src/spot.sol";
+import {Vat} from "../src/vat.sol";
+
+import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 import {MockAggregatorV3} from "./helpers/MockAggregatorV3.sol";
 
 struct Data {
@@ -25,6 +32,38 @@ struct Data {
 }
 
 contract PriceJoinFeedAggregatorTest is Test {
+    using ArrayHelpers for *;
+
+    uint256 constant RAY = 10 ** 27;
+
+    address alice; // authority owner
+    address eve; // authority root user
+    PHTDeployResult res;
+    PHTCollateralHelper h;
+
+    function setUp() public {
+        eve = makeAddr("eve");
+        alice = makeAddr("alice");
+        PHTDeploy d = new PHTDeploy();
+        res = d.deploy(
+            PHTDeployConfig({
+                govTokenSymbol: "APX",
+                phtUsdFeed: address(0), // deploy a mock feed for testing
+                dogHoleRad: 10_000_000,
+                vatLineRad: 10_000_000,
+                jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
+                authorityOwner: alice,
+                authorityRootUsers: [eve].toMemoryArray(),
+                vowWaitSeconds: uint256(0),
+                vowDumpWad: uint256(0),
+                vowSumpRad: uint256(0),
+                vowBumpRad: uint256(0),
+                vowHumpRad: uint256(0)
+            })
+        );
+        h = PHTCollateralHelper(res.collateralHelper);
+    }
+
     function test_PriceJoinFeedAggregator() public {
         Data[] memory data = new Data[](20);
 
@@ -166,5 +205,37 @@ contract PriceJoinFeedAggregatorTest is Test {
             (, int256 answer,,,) = aggregator.latestRoundData();
             assertEq(answer, d.expectedAnswer, d.description);
         }
+    }
+
+    function test_PriceFeedAggregatorSpot() public {
+        vm.startPrank(eve);
+        (, AggregatorV3Interface feed,, ChainlinkPip pip,,,) = PHTCollateralTestLib.addCollateral("PHP-A", res, h, eve);
+        vm.stopPrank();
+
+        uint256 expectedValue = 58.13953488 * 1e8;
+        (, int256 _answer,,,) = feed.latestRoundData();
+
+        assertEq(_answer, int256(expectedValue));
+
+        Spotter(res.spotter).poke("PHP-A");
+        (,, uint256 spot,,) = Vat(res.vat).ilks("PHP-A");
+
+        assertEq(spot, expectedValue * RAY * RAY / (1050000000 * 1e26));
+    }
+
+    function test_PriceJoinFeedAggregatorSpot() public {
+        vm.startPrank(eve);
+        (, AggregatorV3Interface feed,, ChainlinkPip pip,,,) =
+            PHTCollateralTestLib.addCollateralJoin("PHP-A", res, h, eve);
+        vm.stopPrank();
+        uint256 expectedValue = 58.13953488 * 1e8;
+
+        (, int256 _answer,,,) = feed.latestRoundData();
+        assertEq(_answer, int256(expectedValue));
+
+        Spotter(res.spotter).poke("PHP-A");
+        (,, uint256 spot,,) = Vat(res.vat).ilks("PHP-A");
+
+        assertEq(spot, expectedValue * RAY * RAY / (1500000000 * 1e26));
     }
 }
