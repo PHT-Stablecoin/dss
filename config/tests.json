@@ -86,7 +86,7 @@
     }
   ],
   "dogHoleRad": 10000000,
-  "govTokenSymbol": "APX",
+  "govTokenSymbol": "APC",
   "jugBase": 0.0000000006279e27,
   "phtUsdFeed": "0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd",
   "vatLineRad": 13000000

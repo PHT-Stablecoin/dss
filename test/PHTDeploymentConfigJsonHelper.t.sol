@@ -27,7 +27,7 @@ contract PHTDeploymentConfigJsonHelperTest is Test {
         assertEq(root.authorityRootUsers[2], 0x1111111111111111111111111111111111111111, "authorityRootUsers[2]");
         assertEq(root.authorityRootUsers[3], 0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd, "authorityRootUsers[3]");
         assertEq(root.dogHoleRad, 10000000, "dogHoleRad");
-        assertEq(root.govTokenSymbol, "APX", "govTokenSymbol");
+        assertEq(root.govTokenSymbol, "APC", "govTokenSymbol");
         assertEq(root.jugBase, 0.0000000006279e27, "jugBase");
         assertEq(root.phtUsdFeed, 0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd, "phtUsdFeed");
         assertEq(root.vatLineRad, 13000000, "vatLineRad");
