@@ -16,6 +16,11 @@ interface IPHTDeployConfigJson {
         // for prod specify the chainlink PHP/USD feed; for testing specify address(0)
         address phtUsdFeed;
         uint256 vatLineRad;
+        uint256 vowBumpRad;
+        uint256 vowDumpWad;
+        uint256 vowHumpRad;
+        uint256 vowSumpRad;
+        uint256 vowWaitSeconds;
     }
 
     struct Collateral {
@@ -37,23 +42,30 @@ interface IPHTDeployConfigJson {
 
     struct IlkParams {
         uint256 buf;
+        uint64 chip;
         uint256 chop;
+        uint256 cusp;
         uint256 dust;
         uint256 duty;
         uint256 holeRad;
         bytes32 ilk;
         uint256 lineRad;
         uint256 matEther;
+        uint256 tail;
         uint256 tau;
+        uint192 tip;
     }
 
     struct TokenParams {
+        string currency;
         uint8 decimals;
         uint256 initialSupply;
+        address initialSupplyMintTo;
         uint256 maxSupply;
         string name;
         string symbol;
         address token;
+        address tokenAdmin;
     }
 }
 

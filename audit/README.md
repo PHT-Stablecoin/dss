@@ -20,6 +20,7 @@
 **Runtime helpers**
 
 - pht/PHTCollateralHelper.sol
+- pht/PHTTokenHelper.sol
 - pht/lib/Roles.sol
 - pht/lib/ArrayHelpers.sol
 - pht/helpers/ProxyActions.sol

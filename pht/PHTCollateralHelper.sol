@@ -20,6 +20,7 @@ import {LinearDecrease} from "dss/abaci.sol";
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
+import {PHTTokenHelper, TokenInfo} from "./PHTTokenHelper.sol";
 
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
@@ -64,14 +65,18 @@ contract PHTCollateralHelper is DSAuth {
     GemJoinFab gemJoinFab;
     GemJoin5Fab gemJoin5Fab;
 
+    PHTTokenHelper public tokenHelper;
+
     struct TokenParams {
-        ITokenFactory factory;
         address token; // optional
         string name;
         string symbol;
         uint8 decimals;
+        string currency;
         uint256 maxSupply; // maxSupply == 0 => unlimited supply
         uint256 initialSupply; // initialSupply == 0 => no initial supply
+        address initialSupplyMintTo;
+        address tokenAdmin;
     }
 
     struct FeedParams {
@@ -82,7 +87,7 @@ contract PHTCollateralHelper is DSAuth {
         PriceJoinFeedFactory joinFactory;
         address feed; // (optional)
         int256 initialPrice; // (optional) feed price
-        uint8 decimals; // Default: (6 decimals)
+        uint8 decimals; // only used for PriceFeedAggregator
         address numeratorFeed; // (optional)
         address denominatorFeed;
         bool invertNumerator;
@@ -92,17 +97,31 @@ contract PHTCollateralHelper is DSAuth {
 
     struct IlkParams {
         bytes32 ilk;
-        uint256 line; // Ilk Debt ceiling [RAD]
-        uint256 dust; // Ilk Urn Debt floor [RAD]
+        uint256 line; // Ilk Debt ceiling                                                  [rad]
+        uint256 dust; // Ilk Urn Debt floor                                                [rad]
         uint256 tau; // Default: 1 hours
-        uint256 mat; // Liquidation Ratio [RAY]
-        uint256 hole; // Gem-limit [RAD]
-        uint256 chop; // Liquidation-penalty [WAD]
-        uint256 buf; // Initial Auction Increase [RAY]
-        uint256 duty; // Jug: ilk fee [RAY]
+        uint256 mat; // Liquidation Ratio                                                  [ray]
+        uint256 hole; // Gem-limit                                                         [rad]
+        uint256 chop; // Liquidation-penalty                                               [wad]
+        uint256 buf; // Multiplicative factor to increase starting price                   [ray]
+        uint256 duty; // Jug: ilk fee                                                      [ray]
+        uint256 tail; // Time elapsed before auction reset                                 [seconds]
+        uint256 cusp; // Percentage drop before auction reset                              [ray]
+        uint64 chip; // Percentage of tab to suck from vow to incentivize keepers          [wad]
+        uint192 tip; // Flat fee to suck from vow to incentivize keepers                   [rad]
+            // uint256 chost;  // Cache the ilk dust times the ilk chop to prevent excessive SLOADs [rad]
     }
 
     constructor(Vat vat_, Spotter spotter_, Dog dog_, Vow vow_, Jug jug_, End end_, ESM esm_, DSPause pause_) public {
+        require(address(vat_) != address(0), "PHTCollateralHelper/vat-not-set");
+        require(address(spotter_) != address(0), "PHTCollateralHelper/spotter-not-set");
+        require(address(dog_) != address(0), "PHTCollateralHelper/dog-not-set");
+        require(address(vow_) != address(0), "PHTCollateralHelper/vow-not-set");
+        require(address(jug_) != address(0), "PHTCollateralHelper/jug-not-set");
+        require(address(end_) != address(0), "PHTCollateralHelper/end-not-set");
+        require(address(esm_) != address(0), "PHTCollateralHelper/esm-not-set");
+        require(address(pause_) != address(0), "PHTCollateralHelper/pause-not-set");
+
         vat = vat_;
         spotter = spotter_;
         dog = dog_;
@@ -118,11 +137,21 @@ contract PHTCollateralHelper is DSAuth {
         public
         auth
     {
-        require(address(calcFab) == address(0), "pht-collateral-helper-fabs-init");
+        require(address(calcFab) == address(0), "PHTCollateralHelper/calcFab-inited");
+        require(address(calcFab_) != address(0), "PHTCollateralHelper/calcFab-not-set");
+        require(address(clipFab_) != address(0), "PHTCollateralHelper/clipFab-not-set");
+        require(address(gemJoinFab_) != address(0), "PHTCollateralHelper/gemJoinFab-not-set");
+        require(address(gemJoin5Fab_) != address(0), "PHTCollateralHelper/gemJoin5Fab-not-set");
+
         calcFab = calcFab_;
         clipFab = clipFab_;
         gemJoinFab = gemJoinFab_;
         gemJoin5Fab = gemJoin5Fab_;
+    }
+
+    function setTokenHelper(PHTTokenHelper tokenHelper_) public auth {
+        require(address(tokenHelper_) != address(0), "PHTCollateralHelper/token-helper-not-set");
+        tokenHelper = tokenHelper_;
     }
 
     function deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
@@ -158,48 +187,32 @@ contract PHTCollateralHelper is DSAuth {
         clip.rely(address(pause.proxy()));
     }
 
-    // @TODO return masterMinter
-    // @TODO reuse masterMinter?
     function addCollateral(
-        // @TOOD avoid shadowing owner from base class DSAuth
-        address owner,
         address ilkRegistry,
         IlkParams memory ilkParams,
         TokenParams memory tokenParams,
         FeedParams memory feedParams
     ) public auth returns (address _join, AggregatorV3Interface _feed, address _token, ChainlinkPip _pip) {
-        // require(tokenParams.decimals <= 18, "token-factory-max-decimals");
-        // @TODO why not extend DSAuth instead?
-        // require(IlkRegistryLike(ilkRegistry).wards(address(this)) == 1, "pht-collateral-helper-ilkreg-not-authorized");
-
         _token = tokenParams.token;
         if (_token == address(0)) {
-            FiatTokenInfo memory info = FiatTokenInfo({
+            TokenInfo memory info = TokenInfo({
                 tokenName: tokenParams.name,
                 tokenSymbol: tokenParams.symbol,
                 tokenDecimals: tokenParams.decimals,
-                // @TODO needs FE update
-                tokenCurrency: "",
+                tokenCurrency: tokenParams.currency,
                 initialSupply: tokenParams.initialSupply,
-                initialSupplyMintTo: msg.sender,
-                masterMinterOwner: owner,
-                // @TODO proxyAdmin cannot be the same as owner
-                // update Proxy actions to allow update of implementation of FiatProxy
-                proxyAdmin: address(pause.proxy()),
-                pauser: owner,
-                blacklister: owner,
-                owner: owner
+                initialSupplyMintTo: tokenParams.initialSupplyMintTo,
+                tokenAdmin: tokenParams.tokenAdmin
             });
 
-            (address implementation, address proxy, address masterMinter) =
-                ITokenFactory(tokenParams.factory).create(info);
+            (, address proxy,) = PHTTokenHelper(tokenHelper).createToken(info);
 
-            // newToken.setOwner(owner);
             _token = address(proxy);
         }
 
         _feed = AggregatorV3Interface(feedParams.feed);
         if (address(_feed) == address(0)) {
+            address proxy = address(pause.proxy());
             if (feedParams.numeratorFeed != address(0)) {
                 PriceJoinFeedAggregator feed = feedParams.joinFactory.create(
                     feedParams.numeratorFeed,
@@ -208,11 +221,11 @@ contract PHTCollateralHelper is DSAuth {
                     feedParams.invertDenominator,
                     feedParams.feedDescription
                 );
-                feed.setOwner(owner);
+                feed.setOwner(proxy);
                 _feed = AggregatorV3Interface(address(feed));
             } else {
                 PriceFeedAggregator feed = feedParams.factory.create(feedParams.decimals, feedParams.initialPrice, "");
-                feed.setOwner(owner);
+                feed.setOwner(proxy);
                 _feed = AggregatorV3Interface(address(feed));
             }
         }
@@ -220,15 +233,15 @@ contract PHTCollateralHelper is DSAuth {
 
         // @TODO deny this ward in GemJoin(s)
         if (TokenLike(_token).decimals() < 18) {
-            _join = address(gemJoin5Fab.newJoin(owner, address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoin5Fab.newJoin(address(pause.proxy()), address(vat), ilkParams.ilk, _token));
         } else {
-            _join = address(gemJoinFab.newJoin(owner, address(vat), ilkParams.ilk, _token));
+            _join = address(gemJoinFab.newJoin(address(pause.proxy()), address(vat), ilkParams.ilk, _token));
         }
 
         {
             LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
             _calc.file(bytes32("tau"), ilkParams.tau);
-            _calc.rely(owner);
+            _calc.rely(address(pause.proxy()));
             _calc.deny(address(this));
 
             deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
@@ -237,7 +250,6 @@ contract PHTCollateralHelper is DSAuth {
         {
             vat.file(ilkParams.ilk, bytes32("line"), ilkParams.line);
             vat.file(ilkParams.ilk, bytes32("dust"), ilkParams.dust);
-            vat.rely(address(_join));
             spotter.file(ilkParams.ilk, bytes32("mat"), ilkParams.mat);
         }
 
@@ -250,6 +262,12 @@ contract PHTCollateralHelper is DSAuth {
         {
             (address clip,,,) = dog.ilks(ilkParams.ilk);
             Clipper(clip).file("buf", ilkParams.buf); // Set a 20% increase in auctions (RAY)
+            Clipper(clip).file("tail", ilkParams.tail);
+            Clipper(clip).file("cusp", ilkParams.cusp);
+            Clipper(clip).file("chip", ilkParams.chip);
+            Clipper(clip).file("tip", ilkParams.tip);
+            Clipper(clip).deny(address(this));
+            Clipper(clip).upchost();
         }
 
         {

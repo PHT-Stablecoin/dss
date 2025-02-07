@@ -57,7 +57,12 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                 jugBase: config.jugBase, // 0.00000006279% => 2% base global fee
                 authorityOwner: config.authorityOwner,
                 // this is needed in order to be able to call addCollateral() in PHTDeploymentHelper
-                authorityRootUsers: config.authorityRootUsers
+                authorityRootUsers: config.authorityRootUsers,
+                vowWaitSeconds: config.vowWaitSeconds,
+                vowDumpWad: config.vowDumpWad,
+                vowSumpRad: config.vowSumpRad,
+                vowBumpRad: config.vowBumpRad,
+                vowHumpRad: config.vowHumpRad
             })
         );
 
@@ -78,7 +83,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
             });
 
             (collateralOutputs[i].join,, collateralOutputs[i].token,) = h.addCollateral(
-                address(dssDeploy.pause().proxy()),
                 res.ilkRegistry,
                 PHTCollateralHelper.IlkParams({
                     buf: ilkParams.buf, // already in RAY units
@@ -89,16 +93,22 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
                     ilk: ilkParams.ilk,
                     line: ilkParams.lineRad * RAD,
                     mat: ilkParams.matEther * 1e18, // Liquidation Ratio
-                    tau: ilkParams.tau
+                    tau: ilkParams.tau,
+                    tail: ilkParams.tail,
+                    cusp: ilkParams.cusp,
+                    chip: ilkParams.chip,
+                    tip: ilkParams.tip
                 }),
                 PHTCollateralHelper.TokenParams({
-                    factory: ITokenFactory(res.tokenFactory),
                     token: tokenParams.token,
                     symbol: tokenParams.symbol,
                     name: tokenParams.name,
                     decimals: tokenParams.decimals,
+                    currency: tokenParams.currency,
                     maxSupply: tokenParams.maxSupply,
-                    initialSupply: tokenParams.initialSupply
+                    initialSupply: tokenParams.initialSupply,
+                    initialSupplyMintTo: tokenParams.initialSupplyMintTo,
+                    tokenAdmin: tokenParams.tokenAdmin
                 }),
                 PHTCollateralHelper.FeedParams({
                     factory: PriceFeedFactory(res.priceFeedFactory),
@@ -191,7 +201,6 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         artifacts.serialize("cure", r.cure);
         artifacts.serialize("end", r.end);
         artifacts.serialize("esm", r.esm);
-        // --- ChainLog ---
         artifacts.serialize("clog", r.clog);
 
         // --- Factories ---
@@ -202,7 +211,11 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
         artifacts.serialize("feedPhpUsd", r.feedPhpUsd);
 
         // --- Helpers ----
-        string memory json = artifacts.serialize("collateralHelper", r.collateralHelper);
+        artifacts.serialize("collateralHelper", r.collateralHelper);
+        artifacts.serialize("tokenHelper", r.tokenHelper);
+
+        // --- ChainLog ---
+        string memory json = artifacts.serialize("clog", r.clog);
 
         json.write(path);
     }

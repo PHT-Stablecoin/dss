@@ -44,6 +44,8 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
+import {PHTTokenHelper, TokenActions} from "../pht/PHTTokenHelper.sol";
+
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
 interface IThingAdmin {
@@ -112,13 +114,12 @@ struct PHTDeployResult {
     address tokenFactory;
     // --- Helpers ----
     address collateralHelper;
+    address tokenHelper;
     // --- Chainlink ---
     address feedPhpUsd;
 }
 
 contract PHTDeploy is StdCheats {
-    address constant THROWAWAY_ADDRESS = address(1);
-
     DssDeploy dssDeploy;
     DssProxyActions dssProxyActions;
     DssProxyActionsEnd dssProxyActionsEnd;
@@ -135,18 +136,24 @@ contract PHTDeploy is StdCheats {
     GemJoin5Fab gemJoin5Fab;
 
     PHTCollateralHelper collateralHelper;
+    PHTTokenHelper tokenHelper;
+    FiatTokenFactory tokenFactory;
 
     ChainLog clog;
     DssAutoLine autoline;
     IlkRegistry ilkRegistry;
     address feedPhpUsd;
 
-    // -- ROLES --
-    uint8 constant ROLE_GOV_MINT_BURN = 10;
-    uint8 constant ROLE_GOV_ADD_COLLATERAL = 10;
+    address constant THROWAWAY_ADDRESS = address(1);
 
-    uint8 constant ROLE_CAN_PLOT = 11;
-    uint8 constant ROLE_CAN_EXEC = 12;
+    // -- ROLES --
+    uint8 public constant ROLE_GOV_MINT_BURN = 10;
+    uint8 public constant ROLE_GOV_ADD_COLLATERAL = 11;
+    uint8 public constant ROLE_GOV_CREATE_TOKEN = 12;
+    uint8 public constant ROLE_CAN_PLOT = 13;
+    uint8 public constant ROLE_CAN_EXEC = 14;
+    uint8 public constant ROLE_JOIN_FEED_FACTORY_CREATE = 15;
+    uint8 public constant ROLE_FEED_FACTORY_CREATE = 16;
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
@@ -156,8 +163,6 @@ contract PHTDeploy is StdCheats {
     function deploy(PHTDeployConfig memory _c) public returns (PHTDeployResult memory result) {
         require(_c.authorityRootUsers.length > 0, "> authorityRootUsers");
         require(_c.authorityOwner != address(0), "authorityOwner required");
-
-        result.tokenFactory = deployFiatTokenFactory();
 
         result.authority = address(deployAuthority(_c.authorityRootUsers));
         (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
@@ -211,6 +216,8 @@ contract PHTDeploy is StdCheats {
             result.feedPhpUsd = feedPhpUsd;
             result.joinFeedFactory = address(joinFeedFactory);
             result.collateralHelper = address(collateralHelper);
+            result.tokenHelper = address(tokenHelper);
+            result.tokenFactory = address(tokenFactory);
         }
 
         // ChainLog
@@ -245,7 +252,7 @@ contract PHTDeploy is StdCheats {
         return result;
     }
 
-    function deployFiatTokenFactory() private returns (address) {
+    function deployFiatTokenFactory() private returns (FiatTokenFactory) {
         ImplementationDeployer implementationDeployer = new ImplementationDeployer();
         MasterMinterDeployer masterMinterDeployer = new MasterMinterDeployer();
         ProxyInitializer proxyInitializer = new ProxyInitializer();
@@ -254,7 +261,7 @@ contract PHTDeploy is StdCheats {
             address(implementationDeployer), address(masterMinterDeployer), address(proxyInitializer)
         );
 
-        return address(factory);
+        return factory;
     }
 
     function deployAuthority(address[] memory _rootUsers) private returns (DSRoles authority) {
@@ -366,10 +373,18 @@ contract PHTDeploy is StdCheats {
         priceFeedFactory = new PriceFeedFactory();
         feedPhpUsd = _c.phtUsdFeed;
         // in testing environments we can deploy a mock feed for PHP/USD
+        // this is done before we set authority and owner below
         if (feedPhpUsd == address(0)) {
             feedPhpUsd = address(priceFeedFactory.create(8, 0.018e8, "PHP/USD")); // PHP/USD: 1 PHP = 0.018 USD
         }
+
+        priceFeedFactory.setAuthority(DSRoles(_authority));
+        priceFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
+
         joinFeedFactory = new PriceJoinFeedFactory();
+        joinFeedFactory.setAuthority(DSRoles(_authority));
+        joinFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
+
         gemJoinFab = new GemJoinFab();
         gemJoin5Fab = new GemJoin5Fab();
 
@@ -385,6 +400,20 @@ contract PHTDeploy is StdCheats {
         );
 
         {
+            // Setup Token Factory
+            tokenFactory = deployFiatTokenFactory();
+            tokenFactory.rely(address(dssDeploy.pause().proxy()));
+            tokenFactory.deny(address(this));
+        }
+
+        {
+            // Setup TokenHelper
+            tokenHelper = new PHTTokenHelper(dssDeploy.pause(), new TokenActions(), tokenFactory);
+            DSRoles(address(_authority)).setUserRole(address(tokenHelper), ROLE_CAN_PLOT, true);
+            proxyActions.rely(address(tokenFactory), address(tokenHelper));
+        }
+
+        {
             // Setup CollateralHelper
             collateralHelper = new PHTCollateralHelper(
                 dssDeploy.vat(),
@@ -398,12 +427,32 @@ contract PHTDeploy is StdCheats {
             );
 
             collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab, gemJoin5Fab);
+            collateralHelper.setTokenHelper(tokenHelper);
 
             proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.spotter()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.dog()), address(collateralHelper));
             proxyActions.rely(address(ilkRegistry), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.jug()), address(collateralHelper));
+            proxyActions.rely(address(tokenFactory), address(collateralHelper));
+
+            // allow collateralHelper to create tokens
+            DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_GOV_CREATE_TOKEN, true);
+            DSRoles(address(_authority)).setRoleCapability(
+                ROLE_GOV_CREATE_TOKEN, address(tokenHelper), tokenHelper.createToken.selector, true
+            );
+
+            // allow collateralHelper to create join feeds
+            DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_JOIN_FEED_FACTORY_CREATE, true);
+            DSRoles(address(_authority)).setRoleCapability(
+                ROLE_JOIN_FEED_FACTORY_CREATE, address(joinFeedFactory), joinFeedFactory.create.selector, true
+            );
+
+            // allow collateralHelper to create price feeds
+            DSRoles(address(_authority)).setUserRole(address(collateralHelper), ROLE_FEED_FACTORY_CREATE, true);
+            DSRoles(address(_authority)).setRoleCapability(
+                ROLE_FEED_FACTORY_CREATE, address(priceFeedFactory), priceFeedFactory.create.selector, true
+            );
         }
 
         // DSRoles(address(_authority)).setRoleCapability(
@@ -424,6 +473,12 @@ contract PHTDeploy is StdCheats {
             proxyActions.file(address(dssDeploy.vat()), "Line", uint256(_c.vatLineRad * RAD)); // 10M PHT
             // Set Global Base Fee
             proxyActions.file(address(dssDeploy.jug()), "base", _c.jugBase); // 0.00000006279% => 2% base global fee
+
+            proxyActions.file(address(dssDeploy.vow()), "wait", _c.vowWaitSeconds);
+            proxyActions.file(address(dssDeploy.vow()), "dump", _c.vowDumpWad);
+            proxyActions.file(address(dssDeploy.vow()), "sump", _c.vowSumpRad);
+            proxyActions.file(address(dssDeploy.vow()), "bump", _c.vowBumpRad);
+            proxyActions.file(address(dssDeploy.vow()), "hump", _c.vowHumpRad);
 
             /// Run initial drip
             // jug.drip("USDT-A");
@@ -453,7 +508,7 @@ contract PHTDeploy is StdCheats {
         return deployCode("./out_pht/DssProxyRegistry.sol/DssProxyRegistry.json");
     }
 
-    function chainId() internal view returns (uint256 _chainId) {
+    function chainId() internal pure returns (uint256 _chainId) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             _chainId := chainid()

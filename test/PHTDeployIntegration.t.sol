@@ -17,6 +17,8 @@ import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
+import {PHTTokenHelper, TokenInfo} from "../pht/PHTTokenHelper.sol";
+
 import {PHTOpsTestLib} from "./helpers/PHTOpsTestLib.sol";
 
 import {FiatTokenFactory} from "../fiattoken/FiatTokenFactory.sol";
@@ -50,7 +52,12 @@ contract PHTDeployIntegrationTest is Test {
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 authorityOwner: alice,
-                authorityRootUsers: [eve].toMemoryArray()
+                authorityRootUsers: [eve].toMemoryArray(),
+                vowWaitSeconds: uint256(0),
+                vowDumpWad: uint256(0),
+                vowSumpRad: uint256(0),
+                vowBumpRad: uint256(0),
+                vowHumpRad: uint256(0)
             })
         );
         h = PHTCollateralHelper(res.collateralHelper);
@@ -69,41 +76,31 @@ contract PHTDeployIntegrationTest is Test {
         address minter = makeAddr("minter");
 
         // Test #1: Create a token
-        FiatTokenInfo memory info = FiatTokenInfo({
+        TokenInfo memory info = TokenInfo({
             tokenName: "Stable1",
             tokenSymbol: "ST1",
             tokenDecimals: 6,
             tokenCurrency: "USD",
             initialSupply: 100_000 * 1e6,
             initialSupplyMintTo: bob,
-            masterMinterOwner: masterMinterOwner,
-            proxyAdmin: proxyAdmin,
-            pauser: owner,
-            blacklister: owner,
-            owner: owner
+            tokenAdmin: bob
         });
 
-        (address implementation, address proxy, address masterMinter) = FiatTokenFactory(res.tokenFactory).create(info);
+        vm.startPrank(eve);
+        (address implementation, address proxy, address masterMinter) =
+            PHTTokenHelper(res.tokenHelper).createToken(info);
 
         // Verify initial balance
         assertEq(IERC20(proxy).balanceOf(bob), 100_000 * 1e6, "bob should have 100,000 tokens");
-
-        vm.prank(masterMinterOwner);
-        IMasterMinter(masterMinter).configureController(controller, minter);
-
-        vm.prank(controller);
-        IMasterMinter(masterMinter).configureMinter(1e9);
-
-        vm.prank(minter);
-        IFiatToken(proxy).mint(bob, 1e9);
-
+        PHTTokenHelper(res.tokenHelper).mint(proxy, bob, 1e9);
         assertEq(IERC20(proxy).balanceOf(bob), (100_000 * 1e6) + 1e9, "bob should have 100,000 + 1000 tokens");
+        vm.stopPrank();
     }
 
     function test_openLockGemAndDraw() public {
         (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
         vm.startPrank(eve);
-        (address join,, address token,) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
+        (address join,, address token,,,,) = PHTCollateralTestLib.addCollateral(bytes32(ILK_NAME), res, h, eve);
         // transfer some tokens to bob
         IERC20(token).transfer(bob, 1e9);
 

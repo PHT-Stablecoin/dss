@@ -21,22 +21,29 @@
       },
       "ilkParams": {
         "buf": 1.2e27,
+        "chip": 0.01e18,
         "chop": 1.13e18,
+        "cusp": 0.02e45,
         "dust": 11,
         "duty": 1.0000000012436807e27,
         "holeRad": 5000000,
         "ilk": "0x5048502d41000000000000000000000000000000000000000000000000000000",
         "lineRad": 5000000,
         "matEther": 1050000000,
-        "tau": 3600
+        "tail": 100,
+        "tau": 3600,
+        "tip": 0
       },
       "tokenParams": {
+        "currency": "PHP",
         "decimals": 6,
         "initialSupply": 1000000000,
+        "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
         "maxSupply": 333,
         "name": "Testtttttttt PHP",
         "symbol": "tstPHP",
-        "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE"
+        "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
+        "tokenAdmin": "0x1111111111111111111111111111111111111111"
       }
     },
     {
@@ -52,22 +59,29 @@
       },
       "ilkParams": {
         "buf": 2.2e27,
+        "chip": 0.01e18,
         "chop": 2.13e18,
+        "cusp": 0.02e45,
         "dust": 12,
         "duty": 2.0000000012436807e27,
         "holeRad": 6000000,
         "ilk": "0x5048502d42000000000000000000000000000000000000000000000000000000",
         "lineRad": 6000000,
         "matEther": 2050000000,
-        "tau": 4600
+        "tail": 100,
+        "tau": 4600,
+        "tip": 0
       },
       "tokenParams": {
+        "currency": "PHP",
         "decimals": 7,
         "initialSupply": 2000000000,
+        "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
         "maxSupply": 666,
         "name": "Testtttttttt PHP2",
         "symbol": "tstPHP2",
-        "token": "0x80CE70CE70CE70CE70CE70CE70CE70CE70CE70CE"
+        "token": "0x80CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
+        "tokenAdmin": "0x1111111111111111111111111111111111111111"
       }
     }
   ],

@@ -9,4 +9,9 @@ struct PHTDeployConfig {
     uint256 jugBase;
     address authorityOwner;
     address[] authorityRootUsers;
+    uint256 vowBumpRad;
+    uint256 vowDumpWad;
+    uint256 vowHumpRad;
+    uint256 vowSumpRad;
+    uint256 vowWaitSeconds;
 }

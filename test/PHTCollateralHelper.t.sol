@@ -9,7 +9,12 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
+import {DSPause, DSPauseProxy} from "ds-pause/pause.sol";
+
 import {Jug} from "../src/jug.sol";
+import {LinearDecrease} from "dss/abaci.sol";
+import {GemJoin5} from "dss-gem-joins/join-5.sol";
+import {GemJoin} from "dss/join.sol";
 
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {PHTDeploy, PHTDeployResult} from "../script/PHTDeploy.sol";
@@ -18,9 +23,11 @@ import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFac
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface, PipLike} from "../pht/helpers/ChainlinkPip.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
+import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 
 import {PHTDeployConfig} from "../script/PHTDeployConfig.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
+import {PHTTokenHelper, TokenActions, TokenInfo} from "../pht/PHTTokenHelper.sol";
 
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 
@@ -56,17 +63,27 @@ contract PHTCollateralHelperTest is Test {
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 authorityOwner: alice,
-                authorityRootUsers: [eve].toMemoryArray()
+                authorityRootUsers: [eve].toMemoryArray(),
+                vowWaitSeconds: uint256(0),
+                vowDumpWad: uint256(0),
+                vowSumpRad: uint256(0),
+                vowBumpRad: uint256(0),
+                vowHumpRad: uint256(0)
             })
         );
         h = PHTCollateralHelper(res.collateralHelper);
+        // allow this contract to create feeds through the feed factory
+        // we do this in the test helper PHTCollateralTestLib.addCollateralJoin
+        vm.startPrank(alice);
+        DSRoles(address(res.authority)).setUserRole(address(this), d.ROLE_FEED_FACTORY_CREATE(), true);
+        vm.stopPrank();
     }
 
-    function geLastIlkName(address ilkRegistry) internal returns (bytes32) {
+    function geLastIlkName(address ilkRegistry) internal view returns (bytes32) {
         return keccak256(abi.encodePacked(ILK_PREFIX, IlkRegistry(ilkRegistry).count() - 1));
     }
 
-    function getNextIlkName(address ilkRegistry) internal returns (bytes32) {
+    function getNextIlkName(address ilkRegistry) internal view returns (bytes32) {
         return keccak256(abi.encodePacked(ILK_PREFIX, IlkRegistry(ilkRegistry).count()));
     }
 
@@ -101,17 +118,42 @@ contract PHTCollateralHelperTest is Test {
 
         vm.startPrank(eve);
         bytes32 ilk = getNextIlkName(res.ilkRegistry);
-        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) =
-            PHTCollateralTestLib.addCollateral(ilk, res, h, eve);
+        (
+            address phpJoin,
+            AggregatorV3Interface feed,
+            address token,
+            ChainlinkPip pip,
+            PHTCollateralHelper.IlkParams memory ilkParams,
+            PHTCollateralHelper.TokenParams memory tokenParams,
+            PHTCollateralHelper.FeedParams memory feedParams
+        ) = PHTCollateralTestLib.addCollateral(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "Test PHP", "token name");
         assertEq(IERC20Metadata(token).symbol(), "tstPHP", "token symbol");
         assertEq(uint256(IERC20Metadata(token).decimals()), 6, "token decimals");
+
         // ensure eve received the token balance
-        assertEq(IERC20(token).balanceOf(eve), 1000 * 10 ** 6, "eve should have received the token balance");
+        assertEq(IERC20(token).balanceOf(eve), tokenParams.initialSupply, "eve should have received the token balance");
         assertEq(IlkRegistry(res.ilkRegistry).count(), ilksCountBef + 1, "[PHTCollateralHelperTest] ilksCount");
         assertEq(address(pip), IlkRegistry(res.ilkRegistry).pip(ilk), "Same Pip");
+
+        Clipper ilkClip = Clipper(IlkRegistry(res.ilkRegistry).xlip(ilk));
+        assertEq(ilkClip.buf(), ilkParams.buf);
+        assertEq(ilkClip.tail(), ilkParams.tail);
+        assertEq(ilkClip.cusp(), ilkParams.cusp);
+        assertEq(uint256(ilkClip.chip()), uint256(ilkParams.chip));
+        assertEq(uint256(ilkClip.tip()), uint256(ilkParams.tip));
+        assertEq(ilkClip.chost(), ilkParams.dust * ilkParams.chop);
+
+        // ensure pause.proxy auth
+        DSPauseProxy proxy = DSPause(res.pause).proxy();
+
+        vm.startPrank(eve);
+        ProxyActions(res.proxyActions).rely(phpJoin, alice);
+        assertEq(GemJoin(phpJoin).wards(address(proxy)), 1);
+        assertEq(GemJoin(phpJoin).wards(alice), 1);
+        assertEq(LinearDecrease(address(ilkClip.calc())).wards(address(proxy)), 1);
     }
 
     function test_addsIlk_join() public {
@@ -119,8 +161,16 @@ contract PHTCollateralHelperTest is Test {
 
         vm.startPrank(eve);
         bytes32 ilk = getNextIlkName(res.ilkRegistry);
-        (address phpJoin, AggregatorV3Interface feed, address token, ChainlinkPip pip) =
-            PHTCollateralTestLib.addCollateralJoin(ilk, res, h, eve);
+        (
+            address phpJoin,
+            AggregatorV3Interface feed,
+            address token,
+            ChainlinkPip pip,
+            PHTCollateralHelper.IlkParams memory ilkParams,
+            /*PHTCollateralHelper.TokenParams memory tokenParams*/
+            ,
+            /*PHTCollateralHelper.FeedParams memory feedParams*/
+        ) = PHTCollateralTestLib.addCollateralJoin(ilk, res, h, eve);
         vm.stopPrank();
 
         assertEq(IERC20Metadata(token).name(), "pDAI", "token name");
@@ -133,6 +183,93 @@ contract PHTCollateralHelperTest is Test {
 
         (bytes32 answer,) = pip.peek();
         assertApproxEqAbsDecimal(uint256(answer), 58e18, 0.2e18, 18, "1 DAI should be approx 58 PHT");
+
+        Clipper ilkClip = Clipper(IlkRegistry(res.ilkRegistry).xlip(ilk));
+        assertEq(ilkClip.buf(), ilkParams.buf);
+        assertEq(ilkClip.tail(), ilkParams.tail);
+        assertEq(ilkClip.cusp(), ilkParams.cusp);
+        assertEq(uint256(ilkClip.chip()), uint256(ilkParams.chip));
+        assertEq(uint256(ilkClip.tip()), uint256(ilkParams.tip));
+        assertEq(ilkClip.chost(), ilkParams.dust * ilkParams.chop);
+
+        // ensure pause.proxy auth
+        DSPauseProxy proxy = DSPause(res.pause).proxy();
+
+        vm.startPrank(eve);
+        ProxyActions(res.proxyActions).rely(phpJoin, alice);
+        assertEq(GemJoin(phpJoin).wards(address(proxy)), 1);
+        assertEq(GemJoin(phpJoin).wards(alice), 1);
+        assertEq(LinearDecrease(address(ilkClip.calc())).wards(address(proxy)), 1);
+        vm.stopPrank();
+
+        PriceJoinFeedAggregator feedObj = PriceJoinFeedAggregator(address(feed));
+        assertEq(feedObj.description(), "DAI/PHT");
+        assertEq(uint256(feedObj.decimals()), 8);
+        assertEq(feedObj.version(), 1);
+        assertEq(feedObj.live(), 1);
+
+        // non-authority should not be able to admin feeds
+        vm.expectRevert("ds-auth-unauthorized");
+        feedObj.file("decimals", 12);
+
+        // ensure that authority can update the feeds
+        // created through the factory
+        vm.startPrank(eve);
+        feedObj.file("live", uint256(0));
+        vm.expectRevert("PriceJoinFeedAggregator/not-live");
+        feedObj.latestRoundData();
+        vm.stopPrank();
+
+        // test numerator feed
+        PriceFeedAggregator numeratorFeed = PriceFeedAggregator(address(feedObj.numeratorFeed()));
+        assertEq(numeratorFeed.description(), "DAI/USD");
+        assertEq(uint256(numeratorFeed.decimals()), uint256(8));
+        assertEq(numeratorFeed.live(), 1);
+        // can call latestRoundData
+        (, int256 numeratorAnswer,,,) = numeratorFeed.latestRoundData();
+        assertEq(uint256(numeratorAnswer), 1e8, "numeratorAnswer");
+
+        // non-authority should not be able to admin feeds
+        vm.expectRevert("ds-auth-unauthorized");
+        numeratorFeed.file("description", "something");
+
+        // ensure that authority can update the feeds
+        // created through the factory
+        vm.startPrank(eve);
+        numeratorFeed.file("description", "something");
+        assertEq(numeratorFeed.description(), "something");
+
+        numeratorFeed.file("live", uint256(0));
+        vm.expectRevert("PriceFeedAggregator/not-live");
+        numeratorFeed.latestRoundData();
+        vm.stopPrank();
+
+        // test denominator feed
+        PriceFeedAggregator denominatorFeed = PriceFeedAggregator(address(feedObj.denominatorFeed()));
+        assertEq(denominatorFeed.description(), "PHP/USD");
+        assertEq(uint256(denominatorFeed.decimals()), uint256(8));
+        assertEq(denominatorFeed.live(), 1);
+
+        // can call latestRoundData
+        (, int256 denominatorAnswer,,,) = denominatorFeed.latestRoundData();
+        assertEq(uint256(denominatorAnswer), 1720000, "denominatorAnswer");
+
+        // non-authority should not be able to admin feeds
+        vm.expectRevert("ds-auth-unauthorized");
+        denominatorFeed.file("description", "something");
+
+        vm.expectRevert("ds-auth-unauthorized");
+        denominatorFeed.file("live", uint256(0));
+
+        // ensure that authority can update the feeds
+        // created through the factory
+        vm.startPrank(eve);
+        denominatorFeed.file("description", "something");
+        assertEq(denominatorFeed.description(), "something");
+        denominatorFeed.file("live", uint256(0));
+        vm.expectRevert("PriceFeedAggregator/not-live");
+        denominatorFeed.latestRoundData();
+        vm.stopPrank();
     }
 
     function test_rootCanAddCollateral() public {
@@ -142,13 +279,21 @@ contract PHTCollateralHelperTest is Test {
     }
 
     function testFail_shouldFailWithAuth() public {
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, alice);
+        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
     }
 
     function testFail_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
         PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, alice);
         vm.stopPrank();
+    }
+
+    function test_tokenHelper_integration() public {
+        vm.startPrank(eve);
+        (,, address token,,,,) = PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
+
+        PHTTokenHelper(res.tokenHelper).mint(token, alice, 100e18);
+        assertEqDecimal(IERC20(token).balanceOf(alice), 100e18, 18);
     }
 }
 

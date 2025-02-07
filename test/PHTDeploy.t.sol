@@ -14,6 +14,7 @@ import {PHTCollateralHelper} from "../pht/PHTCollateralHelper.sol";
 import {ArrayHelpers} from "../pht/lib/ArrayHelpers.sol";
 import {DSRoles} from "../pht/lib/Roles.sol";
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
+import {Vow} from "dss/vow.sol";
 
 contract PHTDeployTest is Test {
     using ArrayHelpers for *;
@@ -39,7 +40,12 @@ contract PHTDeployTest is Test {
                 vatLineRad: 10_000_000,
                 jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
                 authorityOwner: alice,
-                authorityRootUsers: [eve].toMemoryArray()
+                authorityRootUsers: [eve].toMemoryArray(),
+                vowWaitSeconds: uint256(133),
+                vowDumpWad: uint256(133),
+                vowSumpRad: uint256(133),
+                vowBumpRad: uint256(133),
+                vowHumpRad: uint256(133)
             })
         );
     }
@@ -50,6 +56,11 @@ contract PHTDeployTest is Test {
         assertTrue(DSRoles(res.authority).isUserRoot(eve), "eve should be root");
         assertFalse(DSRoles(res.authority).isUserRoot(alice), "alice should NOT be root");
         assertTrue(DSRoles(res.authority).owner() == alice, "alice should be owner");
+        assertEq(Vow(res.vow).wait(), 133, "vow.wait should be set");
+        assertEq(Vow(res.vow).dump(), 133, "vow.dump should be set");
+        assertEq(Vow(res.vow).sump(), 133, "vow.sump should be set");
+        assertEq(Vow(res.vow).bump(), 133, "vow.bump should be set");
+        assertEq(Vow(res.vow).hump(), 133, "vow.hump should be set");
     }
 
     function test_openLockGemAndDraw() public {

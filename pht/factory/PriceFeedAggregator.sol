@@ -18,55 +18,51 @@ interface AggregatorV3Interface {
         external
         view
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
-    // @TODO add this
-    // function latestAnswer() external view returns (int256);
 }
 
 contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
-    // --- Auth ---
-    mapping(address => uint256) public wards;
-
-    function rely(address guy) external auth {
-        wards[guy] = 1;
-    }
-
-    function deny(address guy) external auth {
-        wards[guy] = 0;
-    }
-
-    uint256 public override version = 0;
+    uint256 public override version = 1;
     string public override description = "";
     uint8 public override decimals = 8;
 
     int256 internal answer = 0;
-    uint256 internal live = 0;
+    uint256 public live = 0;
 
     // --- Init ---
     constructor() public {
-        wards[msg.sender] = 1;
         live = 1;
     }
 
     // --- Administration ---
     function file(bytes32 what, uint256 data) external auth {
-        require(live == 1, "MockAggregatorV3/not-live");
         if (what == "decimals") decimals = uint8(data);
-        else revert("MockAggregatorV3/file-unrecognized-param");
+        else if (what == "live") live = data;
+        else revert("PriceFeedAggregator/file-unrecognized-param");
     }
 
     function file(bytes32 what, int256 data) external auth {
-        require(live == 1, "MockAggregatorV3/not-live");
         if (what == "answer") answer = data;
-        else revert("MockAggregatorV3/file-unrecognized-param");
+        else revert("PriceFeedAggregator/file-unrecognized-param");
+    }
+
+    function file(bytes32 what, string memory data) external auth {
+        if (what == "description") description = data;
+        else revert("PriceFeedAggregator/file-unrecognized-param");
     }
 
     function getRoundData(uint80 _roundId)
         external
         view
         override
-        returns (uint80, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
+        returns (uint80 roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
+        require(live == 1, "PriceFeedAggregator/not-live");
+
         _answer = answer;
+        roundId = _roundId;
+        _startedAt = block.timestamp;
+        _updatedAt = block.timestamp;
+        _answeredInRound = _roundId;
     }
 
     function latestRoundData()
@@ -75,11 +71,12 @@ contract PriceFeedAggregator is AggregatorV3Interface, DSThing {
         override
         returns (uint80 _roundId, int256 _answer, uint256 _startedAt, uint256 _updatedAt, uint80 _answeredInRound)
     {
+        require(live == 1, "PriceFeedAggregator/not-live");
+
         _answer = answer;
-        // @TODO add this & in getRoundData
-        // _updatedAt = block.timestamp;
-        // _startedAt = block.timestamp;
-        // _answeredInRound = 1;
-        // _roundId = 1;
+        _roundId = 1;
+        _startedAt = block.timestamp;
+        _updatedAt = block.timestamp;
+        _answeredInRound = 1;
     }
 }
