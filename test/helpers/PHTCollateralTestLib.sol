@@ -59,8 +59,8 @@ library PHTCollateralTestLib {
             factory: PriceFeedFactory(res.priceFeedFactory),
             joinFactory: PriceJoinFeedFactory(res.joinFeedFactory),
             feed: address(0),
-            decimals: 6,
-            initialPrice: int256(1 * 10 ** 6), // Price 1 DAI (PHT) = 1 PHP (precision 6)
+            decimals: 8,
+            initialPrice: int256(5813953488), // Price 1 USDC = 58.13953488 PHP (precision 8)
             numeratorFeed: address(0),
             invertNumerator: false,
             denominatorFeed: address(0),

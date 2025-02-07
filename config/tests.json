@@ -1,93 +1,93 @@
 {
-    "_notes": "The _notes field is used to store any additional information about the configuration. It is not used for any other purpose.",
-    "authorityOwner": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
-    "authorityRootUsers": [
-        "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
-        "0xa959355654849CbEAbBf65235f8235833b9e031D",
-        "0x1111111111111111111111111111111111111111",
-        "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED"
-    ],
-    "collaterals": [
-        {
-            "feedParams": {
-                "decimals": 6,
-                "denominatorFeed": "0x1111111111111111111111111111111111111111",
-                "feed": "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED",
-                "feedDescription": "Test feed",
-                "initialPrice": 1000000,
-                "invertDenominator": true,
-                "invertNumerator": false,
-                "numeratorFeed": "0x2222222222222222222222222222222222222222"
-            },
-            "ilkParams": {
-                "buf": 1.2e27,
-                "chip": 0.01e18,
-                "chop": 1.13e18,
-                "cusp": 0.02e45,
-                "dust": 11,
-                "duty": 1.0000000012436807e27,
-                "holeRad": 5000000,
-                "ilk": "0x5048502d41000000000000000000000000000000000000000000000000000000",
-                "lineRad": 5000000,
-                "matEther": 1050000000,
-                "tail": 100,
-                "tau": 3600,
-                "tip": 0
-            },
-            "tokenParams": {
-                "currency": "PHP",
-                "decimals": 6,
-                "initialSupply": 1000000000,
-                "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
-                "maxSupply": 333,
-                "name": "Testtttttttt PHP",
-                "symbol": "tstPHP",
-                "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
-                "tokenAdmin": "0x1111111111111111111111111111111111111111"
-            }
-        },
-        {
-            "feedParams": {
-                "decimals": 9,
-                "denominatorFeed": "0x2111111111111111111111111111111111111111",
-                "feed": "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED",
-                "feedDescription": "Test feed2",
-                "initialPrice": 2000000,
-                "invertDenominator": false,
-                "invertNumerator": true,
-                "numeratorFeed": "0x3222222222222222222222222222222222222222"
-            },
-            "ilkParams": {
-                "buf": 2.2e27,
-                "chip": 0.01e18,
-                "chop": 2.13e18,
-                "cusp": 0.02e45,
-                "dust": 12,
-                "duty": 2.0000000012436807e27,
-                "holeRad": 6000000,
-                "ilk": "0x5048502d42000000000000000000000000000000000000000000000000000000",
-                "lineRad": 6000000,
-                "matEther": 2050000000,
-                "tail": 100,
-                "tau": 4600,
-                "tip": 0
-            },
-            "tokenParams": {
-                "currency": "PHP",
-                "decimals": 7,
-                "initialSupply": 2000000000,
-                "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
-                "maxSupply": 666,
-                "name": "Testtttttttt PHP2",
-                "symbol": "tstPHP2",
-                "token": "0x80CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
-                "tokenAdmin": "0x1111111111111111111111111111111111111111"
-            }
-        }
-    ],
-    "dogHoleRad": 10000000,
-    "govTokenSymbol": "APC",
-    "jugBase": 0.0000000006279e27,
-    "phtUsdFeed": "0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd",
-    "vatLineRad": 13000000
+  "_notes": "The _notes field is used to store any additional information about the configuration. It is not used for any other purpose.",
+  "authorityOwner": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
+  "authorityRootUsers": [
+    "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
+    "0xa959355654849CbEAbBf65235f8235833b9e031D",
+    "0x1111111111111111111111111111111111111111",
+    "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED"
+  ],
+  "collaterals": [
+    {
+      "feedParams": {
+        "decimals": 6,
+        "denominatorFeed": "0x1111111111111111111111111111111111111111",
+        "feed": "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED",
+        "feedDescription": "Test feed",
+        "initialPrice": 1000000,
+        "invertDenominator": true,
+        "invertNumerator": false,
+        "numeratorFeed": "0x2222222222222222222222222222222222222222"
+      },
+      "ilkParams": {
+        "buf": 1.2e27,
+        "chip": 0.01e18,
+        "chop": 1.13e18,
+        "cusp": 0.02e45,
+        "dust": 11,
+        "duty": 1.0000000012436807e27,
+        "holeRad": 5000000,
+        "ilk": "0x5048502d41000000000000000000000000000000000000000000000000000000",
+        "lineRad": 5000000,
+        "matEther": 1050000000,
+        "tail": 100,
+        "tau": 3600,
+        "tip": 0
+      },
+      "tokenParams": {
+        "currency": "PHP",
+        "decimals": 6,
+        "initialSupply": 1000000000,
+        "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
+        "maxSupply": 333,
+        "name": "Testtttttttt PHP",
+        "symbol": "tstPHP",
+        "token": "0x70CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
+        "tokenAdmin": "0x1111111111111111111111111111111111111111"
+      }
+    },
+    {
+      "feedParams": {
+        "decimals": 9,
+        "denominatorFeed": "0x2111111111111111111111111111111111111111",
+        "feed": "0xFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEEDFEED",
+        "feedDescription": "Test feed2",
+        "initialPrice": 2000000,
+        "invertDenominator": false,
+        "invertNumerator": true,
+        "numeratorFeed": "0x3222222222222222222222222222222222222222"
+      },
+      "ilkParams": {
+        "buf": 2.2e27,
+        "chip": 0.01e18,
+        "chop": 2.13e18,
+        "cusp": 0.02e45,
+        "dust": 12,
+        "duty": 2.0000000012436807e27,
+        "holeRad": 6000000,
+        "ilk": "0x5048502d42000000000000000000000000000000000000000000000000000000",
+        "lineRad": 6000000,
+        "matEther": 2050000000,
+        "tail": 100,
+        "tau": 4600,
+        "tip": 0
+      },
+      "tokenParams": {
+        "currency": "PHP",
+        "decimals": 7,
+        "initialSupply": 2000000000,
+        "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
+        "maxSupply": 666,
+        "name": "Testtttttttt PHP2",
+        "symbol": "tstPHP2",
+        "token": "0x80CE70CE70CE70CE70CE70CE70CE70CE70CE70CE",
+        "tokenAdmin": "0x1111111111111111111111111111111111111111"
+      }
+    }
+  ],
+  "dogHoleRad": 10000000,
+  "govTokenSymbol": "APC",
+  "jugBase": 0.0000000006279e27,
+  "phtUsdFeed": "0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd",
+  "vatLineRad": 13000000
 }
