@@ -10,7 +10,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {FiatTokenV1} from "stablecoin-evm/v1/FiatTokenV1.sol";
 
 interface IFiatToken is IERC20 {
-    function mint(address _to, uint256 _amount) external returns (bool);
+    function mint(address _to, uint256 _amount) external;
     function blacklist(address _account) external;
     function unBlacklist(address _account) external;
     function isBlacklisted(address _account) external view returns (bool);
@@ -34,8 +34,9 @@ struct TokenInfo {
 }
 
 contract TokenActions {
-    function mint(address token, address to, uint256 val) public returns (bool done) {
-        return IFiatToken(token).mint(to, val);
+    function mint(address token, address to, uint256 val) public returns (bool) {
+        IFiatToken(token).mint(to, val);
+        return true;
     }
 
     function blacklist(address token, address target) public {
