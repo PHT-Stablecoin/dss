@@ -2,6 +2,7 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 struct PHTDeployConfig {
+    string govTokenName;
     string govTokenSymbol;
     address phtUsdFeed; // optional for testing environments
     uint256 dogHoleRad;

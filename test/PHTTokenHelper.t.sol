@@ -35,7 +35,8 @@ contract PHTTokenHelperTest is Test {
         d = new PHTDeploy();
         res = d.deploy(
             PHTDeployConfig({
-                govTokenSymbol: "APC",
+                govTokenName: "APACX Governance Token",
+                govTokenSymbol: "APCX",
                 phtUsdFeed: address(0), // deploy a mock feed for testing
                 dogHoleRad: 10_000_000,
                 vatLineRad: 10_000_000,
