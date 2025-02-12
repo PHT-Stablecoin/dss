@@ -74,14 +74,24 @@ contract PHTDeployIntegrationTest is Test {
 
     function test_config() public {
         (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
-        assertEq(IERC20Metadata(res.gov).symbol(), "APCX", "govTokenSymbol");
-        assertEq(IERC20Metadata(res.gov).name(), "APACX Governance Token", "govTokenName");
-        assertEq(uint256(IERC20Metadata(res.gov).decimals()), 18, "govTokenDecimals");
         assertEq(Vow(res.vow).bump(), 25000e45, "bump");
         assertEq(Vow(res.vow).dump(), 250e18, "dump");
         assertEq(Vow(res.vow).hump(), 120000000e45, "hump");
         assertEq(Vow(res.vow).sump(), 50000e45, "sump");
         assertEq(Vow(res.vow).wait(), 561600, "wait");
+    }
+
+    function test_gov_token_mint() public {
+        (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
+        assertEq(IERC20Metadata(res.gov).symbol(), "APCX", "govTokenSymbol");
+        assertEq(IERC20Metadata(res.gov).name(), "APACX Governance Token", "govTokenName");
+        assertEq(uint256(IERC20Metadata(res.gov).decimals()), 18, "govTokenDecimals");
+
+        vm.startPrank(eve);
+        assertEq(IERC20(res.gov).balanceOf(eve), 0, "bob should have 0 tokens");
+        PHTTokenHelper(res.tokenHelper).mint(res.gov, eve, 1e18);
+        assertEq(IERC20(res.gov).balanceOf(eve), 1e18, "bob should have 1 token");
+        vm.stopPrank();
     }
 
     function test_stableEvmDeploy() public {

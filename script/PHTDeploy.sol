@@ -498,6 +498,7 @@ contract PHTDeploy is StdCheats {
         {
             DSRoles(address(_authority)).setUserRole(address(dssDeploy.flop()), ROLE_GOV_MINT_BURN, true);
             DSRoles(address(_authority)).setUserRole(address(dssDeploy.flap()), ROLE_GOV_MINT_BURN, true);
+
             DSRoles(address(_authority)).setRoleCapability(
                 ROLE_GOV_MINT_BURN, address(gov), bytes4(keccak256("mint(address,uint256)")), true
             );
