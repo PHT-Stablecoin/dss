@@ -49,6 +49,7 @@ contract PHTDeploymentScript is Script, PHTDeploy, Test {
 
         PHTDeployResult memory res = deploy(
             PHTDeployConfig({
+                govTokenName: config.govTokenName,
                 govTokenSymbol: config.govTokenSymbol,
                 phtUsdFeed: config.phtUsdFeed, // only for sepolia / local testing
                 dogHoleRad: config.dogHoleRad,

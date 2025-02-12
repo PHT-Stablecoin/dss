@@ -11,6 +11,7 @@ interface IPHTDeployConfigJson {
         address[] authorityRootUsers;
         Collateral[] collaterals;
         uint256 dogHoleRad;
+        string govTokenName;
         string govTokenSymbol;
         uint256 jugBase;
         // for prod specify the chainlink PHP/USD feed; for testing specify address(0)
@@ -75,6 +76,20 @@ contract PHTDeploymentConfigJsonHelper is CommonBase {
         string memory json = vm.readFile(path);
         bytes memory data = vm.parseJson(json);
         IPHTDeployConfigJson.Root memory root = abi.decode(data, (IPHTDeployConfigJson.Root));
+
+        // sanity checks
+        require(bytes(root.govTokenName).length > 0, "PHTDeploymentConfigJsonHelper/govTokenName is required");
+        require(bytes(root.govTokenSymbol).length > 0, "PHTDeploymentConfigJsonHelper/govTokenSymbol is required");
+        require(root.authorityOwner != address(0), "PHTDeploymentConfigJsonHelper/authorityOwner is required");
+        require(root.authorityRootUsers.length > 0, "PHTDeploymentConfigJsonHelper/authorityRootUsers is required");
+        require(root.dogHoleRad > 0, "PHTDeploymentConfigJsonHelper/dogHoleRad is required");
+        require(root.vatLineRad > 0, "PHTDeploymentConfigJsonHelper/vatLineRad is required");
+        require(root.jugBase > 0, "PHTDeploymentConfigJsonHelper/jugBase is required");
+        require(root.vowBumpRad > 0, "PHTDeploymentConfigJsonHelper/vowBumpRad is required");
+        require(root.vowDumpWad > 0, "PHTDeploymentConfigJsonHelper/vowDumpWad is required");
+        require(root.vowHumpRad > 0, "PHTDeploymentConfigJsonHelper/vowHumpRad is required");
+        require(root.vowSumpRad > 0, "PHTDeploymentConfigJsonHelper/vowSumpRad is required");
+        require(root.vowWaitSeconds > 0, "PHTDeploymentConfigJsonHelper/vowWaitSeconds is required");
 
         return root;
     }

@@ -14,6 +14,9 @@ contract PHTDeploymentConfigJsonHelperTest is Test {
         PHTDeploymentConfigJsonHelper helper = new PHTDeploymentConfigJsonHelper();
         IPHTDeployConfigJson.Root memory root = helper.readDeploymentConfig("tests.json");
 
+        console.log("root.vatLineRad", root.vatLineRad);
+        console.log("root.dogHoleRad", root.dogHoleRad);
+
         assertEq(
             root._notes,
             "The _notes field is used to store any additional information about the configuration. It is not used for any other purpose.",
@@ -26,11 +29,17 @@ contract PHTDeploymentConfigJsonHelperTest is Test {
         assertEq(root.authorityRootUsers[1], 0xa959355654849CbEAbBf65235f8235833b9e031D, "authorityRootUsers[1]");
         assertEq(root.authorityRootUsers[2], 0x1111111111111111111111111111111111111111, "authorityRootUsers[2]");
         assertEq(root.authorityRootUsers[3], 0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd, "authorityRootUsers[3]");
-        assertEq(root.dogHoleRad, 10000000, "dogHoleRad");
-        assertEq(root.govTokenSymbol, "APC", "govTokenSymbol");
+        assertEq(root.dogHoleRad, 10000000e45, "dogHoleRad");
+        assertEq(root.govTokenName, "APACX Governance Token", "govTokenName");
+        assertEq(root.govTokenSymbol, "APCX", "govTokenSymbol");
         assertEq(root.jugBase, 0.0000000006279e27, "jugBase");
         assertEq(root.phtUsdFeed, 0xfEEDFEEDfeEDFEedFEEdFEEDFeEdfEEdFeEdFEEd, "phtUsdFeed");
-        assertEq(root.vatLineRad, 13000000, "vatLineRad");
+        assertEq(root.vatLineRad, 13000000e45, "vatLineRad");
+        assertEq(root.vowBumpRad, 13, "vowBumpRad");
+        assertEq(root.vowDumpWad, 14, "vowDumpWad");
+        assertEq(root.vowHumpRad, 15, "vowHumpRad");
+        assertEq(root.vowSumpRad, 16, "vowSumpRad");
+        assertEq(root.vowWaitSeconds, 17, "vowWaitSeconds");
 
         assertEq(root.collaterals.length, 2, "collaterals.length");
         IPHTDeployConfigJson.Collateral memory collateral0 = root.collaterals[0];

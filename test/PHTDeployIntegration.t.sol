@@ -18,12 +18,13 @@ import {DSRoles} from "../pht/lib/Roles.sol";
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
 import {PHTCollateralTestLib} from "./helpers/PHTCollateralTestLib.sol";
 import {PHTTokenHelper, TokenInfo} from "../pht/PHTTokenHelper.sol";
-
+import {PHTDeploymentConfigJsonHelper, IPHTDeployConfigJson} from "./helpers/PHTDeploymentConfigJsonHelper.sol";
 import {PHTOpsTestLib} from "./helpers/PHTOpsTestLib.sol";
 
 import {FiatTokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
 import {MinterManagementInterface} from "stablecoin-evm/minting/MinterManagementInterface.sol";
+import {Vow} from "../src/vow.sol";
 
 contract PHTDeployIntegrationTest is Test {
     using ArrayHelpers for *;
@@ -40,28 +41,47 @@ contract PHTDeployIntegrationTest is Test {
 
     function _deploy() internal returns (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) {
         d = new PHTDeploy();
-        eve = makeAddr("eve");
-        alice = makeAddr("alice");
         bob = makeAddr("bob");
+
+        PHTDeploymentConfigJsonHelper helper = new PHTDeploymentConfigJsonHelper();
+        IPHTDeployConfigJson.Root memory config = helper.readDeploymentConfig("sepolia_dev.json");
+        alice = config.authorityOwner;
+        eve = config.authorityRootUsers[config.authorityRootUsers.length - 1];
 
         res = d.deploy(
             PHTDeployConfig({
-                govTokenSymbol: "APC",
-                phtUsdFeed: address(0), // deploy a mock feed for testing
-                dogHoleRad: 10_000_000,
-                vatLineRad: 10_000_000,
-                jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
-                authorityOwner: alice,
-                authorityRootUsers: [eve].toMemoryArray(),
-                vowWaitSeconds: uint256(0),
-                vowDumpWad: uint256(0),
-                vowSumpRad: uint256(0),
-                vowBumpRad: uint256(0),
-                vowHumpRad: uint256(0)
+                govTokenName: config.govTokenName,
+                govTokenSymbol: config.govTokenSymbol,
+                phtUsdFeed: config.phtUsdFeed, // only for sepolia / local testing
+                dogHoleRad: config.dogHoleRad,
+                vatLineRad: config.vatLineRad,
+                // jugBase: 0.0000000006279e27, // 0.00000006279% => 2% base global fee
+                jugBase: config.jugBase, // 0.00000006279% => 2% base global fee
+                authorityOwner: config.authorityOwner,
+                // this is needed in order to be able to call addCollateral() in PHTDeploymentHelper
+                authorityRootUsers: config.authorityRootUsers,
+                vowWaitSeconds: config.vowWaitSeconds,
+                vowDumpWad: config.vowDumpWad,
+                vowSumpRad: config.vowSumpRad,
+                vowBumpRad: config.vowBumpRad,
+                vowHumpRad: config.vowHumpRad
             })
         );
+
         h = PHTCollateralHelper(res.collateralHelper);
         return (d, h, res);
+    }
+
+    function test_config() public {
+        (PHTDeploy d, PHTCollateralHelper h, PHTDeployResult memory res) = _deploy();
+        assertEq(IERC20Metadata(res.gov).symbol(), "APCX", "govTokenSymbol");
+        assertEq(IERC20Metadata(res.gov).name(), "APACX Governance Token", "govTokenName");
+        assertEq(uint256(IERC20Metadata(res.gov).decimals()), 18, "govTokenDecimals");
+        assertEq(Vow(res.vow).bump(), 25000e45, "bump");
+        assertEq(Vow(res.vow).dump(), 250e18, "dump");
+        assertEq(Vow(res.vow).hump(), 120000000e45, "hump");
+        assertEq(Vow(res.vow).sump(), 50000e45, "sump");
+        assertEq(Vow(res.vow).wait(), 561600, "wait");
     }
 
     function test_stableEvmDeploy() public {
@@ -117,6 +137,12 @@ contract PHTDeployIntegrationTest is Test {
         PHTOpsTestLib.openLockGemAndDraw(res, bob, ILK_NAME, token, join);
         vm.stopPrank();
     }
+}
+
+interface IERC20Metadata is IERC20 {
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function decimals() external view returns (uint8);
 }
 
 interface DsPauseLike {

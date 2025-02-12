@@ -7,9 +7,15 @@
     "0xc931D3b5ca716d541f059a902aD858150B044E26"
   ],
   "collaterals": [],
-  "dogHoleRad": 10000000,
-  "govTokenSymbol": "APC",
+  "dogHoleRad": 10000000e45,
+  "govTokenName": "APACX Governance Token",
+  "govTokenSymbol": "APCX",
   "jugBase": 0.0000000006279e27,
   "phtUsdFeed": "0x0000000000000000000000000000000000000000",
-  "vatLineRad": 13000000
+  "vatLineRad": 13000000e45,
+  "vowBumpRad": 25000e45,
+  "vowDumpWad": 250e18,
+  "vowHumpRad": 120000000e45,
+  "vowSumpRad": 50000e45,
+  "vowWaitSeconds": 561600
 }

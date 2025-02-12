@@ -165,7 +165,7 @@ contract PHTDeploy is StdCheats {
         require(_c.authorityOwner != address(0), "authorityOwner required");
 
         result.authority = address(deployAuthority(_c.authorityRootUsers));
-        (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol);
+        (result.gov, result.mkrAuthority) = deployGovAndMkrAuthority(_c.govTokenSymbol, _c.govTokenName);
 
         // --- Fabs ---
         dssDeploy = new DssDeploy();
@@ -298,13 +298,17 @@ contract PHTDeploy is StdCheats {
         );
     }
 
-    function deployGovAndMkrAuthority(string memory _govSymbol) private returns (address, address) {
+    function deployGovAndMkrAuthority(string memory _govSymbol, string memory _govName)
+        private
+        returns (address, address)
+    {
         // @see https://github.com/makerdao/dss-deploy-scripts/blob/85c2a6a7046ec618596b47e5259090dad0269a5f/libexec/base-deploy
         // L134
         mkrAuthority = new MkrAuthority();
 
         // GOV token
         gov = new DSToken(_govSymbol);
+        gov.setName(_govName);
         gov.setAuthority(DSAuthority(address(mkrAuthority)));
 
         return (address(gov), address(mkrAuthority));
@@ -468,9 +472,9 @@ contract PHTDeploy is StdCheats {
 
         {
             // Set Liquidation/Auction Rules (Dog)
-            proxyActions.file(address(dssDeploy.dog()), "Hole", _c.dogHoleRad * RAD); // Set global limit to 10 million DAI (RAD units)
+            proxyActions.file(address(dssDeploy.dog()), "Hole", _c.dogHoleRad); // Set global limit to 10 million DAI (RAD units)
             // Set Params for debt ceiling
-            proxyActions.file(address(dssDeploy.vat()), "Line", uint256(_c.vatLineRad * RAD)); // 10M PHT
+            proxyActions.file(address(dssDeploy.vat()), "Line", uint256(_c.vatLineRad));
             // Set Global Base Fee
             proxyActions.file(address(dssDeploy.jug()), "base", _c.jugBase); // 0.00000006279% => 2% base global fee
 
