@@ -1,6 +1,6 @@
 {
   "_notes": "PHT PROD SAFE: 0x85D867539B317c8Af5Ec9855284A6C802CD15D1f; PHT PROD Deployer wallet : 0x76db01fc4fc21dd20f37bdf17dbe2d53e14bf1a2",
-  "authorityOwner": "0x85D867539B317c8Af5Ec9855284A6C802CD15D1f",
+  "authorityOwner": "0x76db01fc4fc21dd20f37bdf17dbe2d53e14bf1a2",
   "authorityRootUsers": [
     "0x76db01fc4fc21dd20f37bdf17dbe2d53e14bf1a2",
     "0x85D867539B317c8Af5Ec9855284A6C802CD15D1f"
