@@ -9,10 +9,10 @@ auto_detect_solc = true
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
 fs_permissions = [
-  { access = "read", path = "./out_pht/" },
-  { access = "read", path = "./script/input/" },
-  { access = "read", path = "./config/" },
-  { access = "read-write", path = "./script/output/" },
+    { access = "read", path = "./out_pht/" },
+    { access = "read", path = "./script/input/" },
+    { access = "read", path = "./config/" },
+    { access = "read-write", path = "./script/output/" },
 ]
 
 
@@ -22,6 +22,7 @@ anvil = "localhost:8545"
 
 [etherscan]
 # sepolia = { key = "${ETHERSCAN_API_KEY}" }
+mainnet = { key = "${ETHERSCAN_API_KEY}" }
 
 [profile.mcd]
 src = "src"
