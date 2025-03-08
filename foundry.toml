@@ -2,7 +2,7 @@
 src = "pht"
 out = "out_pht"
 libs = ["lib"]
-evm_version = 'cancun'
+evm_version = 'istanbul'
 optimizer = true
 optimizer_runs = 200
 auto_detect_solc = true
@@ -33,7 +33,7 @@ solc = "0.6.12"
 # @TODO cancun might not make sense for mcd codebase
 # consider switching to whatever was used at deployment
 # time for DAI
-evm_version = 'cancun'
+evm_version = 'istanbul'
 auto_detect_solc = false
 optimizer = true
 optimizer_runs = 200
