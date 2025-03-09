@@ -3,6 +3,7 @@ import { getContractAddressFromBroadcast } from "./utils/forge-utils";
 import { getDeploymentConfig } from "./read-deployment-config";
 import * as fs from "fs";
 import * as path from "path";
+import { execSync } from "child_process";
 
 // Define the structure of system addresses needed for deployment
 interface SystemAddresses {
@@ -129,51 +130,53 @@ async function deployFiatTokenFactory() {
   const fiatTokenFactoryAddress = await fiatTokenFactory.getAddress();
   console.log(`FiatTokenFactory deployed to: ${fiatTokenFactoryAddress}`);
 
-  // Verify contracts
-  await verifyContract(
-    signatureCheckerAddress,
-    [],
-    "stablecoin-evm/util/SignatureChecker.sol:SignatureChecker"
-  );
-  await verifyContract(
-    proxyInitializerAddress,
-    [],
-    "fiattoken/ProxyInitializer.sol:ProxyInitializer"
-  );
-
-  // Verify ImplementationDeployer with library info
-  try {
-    console.log(
-      `Verifying ImplementationDeployer at ${implementationDeployerAddress}...`
+  // Verify contracts if not on local network
+  if (network.name !== "localhost" && network.name !== "hardhat") {
+    await verifyContract(
+      signatureCheckerAddress,
+      [],
+      "stablecoin-evm/util/SignatureChecker.sol:SignatureChecker"
     );
-    await run("verify:verify", {
-      address: implementationDeployerAddress,
-      constructorArguments: [],
-      contract: "fiattoken/ImplementationDeployer.sol:ImplementationDeployer",
-      libraries: {
-        "stablecoin-evm/util/SignatureChecker.sol:SignatureChecker":
-          signatureCheckerAddress,
-      },
-    });
-    console.log("ImplementationDeployer verified successfully");
-  } catch (error) {
-    console.error("Error verifying ImplementationDeployer:", error);
-  }
-
-  await verifyContract(
-    masterMinterDeployerAddress,
-    [],
-    "fiattoken/MasterMinterDeployer.sol:MasterMinterDeployer"
-  );
-  await verifyContract(
-    fiatTokenFactoryAddress,
-    [
-      implementationDeployerAddress,
-      masterMinterDeployerAddress,
+    await verifyContract(
       proxyInitializerAddress,
-    ],
-    "fiattoken/FiatTokenFactory.sol:FiatTokenFactory"
-  );
+      [],
+      "fiattoken/ProxyInitializer.sol:ProxyInitializer"
+    );
+
+    // Verify ImplementationDeployer with library info
+    try {
+      console.log(
+        `Verifying ImplementationDeployer at ${implementationDeployerAddress}...`
+      );
+      await run("verify:verify", {
+        address: implementationDeployerAddress,
+        constructorArguments: [],
+        contract: "fiattoken/ImplementationDeployer.sol:ImplementationDeployer",
+        libraries: {
+          "stablecoin-evm/util/SignatureChecker.sol:SignatureChecker":
+            signatureCheckerAddress,
+        },
+      });
+      console.log("ImplementationDeployer verified successfully");
+    } catch (error) {
+      console.error("Error verifying ImplementationDeployer:", error);
+    }
+
+    await verifyContract(
+      masterMinterDeployerAddress,
+      [],
+      "fiattoken/MasterMinterDeployer.sol:MasterMinterDeployer"
+    );
+    await verifyContract(
+      fiatTokenFactoryAddress,
+      [
+        implementationDeployerAddress,
+        masterMinterDeployerAddress,
+        proxyInitializerAddress,
+      ],
+      "fiattoken/FiatTokenFactory.sol:FiatTokenFactory"
+    );
+  }
 
   return {
     signatureChecker: signatureCheckerAddress,
@@ -184,9 +187,56 @@ async function deployFiatTokenFactory() {
   };
 }
 
+async function deployPHTTokenHelper(
+  fiatTokenFactoryAddress: string,
+  pauseAddress: string
+) {
+  console.log("Deploying PHTTokenHelper and dependencies...");
+
+  // Deploy TokenActions
+  console.log("Deploying TokenActions...");
+  const TokenActions = await ethers.getContractFactory("TokenActions");
+  const tokenActions = await TokenActions.deploy();
+  await tokenActions.waitForDeployment();
+  const tokenActionsAddress = await tokenActions.getAddress();
+  console.log(`TokenActions deployed to: ${tokenActionsAddress}`);
+
+  // Deploy PHTTokenHelper
+  console.log("Deploying PHTTokenHelper...");
+  const PHTTokenHelper = await ethers.getContractFactory("PHTTokenHelper");
+  const phtTokenHelper = await PHTTokenHelper.deploy(
+    pauseAddress,
+    tokenActionsAddress,
+    fiatTokenFactoryAddress
+  );
+  await phtTokenHelper.waitForDeployment();
+  const phtTokenHelperAddress = await phtTokenHelper.getAddress();
+  console.log(`PHTTokenHelper deployed to: ${phtTokenHelperAddress}`);
+
+  // Verify contracts
+  if (network.name !== "localhost" && network.name !== "hardhat") {
+    await verifyContract(
+      tokenActionsAddress,
+      [],
+      "pht/helpers/TokenActions.sol:TokenActions"
+    );
+    await verifyContract(
+      phtTokenHelperAddress,
+      [pauseAddress, tokenActionsAddress, fiatTokenFactoryAddress],
+      "pht/PHTTokenHelper.sol:PHTTokenHelper"
+    );
+  }
+
+  return {
+    tokenActions: tokenActionsAddress,
+    phtTokenHelper: phtTokenHelperAddress,
+  };
+}
+
 async function deployPHTCollateralHelper(
   fiatTokenFactoryAddress: string,
-  addresses: SystemAddresses
+  addresses: SystemAddresses,
+  tokenHelperAddress?: string
 ) {
   console.log("Deploying PHTCollateralHelper and dependencies...");
 
@@ -250,6 +300,18 @@ async function deployPHTCollateralHelper(
   );
   await setFabsTx.wait();
   console.log("Fabs set for PHTCollateralHelper");
+
+  // Set TokenHelper if provided
+  if (tokenHelperAddress) {
+    console.log(
+      `Setting TokenHelper for PHTCollateralHelper to ${tokenHelperAddress}...`
+    );
+    const setTokenHelperTx = await phtCollateralHelper.setTokenHelper(
+      tokenHelperAddress
+    );
+    await setTokenHelperTx.wait();
+    console.log("TokenHelper set for PHTCollateralHelper");
+  }
 
   // Configure permissions
   console.log("Configuring permissions...");
@@ -326,6 +388,79 @@ async function deployPHTCollateralHelper(
   };
 }
 
+// New function that focuses only on verifying PHTCollateralHelper
+async function deployAndVerifyCollateralHelper() {
+  console.log(`Deploying and verifying PHTCollateralHelper on ${network.name}`);
+
+  // Fetch deployment configuration
+  console.log("Fetching deployment configuration...");
+  const deploymentConfig = await getDeploymentConfig();
+
+  // Collect necessary addresses
+  console.log("Collecting system addresses...");
+  const addresses: SystemAddresses = {
+    vat: await getContractAddress("Vat", deploymentConfig),
+    spotter: await getContractAddress("Spotter", deploymentConfig),
+    dog: await getContractAddress("Dog", deploymentConfig),
+    vow: await getContractAddress("Vow", deploymentConfig),
+    jug: await getContractAddress("Jug", deploymentConfig),
+    end: await getContractAddress("End", deploymentConfig),
+    esm: await getContractAddress("ESM", deploymentConfig),
+    pause: await getContractAddress("DSPause", deploymentConfig),
+  };
+
+  console.log("System addresses:");
+  Object.entries(addresses).forEach(([name, address]) => {
+    console.log(`${name}: ${address}`);
+  });
+
+  // Deploy using the specialized function
+  await deployPHTCollateralHelper(
+    "", // Empty string for fiatTokenFactoryAddress as we're only deploying the collateral helper
+    addresses
+  );
+
+  console.log("Completed");
+}
+
+async function configureTokenFactoryPermissions(
+  fiatTokenFactoryAddress: string,
+  pauseAddress: string
+) {
+  console.log("Configuring FiatTokenFactory permissions...");
+
+  // Get the token factory contract instance
+  const fiatTokenFactory = await ethers.getContractAt(
+    "FiatTokenFactory",
+    fiatTokenFactoryAddress
+  );
+
+  // Get the pause proxy address from the pause contract
+  const pause = await ethers.getContractAt("DSPause", pauseAddress);
+  const pauseProxyAddress = await pause.proxy();
+  console.log(`Pause proxy address: ${pauseProxyAddress}`);
+
+  // Grant permissions to pause proxy (equivalent to tokenFactory.rely(address(dssDeploy.pause().proxy())) in Solidity)
+  console.log("Granting permissions to pause proxy...");
+  const relyTx = await fiatTokenFactory.rely(pauseProxyAddress);
+  await relyTx.wait();
+  console.log(
+    `Granted 'rely' permission to pause proxy at ${pauseProxyAddress}`
+  );
+
+  // Remove permissions from deployer (equivalent to tokenFactory.deny(address(this)) in Solidity)
+  const [deployer] = await ethers.getSigners();
+  const deployerAddress = await deployer.getAddress();
+  console.log("Removing permissions from deployer...");
+  const denyTx = await fiatTokenFactory.deny(deployerAddress);
+  await denyTx.wait();
+  console.log(`Removed 'rely' permission from deployer at ${deployerAddress}`);
+
+  console.log("FiatTokenFactory permissions configured successfully");
+
+  return { pauseProxy: pauseProxyAddress };
+}
+
 async function main() {
   console.log(
     `Deploying contracts on ${network.name} (${network.config.chainId})`
@@ -360,15 +495,29 @@ async function main() {
   // Step 1: Deploy FiatTokenFactory and its dependencies
   const fiatTokenResult = await deployFiatTokenFactory();
 
-  // Step 2: Deploy PHTCollateralHelper using the FiatTokenFactory address
+  // Step 2: Configure FiatTokenFactory permissions
+  await configureTokenFactoryPermissions(
+    fiatTokenResult.fiatTokenFactory,
+    addresses.pause
+  );
+
+  // Step 3: Deploy PHTTokenHelper
+  const tokenHelperResult = await deployPHTTokenHelper(
+    fiatTokenResult.fiatTokenFactory,
+    addresses.pause
+  );
+
+  // Step 4: Deploy PHTCollateralHelper using the FiatTokenFactory address and TokenHelper
   const collateralHelperResult = await deployPHTCollateralHelper(
     fiatTokenResult.fiatTokenFactory,
-    addresses
+    addresses,
+    tokenHelperResult.phtTokenHelper
   );
 
   console.log("Deployment and verification completed");
   return {
     ...fiatTokenResult,
+    ...tokenHelperResult,
     ...collateralHelperResult,
   };
 }
@@ -404,6 +553,7 @@ export {
   main as deployPHTContracts,
   deployFiatTokenFactory,
   deployPHTCollateralHelper,
+  deployAndVerifyCollateralHelper,
   getContractAddress,
   CONTRACT_NAME_MAP,
 };
