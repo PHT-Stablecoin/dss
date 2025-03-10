@@ -4,10 +4,12 @@ pragma experimental ABIEncoderV2;
 import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSPause} from "ds-pause/pause.sol";
 
-import "dss-deploy/DssDeploy.sol";
+import {Vat} from "dss/vat.sol";
 import {Jug} from "dss/jug.sol";
 import {Vow} from "dss/vow.sol";
 import {Cat} from "dss/cat.sol";
+import {Dog} from "dss/dog.sol";
+import {LinearDecrease, StairstepExponentialDecrease, ExponentialDecrease} from "dss/abaci.sol";
 import {Spotter} from "dss/spot.sol";
 import {Clipper} from "dss/clip.sol";
 import {End} from "dss/end.sol";
@@ -32,6 +34,18 @@ interface TokenLike {
 interface IlkRegistryLike {
     function wards(address user) external view returns (uint256);
     function add(address join) external;
+}
+
+interface ClipFabLike {
+    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk)
+        external
+        returns (Clipper clip);
+}
+
+interface CalcFabLike {
+    function newLinearDecrease(address owner) external returns (LinearDecrease calc);
+    function newStairstepExponentialDecrease(address owner) external returns (StairstepExponentialDecrease calc);
+    function newExponentialDecrease(address owner) external returns (ExponentialDecrease calc);
 }
 
 contract GemJoinFab {
@@ -60,8 +74,8 @@ contract PHTCollateralHelper is DSAuth {
     ESM public esm;
     DSPause public pause;
 
-    CalcFab calcFab;
-    ClipFab clipFab;
+    CalcFabLike calcFab;
+    ClipFabLike clipFab;
     GemJoinFab gemJoinFab;
     GemJoin5Fab gemJoin5Fab;
 
@@ -133,18 +147,26 @@ contract PHTCollateralHelper is DSAuth {
         authority = DSAuthority(pause.authority());
     }
 
-    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_)
+    // function file(bytes32 what, address data) public auth {
+    //     if (what == "calcFab") calcFab = CalcFabLike(data);
+    //     if (what == "clipFab") clipFab = ClipFabLike(data);
+    //     if (what == "gemJoinFab") gemJoinFab = GemJoinFab(data);
+    //     if (what == "gemJoin5Fab") gemJoin5Fab = GemJoin5Fab(data);
+    //     if (what == "tokenHelper") tokenHelper = PHTTokenHelper(data);
+    //     else revert("PHTCollateralHelper/file-unrecognized-param");
+    // }
+
+    function setFabs(address calcFab_, address clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_)
         public
         auth
     {
-        require(address(calcFab) == address(0), "PHTCollateralHelper/calcFab-inited");
         require(address(calcFab_) != address(0), "PHTCollateralHelper/calcFab-not-set");
         require(address(clipFab_) != address(0), "PHTCollateralHelper/clipFab-not-set");
         require(address(gemJoinFab_) != address(0), "PHTCollateralHelper/gemJoinFab-not-set");
         require(address(gemJoin5Fab_) != address(0), "PHTCollateralHelper/gemJoin5Fab-not-set");
 
-        calcFab = calcFab_;
-        clipFab = clipFab_;
+        calcFab = CalcFabLike(calcFab_);
+        clipFab = ClipFabLike(clipFab_);
         gemJoinFab = gemJoinFab_;
         gemJoin5Fab = gemJoin5Fab_;
     }
@@ -294,14 +316,4 @@ interface DogLike {
     function file(bytes32 what, uint256 data) external;
     function rely(address usr) external;
     function Hole() external returns (uint256);
-}
-
-interface CalcFabLike {
-    function newLinearDecrease(address owner) external returns (address);
-}
-
-interface ClipFabLike {
-    function newClip(address owner, address vat, address spotter, address dog, bytes32 ilk)
-        external
-        returns (address);
 }

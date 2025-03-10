@@ -430,7 +430,9 @@ contract PHTDeploy is StdCheats {
                 dssDeploy.pause()
             );
 
-            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab, gemJoin5Fab);
+            collateralHelper.setFabs(
+                address(dssDeploy.calcFab()), address(dssDeploy.clipFab()), gemJoinFab, gemJoin5Fab
+            );
             collateralHelper.setTokenHelper(tokenHelper);
 
             proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
