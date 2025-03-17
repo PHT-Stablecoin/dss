@@ -53,8 +53,8 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
         console.log("[PHTDeployResult] authority \t", res.authority);
         console.log("[PHTDeployResult] tokenHelper (old) \t", res.tokenHelper);
 
-        console.log("[MigrationIssue29And30] running: fixIssue29");
-        console.log("[MigrationIssue29And30] link: https://github.com/PHT-Stablecoin/dss/issues/29");
+        console.log("[MigrationIssue29And30] running: fixIssue30");
+        console.log("[MigrationIssue29And30] link: https://github.com/PHT-Stablecoin/dss/issues/30");
         {
             vm.startBroadcast();
             DSRoles(res.authority).setAuthority(DSAuthority(res.authority));
@@ -65,8 +65,8 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
             assertTrue(address(DSRoles(res.authority).isUserRoot(DSRoles(res.authority).owner())));
         }
 
-        console.log("[MigrationIssue29And30] running: fixIssue30");
-        console.log("[MigrationIssue29And30] link: https://github.com/PHT-Stablecoin/dss/issues/30");
+        console.log("[MigrationIssue29And30] running: fixIssue29");
+        console.log("[MigrationIssue29And30] link: https://github.com/PHT-Stablecoin/dss/issues/29");
         {
             vm.startBroadcast();
 
