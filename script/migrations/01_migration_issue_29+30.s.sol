@@ -58,9 +58,11 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
         {
             vm.startBroadcast();
             DSRoles(res.authority).setAuthority(DSAuthority(res.authority));
+            DSRoles(res.authority).setRootUser(DSRoles(res.authority).owner(), true);
             vm.stopBroadcast();
 
             assertEq(address(DSRoles(res.authority).authority()), res.authority);
+            assertTrue(address(DSRoles(res.authority).isUserRoot(DSRoles(res.authority).owner())));
         }
 
         console.log("[MigrationIssue29And30] running: fixIssue30");
@@ -179,7 +181,6 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
     function _test_tokenHelper_burn(PHTDeployResult memory res, CollateralOutput memory testCollateral) internal {
         address owner = DSRoles(res.authority).owner();
         vm.startPrank(owner);
-        DSRoles(res.authority).setRootUser(owner, true);
 
         PHTTokenHelper(res.tokenHelper).mint(testCollateral.token, owner, 100 ** testCollateral.tokenDecimals);
         assertEqDecimal(
