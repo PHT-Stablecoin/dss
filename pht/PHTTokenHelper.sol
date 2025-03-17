@@ -11,6 +11,8 @@ import {FiatTokenV1} from "stablecoin-evm/v1/FiatTokenV1.sol";
 
 interface IFiatToken is IERC20 {
     function mint(address _to, uint256 _amount) external;
+    function burn(uint256 _amount) external;
+
     function blacklist(address _account) external;
     function unBlacklist(address _account) external;
     function isBlacklisted(address _account) external view returns (bool);
@@ -36,6 +38,12 @@ struct TokenInfo {
 contract TokenActions {
     function mint(address token, address to, uint256 val) public returns (bool) {
         IFiatToken(token).mint(to, val);
+        return true;
+    }
+
+    function burn(address token, address from, uint256 val) public returns (bool) {
+        IERC20(token).transferFrom(from, address(this), val);
+        IFiatToken(token).burn(val);
         return true;
     }
 
@@ -106,6 +114,23 @@ contract PHTTokenHelper is DSAuth {
             tag := extcodehash(usr)
         }
         bytes memory fax = abi.encodeWithSelector(tokenActions.mint.selector, token, to, val);
+        uint256 delay = pause.delay();
+        uint256 eta = now + delay;
+
+        pause.plot(usr, tag, fax, eta);
+        if (delay == 0) {
+            c = abi.decode(pause.exec(usr, tag, fax, eta), (bool));
+        }
+        a = DelayedAction(usr, tag, eta, fax);
+    }
+
+    function burn(address token, address from, uint256 val) public auth returns (DelayedAction memory a, bool c) {
+        address usr = address(tokenActions);
+        bytes32 tag;
+        assembly {
+            tag := extcodehash(usr)
+        }
+        bytes memory fax = abi.encodeWithSelector(tokenActions.burn.selector, token, from, val);
         uint256 delay = pause.delay();
         uint256 eta = now + delay;
 

@@ -97,6 +97,30 @@ contract PHTTokenHelperTest is Test {
         assertEqDecimal(IERC20(proxy).balanceOf(alice), 100e18, 18);
     }
 
+    function test_tokenHelper_burn() public {
+        vm.startPrank(eve);
+        (address implementation, address proxy, address masterMinter) = h.createToken(
+            TokenInfo({
+                tokenName: "TEST",
+                tokenSymbol: "TST",
+                tokenDecimals: 18,
+                tokenCurrency: "",
+                initialSupply: 100e18,
+                initialSupplyMintTo: eve, // address to mint the initial supply to
+                tokenAdmin: address(1)
+            })
+        );
+
+        assertEq(h.tokenAddresses(h.lastToken()), proxy);
+        assertEq(FiatTokenProxy(payable(proxy)).admin(), address(1));
+
+        h.mint(proxy, eve, 100e18);
+        assertEqDecimal(IERC20(proxy).balanceOf(eve), 200e18, 18);
+        IERC20(proxy).approve(address(DSPause(res.pause).proxy()), 55e18);
+        h.burn(proxy, eve, 55e18);
+        assertEqDecimal(IERC20(proxy).balanceOf(eve), 200e18 - 55e18, 18);
+    }
+
     function test_tokenHelper_blacklist() public {
         vm.startPrank(eve);
         (address implementation, address proxy, address masterMinter) = h.createToken(
