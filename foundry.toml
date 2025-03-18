@@ -31,6 +31,11 @@ key = "${ARBISCAN_API_KEY}"
 chain = 421614
 url = "https://api-sepolia.arbiscan.io/api"
 
+[etherscan.base_sepolia]
+key = "${BASESCAN_API_KEY}"
+chain = 84532
+url = "https://api-sepolia.basescan.org/api"
+
 [profile.mcd]
 src = "src"
 test = "src/test"
