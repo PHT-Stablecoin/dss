@@ -33,6 +33,16 @@ forge script ./script/PHTDeployment.s.sol --broadcast --rpc-url http://127.0.0.1
 --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
+## Verifying contracts on Arbiscan
+
+```bash
+# deploy and verify on Arbitrum Sepolia
+forge script ./script/PHTDeployment.s.sol --sig "run(string)" --sender 0x53118050CC8fC8C6925CdC842b1784dcBa9A4ba9 --account PHT \
+  --rpc-url $ARBITRUM_SEPOLIA_RPC_URL \
+  --verify --verifier custom --verifier-api-key $ARBISCAN_API_KEY --chain-id 421614 --isolate --slow --broadcast \
+"arbitrum_sepolia_dev.json"
+```
+
 ## Project Structure
 
 ```
