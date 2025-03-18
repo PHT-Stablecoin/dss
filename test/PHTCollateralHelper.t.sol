@@ -279,13 +279,17 @@ contract PHTCollateralHelperTest is Test {
         vm.stopPrank();
     }
 
-    function testFail_shouldFailWithAuth() public {
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, eve);
+    function test_shouldFailWithAuth() public {
+        bytes32 ilkName = getNextIlkName(res.ilkRegistry);
+        vm.expectRevert("ds-auth-unauthorized");
+        PHTCollateralTestLib.addCollateral(ilkName, res, h, eve);
     }
 
-    function testFail_ownerCannotAddCollateral() public {
+    function test_ownerCannotAddCollateral() public {
         vm.startPrank(alice);
-        PHTCollateralTestLib.addCollateral(getNextIlkName(res.ilkRegistry), res, h, alice);
+        bytes32 ilkName = getNextIlkName(res.ilkRegistry);
+        vm.expectRevert("ds-auth-unauthorized");
+        PHTCollateralTestLib.addCollateral(ilkName, res, h, alice);
         vm.stopPrank();
     }
 
