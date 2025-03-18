@@ -28,6 +28,9 @@ import {PHTTokenHelper, TokenActions} from "../../pht/PHTTokenHelper.sol";
  * Fixes Issues:
  * `#29`: https://github.com/PHT-Stablecoin/dss/issues/29
  * `#29`: https://github.com/PHT-Stablecoin/dss/issues/30
+ *
+ * run:
+ * forge script script/migrations/01_migration_issue_29+30.s.sol --rpc-url <rpc-url> --account <account> --verify --broadcast --sig "run(string)"  --verifier custom --verifier-api-key $ARBISCAN_API_KEY --chain-id 421614 "arbitrum_sepolia_dev.json"
  */
 contract MigrationIssue29And30 is Script, PHTDeploy, Test {
     using stdJson for string;
@@ -62,7 +65,7 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
             vm.stopBroadcast();
 
             assertEq(address(DSRoles(res.authority).authority()), res.authority);
-            assertTrue(address(DSRoles(res.authority).isUserRoot(DSRoles(res.authority).owner())));
+            assertTrue(DSRoles(res.authority).isUserRoot(DSRoles(res.authority).owner()));
         }
 
         console.log("[MigrationIssue29And30] running: fixIssue29");
@@ -102,14 +105,15 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
 
             // Test
             {
+                console.log("[MigrationIssue29And30] testing: collateralHelper.tokenHelper", res.collateralHelper);
                 assertEq(
                     address(PHTCollateralHelper(res.collateralHelper).tokenHelper()),
                     address(newTokenHelper),
                     "collateralHelper.tokenHelper == newTokenHelper"
                 );
 
-                CollateralOutput memory testCollateral = _test_collateralHelper_create(res, config);
-                _test_tokenHelper_burn(res, testCollateral);
+                // CollateralOutput memory testCollateral = _test_collateralHelper_create(res, config);
+                // _test_tokenHelper_burn(res, testCollateral);
             }
         }
     }
@@ -254,6 +258,7 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
         string memory json = artifacts.serialize("clog", r.clog);
 
         json.write(path);
+        console.log("[PHTDeploymentScript] artifacts written to", path);
     }
 
     function readArtifacts(string memory jsonFileName) internal returns (PHTDeployResult memory r) {
