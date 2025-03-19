@@ -161,6 +161,7 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
                 symbol: tokenParams.symbol,
                 name: tokenParams.name,
                 decimals: tokenParams.decimals,
+                gemJoinIndex: tokenParams.gemJoinIndex,
                 currency: tokenParams.currency,
                 maxSupply: tokenParams.maxSupply,
                 initialSupply: tokenParams.initialSupply,

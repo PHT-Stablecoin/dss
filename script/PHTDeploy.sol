@@ -43,7 +43,7 @@ import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFac
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
-import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
+import {PHTCollateralHelper, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
 import {PHTTokenHelper, TokenActions} from "../pht/PHTTokenHelper.sol";
 
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
@@ -133,7 +133,6 @@ contract PHTDeploy is StdCheats {
     PriceFeedFactory priceFeedFactory;
     PriceJoinFeedFactory joinFeedFactory;
     GemJoinFab gemJoinFab;
-    GemJoin5Fab gemJoin5Fab;
 
     PHTCollateralHelper collateralHelper;
     PHTTokenHelper tokenHelper;
@@ -390,7 +389,6 @@ contract PHTDeploy is StdCheats {
         joinFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
 
         gemJoinFab = new GemJoinFab();
-        gemJoin5Fab = new GemJoin5Fab();
 
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(
@@ -430,7 +428,7 @@ contract PHTDeploy is StdCheats {
                 dssDeploy.pause()
             );
 
-            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab, gemJoin5Fab);
+            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab);
             collateralHelper.setTokenHelper(tokenHelper);
 
             proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
