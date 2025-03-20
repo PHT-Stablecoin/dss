@@ -12,24 +12,30 @@ interface GemLike {
     function deny(address usr) external;
 }
 
-contract GemJoin1 {
+contract GemJoin1To5Fab {
+    uint8 private constant GEM_JOIN_1 = 1;
+    uint8 private constant GEM_JOIN_2 = 2;
+    uint8 private constant GEM_JOIN_3 = 3;
+    uint8 private constant GEM_JOIN_4 = 4;
+    uint8 private constant GEM_JOIN_5 = 5;
+
     function createJoin(uint8 gemJoinIndex, address owner, address vat, bytes32 ilk, address token, uint8 tokenDecimals)
         external
         returns (address join)
     {
-        require(gemJoinIndex != 0 && gemJoinIndex < 6, "Invalid gemJoinIndex");
+        require(gemJoinIndex != 0 && gemJoinIndex <= GEM_JOIN_5, "Invalid gemJoinIndex");
 
-        if (gemJoinIndex == 3) {
+        if (gemJoinIndex == GEM_JOIN_3) {
             require(tokenDecimals != 0, "Invalid tokenDecimals");
         }
 
-        join = gemJoinIndex == 1
+        join = gemJoinIndex == GEM_JOIN_1
             ? address(new GemJoin(vat, ilk, token))
-            : gemJoinIndex == 2
+            : gemJoinIndex == GEM_JOIN_2
                 ? address(new GemJoin2(vat, ilk, token))
-                : gemJoinIndex == 3
+                : gemJoinIndex == GEM_JOIN_3
                     ? address(new GemJoin3(vat, ilk, token, tokenDecimals))
-                    : gemJoinIndex == 4 ? address(new GemJoin4(vat, ilk, token)) : address(new GemJoin5(vat, ilk, token));
+                    : gemJoinIndex == GEM_JOIN_4 ? address(new GemJoin4(vat, ilk, token)) : address(new GemJoin5(vat, ilk, token));
 
         GemLike(join).rely(owner);
         GemLike(join).deny(address(this));

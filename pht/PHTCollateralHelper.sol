@@ -13,8 +13,8 @@ import {Clipper} from "dss/clip.sol";
 import {End} from "dss/end.sol";
 import {ESM} from "esm/ESM.sol";
 
-import {GemJoin1} from "./helpers/GemJoin1.sol";
-import {GemJoin2} from "./helpers/GemJoin2.sol";
+import {GemJoin1To5Fab} from "./helpers/GemJoin1To5Fab.sol";
+import {GemJoin6To11Fab} from "./helpers/GemJoin6To11Fab.sol";
 
 import {LinearDecrease} from "dss/abaci.sol";
 
@@ -49,8 +49,8 @@ contract GemJoinFab {
         returns (address join)
     {
         join = gemJoinIndex < 6
-            ? GemJoin1(gemJoin1).createJoin(gemJoinIndex, owner, vat, ilk, token, tokenDecimals)
-            : GemJoin2(gemJoin2).createJoin(gemJoinIndex, owner, vat, ilk, token);
+            ? GemJoin1To5Fab(gemJoin1).createJoin(gemJoinIndex, owner, vat, ilk, token, tokenDecimals)
+            : GemJoin6To11Fab(gemJoin2).createJoin(gemJoinIndex, owner, vat, ilk, token);
     }
 }
 

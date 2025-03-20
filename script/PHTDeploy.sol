@@ -42,8 +42,8 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
-import {GemJoin1} from "../pht/helpers/GemJoin1.sol";
-import {GemJoin2} from "../pht/helpers/GemJoin2.sol";
+import {GemJoin1To5Fab} from "../pht/helpers/GemJoin1To5Fab.sol";
+import {GemJoin6To11Fab} from "../pht/helpers/GemJoin6To11Fab.sol";
 import {PHTTokenHelper, TokenActions} from "../pht/PHTTokenHelper.sol";
 
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
@@ -388,9 +388,9 @@ contract PHTDeploy is StdCheats {
         joinFeedFactory.setAuthority(DSRoles(_authority));
         joinFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
 
-        GemJoin1 gemJoin1 = new GemJoin1();
-        GemJoin2 gemJoin2 = new GemJoin2();
-        gemJoinFab = new GemJoinFab(address(gemJoin1), address(gemJoin2));
+        GemJoin1To5Fab gemJoin1To5Fab = new GemJoin1To5Fab();
+        GemJoin6To11Fab gemJoin6To11Fab = new GemJoin6To11Fab();
+        gemJoinFab = new GemJoinFab(address(gemJoin1To5Fab), address(gemJoin6To11Fab));
 
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(

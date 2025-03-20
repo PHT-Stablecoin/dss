@@ -13,22 +13,31 @@ interface GemLike {
     function deny(address usr) external;
 }
 
-contract GemJoin2 {
+contract GemJoin6To11Fab {
+    uint8 private constant GEM_JOIN_6 = 6;
+    uint8 private constant GEM_JOIN_7 = 7;
+    uint8 private constant GEM_JOIN_8 = 8;
+    uint8 private constant GEM_JOIN_9 = 9;
+    uint8 private constant GEM_JOIN_AUTH = 10;
+    uint8 private constant GEM_JOIN_MANAGED = 11;
+
     function createJoin(uint8 gemJoinIndex, address owner, address vat, bytes32 ilk, address token)
         external
         returns (address join)
     {
-        require(gemJoinIndex > 5 && gemJoinIndex < 12, "Invalid gemJoinIndex");
+        require(gemJoinIndex >= GEM_JOIN_6 && gemJoinIndex <= GEM_JOIN_MANAGED, "Invalid gemJoinIndex");
 
-        join = gemJoinIndex == 6
+        join = gemJoinIndex == GEM_JOIN_6
             ? address(new GemJoin6(vat, ilk, token))
-            : gemJoinIndex == 7
+            : gemJoinIndex == GEM_JOIN_7
                 ? address(new GemJoin7(vat, ilk, token))
-                : gemJoinIndex == 8
+                : gemJoinIndex == GEM_JOIN_8
                     ? address(new GemJoin8(vat, ilk, token))
-                    : gemJoinIndex == 9
+                    : gemJoinIndex == GEM_JOIN_9
                         ? address(new GemJoin9(vat, ilk, token))
-                        : gemJoinIndex == 10 ? address(new AuthGemJoin(vat, ilk, token)) : address(new ManagedGemJoin(vat, ilk, token));
+                        : gemJoinIndex == GEM_JOIN_AUTH
+                            ? address(new AuthGemJoin(vat, ilk, token))
+                            : address(new ManagedGemJoin(vat, ilk, token));
 
         GemLike(join).rely(owner);
         GemLike(join).deny(address(this));
