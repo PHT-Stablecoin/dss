@@ -23,14 +23,12 @@ import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSTest} from "ds-test/test.sol";
 import {DSToken} from "ds-token/token.sol";
 import {DSValue} from "ds-value/value.sol";
-import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
 import {DssPsm} from "dss-psm/psm.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 import {DssProxyActions, DssProxyActionsEnd, DssProxyActionsDsr} from "dss-proxy-actions/DssProxyActions.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
-import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 import {MkrAuthority} from "mkr-authority/MkrAuthority.sol";
 
@@ -44,6 +42,8 @@ import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/Pric
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
 import {PHTCollateralHelper, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
+import {GemJoin1} from "../pht/helpers/GemJoin1.sol";
+import {GemJoin2} from "../pht/helpers/GemJoin2.sol";
 import {PHTTokenHelper, TokenActions} from "../pht/PHTTokenHelper.sol";
 
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
@@ -388,7 +388,9 @@ contract PHTDeploy is StdCheats {
         joinFeedFactory.setAuthority(DSRoles(_authority));
         joinFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
 
-        gemJoinFab = new GemJoinFab();
+        GemJoin1 gemJoin1 = new GemJoin1();
+        GemJoin2 gemJoin2 = new GemJoin2();
+        gemJoinFab = new GemJoinFab(address(gemJoin1), address(gemJoin2));
 
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(

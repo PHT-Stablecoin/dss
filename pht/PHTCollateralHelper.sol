@@ -13,17 +13,8 @@ import {Clipper} from "dss/clip.sol";
 import {End} from "dss/end.sol";
 import {ESM} from "esm/ESM.sol";
 
-import {GemJoin} from "dss/join.sol";
-import {GemJoin2} from "dss-gem-joins/join-2.sol";
-import {GemJoin3} from "dss-gem-joins/join-3.sol";
-import {GemJoin4} from "dss-gem-joins/join-4.sol";
-import {GemJoin5} from "dss-gem-joins/join-5.sol";
-import {GemJoin6} from "dss-gem-joins/join-6.sol";
-import {GemJoin7} from "dss-gem-joins/join-7.sol";
-import {GemJoin8} from "dss-gem-joins/join-8.sol";
-import {GemJoin9} from "dss-gem-joins/join-9.sol";
-import {AuthGemJoin} from "dss-gem-joins/join-auth.sol";
-import {ManagedGemJoin} from "dss-gem-joins/join-managed.sol";
+import {GemJoin1} from "./helpers/GemJoin1.sol";
+import {GemJoin2} from "./helpers/GemJoin2.sol";
 
 import {LinearDecrease} from "dss/abaci.sol";
 
@@ -44,44 +35,22 @@ interface IlkRegistryLike {
     function add(address join) external;
 }
 
-interface GemLike {
-    function rely(address usr) external;
-    function deny(address usr) external;
-}
-
 contract GemJoinFab {
+    address public immutable gemJoin1;
+    address public immutable gemJoin2;
+
+    constructor(address _gemJoin1, address _gemJoin2) public {
+        gemJoin1 = _gemJoin1;
+        gemJoin2 = _gemJoin2;
+    }
+
     function newJoin(uint8 gemJoinIndex, address owner, address vat, bytes32 ilk, address token, uint8 tokenDecimals)
-        public
+        external
         returns (address join)
     {
-        require(gemJoinIndex != 0 && gemJoinIndex < 12, "Invalid gemJoinIndex");
-
-        if (gemJoinIndex == 3) {
-            require(tokenDecimals != 0, "Invalid tokenDecimals");
-        }
-
-        join = gemJoinIndex == 1
-            ? address(new GemJoin(vat, ilk, token))
-            : gemJoinIndex == 2
-                ? address(new GemJoin2(vat, ilk, token))
-                : gemJoinIndex == 3
-                    ? address(new GemJoin3(vat, ilk, token, tokenDecimals))
-                    : gemJoinIndex == 4
-                        ? address(new GemJoin4(vat, ilk, token))
-                        : gemJoinIndex == 5
-                            ? address(new GemJoin5(vat, ilk, token))
-                            : gemJoinIndex == 6
-                                ? address(new GemJoin6(vat, ilk, token))
-                                : gemJoinIndex == 7
-                                    ? address(new GemJoin7(vat, ilk, token))
-                                    : gemJoinIndex == 8
-                                        ? address(new GemJoin8(vat, ilk, token))
-                                        : gemJoinIndex == 9
-                                            ? address(new GemJoin9(vat, ilk, token))
-                                            : gemJoinIndex == 10 ? address(new AuthGemJoin(vat, ilk, token)) : address(new ManagedGemJoin(vat, ilk, token));
-
-        GemLike(join).rely(owner);
-        GemLike(join).deny(address(this));
+        join = gemJoinIndex < 6
+            ? GemJoin1(gemJoin1).createJoin(gemJoinIndex, owner, vat, ilk, token, tokenDecimals)
+            : GemJoin2(gemJoin2).createJoin(gemJoinIndex, owner, vat, ilk, token);
     }
 }
 
