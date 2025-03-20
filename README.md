@@ -43,6 +43,21 @@ forge script ./script/PHTDeployment.s.sol --sig "run(string)" --sender 0x5311805
 "arbitrum_sepolia_dev.json"
 ```
 
+## Deploying migrations
+
+```bash
+
+# deploy migration 01
+forge script script/migrations/01_migration_issue_29+30.s.sol \
+  --rpc-url $MAINNET_RPC_URL \
+  --account PHT_PROD \
+  --sig "run(string)" \
+  --broadcast \
+  --verify \
+  "mainnet.json"
+
+```
+
 ## Project Structure
 
 ```
