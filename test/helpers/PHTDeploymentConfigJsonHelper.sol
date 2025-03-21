@@ -60,6 +60,7 @@ interface IPHTDeployConfigJson {
     struct TokenParams {
         string currency;
         uint8 decimals;
+        uint8 gemJoinIndex;
         uint256 initialSupply;
         address initialSupplyMintTo;
         uint256 maxSupply;

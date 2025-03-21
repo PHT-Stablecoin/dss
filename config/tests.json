@@ -37,6 +37,7 @@
       "tokenParams": {
         "currency": "PHP",
         "decimals": 6,
+        "gemJoinIndex": 5,
         "initialSupply": 1000000000,
         "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
         "maxSupply": 333,
@@ -75,6 +76,7 @@
       "tokenParams": {
         "currency": "PHP",
         "decimals": 7,
+        "gemJoinIndex": 5,
         "initialSupply": 2000000000,
         "initialSupplyMintTo": "0x328809Bc894f92807417D2dAD6b7C998c1aFdac6",
         "maxSupply": 666,

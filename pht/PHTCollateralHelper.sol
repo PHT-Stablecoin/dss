@@ -13,8 +13,9 @@ import {Clipper} from "dss/clip.sol";
 import {End} from "dss/end.sol";
 import {ESM} from "esm/ESM.sol";
 
-import {GemJoin5} from "dss-gem-joins/join-5.sol";
-import {GemJoin} from "dss/join.sol";
+import {GemJoin1To5Fab} from "./helpers/GemJoin1To5Fab.sol";
+import {GemJoin6To11Fab} from "./helpers/GemJoin6To11Fab.sol";
+
 import {LinearDecrease} from "dss/abaci.sol";
 
 import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
@@ -35,18 +36,21 @@ interface IlkRegistryLike {
 }
 
 contract GemJoinFab {
-    function newJoin(address owner, address vat, bytes32 ilk, address token) public returns (GemJoin join) {
-        join = new GemJoin(vat, ilk, token);
-        join.rely(owner);
-        join.deny(address(this));
-    }
-}
+    address public immutable gemJoin1;
+    address public immutable gemJoin2;
 
-contract GemJoin5Fab {
-    function newJoin(address owner, address vat, bytes32 ilk, address token) public returns (GemJoin5 join) {
-        join = new GemJoin5(vat, ilk, token);
-        join.rely(owner);
-        join.deny(address(this));
+    constructor(address _gemJoin1, address _gemJoin2) public {
+        gemJoin1 = _gemJoin1;
+        gemJoin2 = _gemJoin2;
+    }
+
+    function newJoin(uint8 gemJoinIndex, address owner, address vat, bytes32 ilk, address token, uint8 tokenDecimals)
+        external
+        returns (address join)
+    {
+        join = gemJoinIndex < 6
+            ? GemJoin1To5Fab(gemJoin1).createJoin(gemJoinIndex, owner, vat, ilk, token, tokenDecimals)
+            : GemJoin6To11Fab(gemJoin2).createJoin(gemJoinIndex, owner, vat, ilk, token);
     }
 }
 
@@ -60,10 +64,9 @@ contract PHTCollateralHelper is DSAuth {
     ESM public esm;
     DSPause public pause;
 
-    CalcFab calcFab;
-    ClipFab clipFab;
-    GemJoinFab gemJoinFab;
-    GemJoin5Fab gemJoin5Fab;
+    CalcFab public calcFab;
+    ClipFab public clipFab;
+    GemJoinFab public gemJoinFab;
 
     PHTTokenHelper public tokenHelper;
 
@@ -72,6 +75,7 @@ contract PHTCollateralHelper is DSAuth {
         string name;
         string symbol;
         uint8 decimals;
+        uint8 gemJoinIndex;
         string currency;
         uint256 maxSupply; // maxSupply == 0 => unlimited supply
         uint256 initialSupply; // initialSupply == 0 => no initial supply
@@ -133,38 +137,20 @@ contract PHTCollateralHelper is DSAuth {
         authority = DSAuthority(pause.authority());
     }
 
-    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_, GemJoin5Fab gemJoin5Fab_)
-        public
-        auth
-    {
-        require(address(calcFab) == address(0), "PHTCollateralHelper/calcFab-inited");
-        require(address(calcFab_) != address(0), "PHTCollateralHelper/calcFab-not-set");
-        require(address(clipFab_) != address(0), "PHTCollateralHelper/clipFab-not-set");
-        require(address(gemJoinFab_) != address(0), "PHTCollateralHelper/gemJoinFab-not-set");
-        require(address(gemJoin5Fab_) != address(0), "PHTCollateralHelper/gemJoin5Fab-not-set");
+    function file(bytes32 what, address data) public auth {
+        require(address(data) != address(0), "Invalid address");
 
-        calcFab = calcFab_;
-        clipFab = clipFab_;
-        gemJoinFab = gemJoinFab_;
-        gemJoin5Fab = gemJoin5Fab_;
+        if (what == "calcFab") calcFab = CalcFab(data);
+        else if (what == "clipFab") clipFab = ClipFab(data);
+        else if (what == "gemJoinFab") gemJoinFab = GemJoinFab(data);
+        else if (what == "tokenHelper") tokenHelper = PHTTokenHelper(data);
+        else revert("file-unrecognized-param");
     }
 
-    function setTokenHelper(PHTTokenHelper tokenHelper_) public auth {
-        require(address(tokenHelper_) != address(0), "PHTCollateralHelper/token-helper-not-set");
-        tokenHelper = tokenHelper_;
-    }
-
-    function deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
+    function _deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
         internal
         returns (Clipper clip)
     {
-        require(ilk != bytes32(""), "Missing ilk name");
-        require(join != address(0), "Missing join address");
-        require(pip != address(0), "Missing pip address");
-        require(calc != address(0), "Missing calc address");
-
-        require(address(pause) != address(0), "Missing previous step");
-
         // Deploy
         clip = clipFab.newClip(address(this), address(vat), address(spotter), address(dog), ilk);
         spotter.file(ilk, "pip", pip); // Set pip
@@ -231,12 +217,9 @@ contract PHTCollateralHelper is DSAuth {
         }
         _pip = new ChainlinkPip(address(_feed));
 
-        // @TODO deny this ward in GemJoin(s)
-        if (TokenLike(_token).decimals() < 18) {
-            _join = address(gemJoin5Fab.newJoin(address(pause.proxy()), address(vat), ilkParams.ilk, _token));
-        } else {
-            _join = address(gemJoinFab.newJoin(address(pause.proxy()), address(vat), ilkParams.ilk, _token));
-        }
+        _join = gemJoinFab.newJoin(
+            tokenParams.gemJoinIndex, address(pause.proxy()), address(vat), ilkParams.ilk, _token, tokenParams.decimals
+        );
 
         {
             LinearDecrease _calc = calcFab.newLinearDecrease(address(this));
@@ -244,7 +227,7 @@ contract PHTCollateralHelper is DSAuth {
             _calc.rely(address(pause.proxy()));
             _calc.deny(address(this));
 
-            deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
+            _deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
         }
 
         {

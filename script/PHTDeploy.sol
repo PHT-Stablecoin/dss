@@ -23,14 +23,12 @@ import {DSAuth, DSAuthority} from "ds-auth/auth.sol";
 import {DSTest} from "ds-test/test.sol";
 import {DSToken} from "ds-token/token.sol";
 import {DSValue} from "ds-value/value.sol";
-import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
 import {DssPsm} from "dss-psm/psm.sol";
 import {IlkRegistry} from "dss-ilk-registry/IlkRegistry.sol";
 import {DssProxyActions, DssProxyActionsEnd, DssProxyActionsDsr} from "dss-proxy-actions/DssProxyActions.sol";
 import {DssCdpManager} from "dss-cdp-manager/DssCdpManager.sol";
 import {DsrManager} from "dsr-manager/DsrManager.sol";
-import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {DssAutoLine} from "dss-auto-line/DssAutoLine.sol";
 import {MkrAuthority} from "mkr-authority/MkrAuthority.sol";
 
@@ -43,7 +41,9 @@ import {PriceFeedFactory, PriceFeedAggregator} from "../pht/factory/PriceFeedFac
 import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "../pht/factory/PriceJoinFeedFactory.sol";
 import {ChainlinkPip, AggregatorV3Interface} from "../pht/helpers/ChainlinkPip.sol";
 import {PHTDeployConfig} from "./PHTDeployConfig.sol";
-import {PHTCollateralHelper, GemJoin5Fab, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
+import {PHTCollateralHelper, GemJoinFab} from "../pht/PHTCollateralHelper.sol";
+import {GemJoin1To5Fab} from "../pht/helpers/GemJoin1To5Fab.sol";
+import {GemJoin6To11Fab} from "../pht/helpers/GemJoin6To11Fab.sol";
 import {PHTTokenHelper, TokenActions} from "../pht/PHTTokenHelper.sol";
 
 import {ProxyActions} from "../pht/helpers/ProxyActions.sol";
@@ -120,7 +120,7 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is StdCheats {
-    DssDeploy dssDeploy;
+    DssDeploy public dssDeploy;
     DssProxyActions dssProxyActions;
     DssProxyActionsEnd dssProxyActionsEnd;
     DssProxyActionsDsr dssProxyActionsDsr;
@@ -132,8 +132,7 @@ contract PHTDeploy is StdCheats {
     MkrAuthority mkrAuthority;
     PriceFeedFactory priceFeedFactory;
     PriceJoinFeedFactory joinFeedFactory;
-    GemJoinFab gemJoinFab;
-    GemJoin5Fab gemJoin5Fab;
+    GemJoinFab public gemJoinFab;
 
     PHTCollateralHelper collateralHelper;
     PHTTokenHelper tokenHelper;
@@ -389,8 +388,9 @@ contract PHTDeploy is StdCheats {
         joinFeedFactory.setAuthority(DSRoles(_authority));
         joinFeedFactory.setOwner(address(dssDeploy.pause().proxy()));
 
-        gemJoinFab = new GemJoinFab();
-        gemJoin5Fab = new GemJoin5Fab();
+        GemJoin1To5Fab gemJoin1To5Fab = new GemJoin1To5Fab();
+        GemJoin6To11Fab gemJoin6To11Fab = new GemJoin6To11Fab();
+        gemJoinFab = new GemJoinFab(address(gemJoin1To5Fab), address(gemJoin6To11Fab));
 
         // SetupIlkRegistry
         ilkRegistry = new IlkRegistry(
@@ -430,8 +430,10 @@ contract PHTDeploy is StdCheats {
                 dssDeploy.pause()
             );
 
-            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab, gemJoin5Fab);
-            collateralHelper.setTokenHelper(tokenHelper);
+            collateralHelper.file("calcFab", address(dssDeploy.calcFab()));
+            collateralHelper.file("clipFab", address(dssDeploy.clipFab()));
+            collateralHelper.file("gemJoinFab", address(gemJoinFab));
+            collateralHelper.file("tokenHelper", address(tokenHelper));
 
             proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.spotter()), address(collateralHelper));
