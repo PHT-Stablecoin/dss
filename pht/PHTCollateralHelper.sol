@@ -17,10 +17,10 @@ import {GemJoin5} from "dss-gem-joins/join-5.sol";
 import {GemJoin} from "dss/join.sol";
 import {LinearDecrease} from "dss/abaci.sol";
 
-import {PriceFeedFactory, PriceFeedAggregator} from "./factory/PriceFeedFactory.sol";
-import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "./factory/PriceJoinFeedFactory.sol";
-import {ChainlinkPip, AggregatorV3Interface} from "./helpers/ChainlinkPip.sol";
-import {PHTTokenHelper, TokenInfo} from "./PHTTokenHelper.sol";
+import {PriceFeedFactory, PriceFeedAggregator} from "pht/factory/PriceFeedFactory.sol";
+import {PriceJoinFeedFactory, PriceJoinFeedAggregator} from "pht/factory/PriceJoinFeedFactory.sol";
+import {ChainlinkPip, AggregatorV3Interface} from "pht/helpers/ChainlinkPip.sol";
+import {PHTTokenHelper, TokenInfo} from "pht/PHTTokenHelper.sol";
 
 import {ITokenFactory} from "../fiattoken/FiatTokenFactory.sol";
 import {FiatTokenInfo} from "../fiattoken/TokenTypes.sol";
