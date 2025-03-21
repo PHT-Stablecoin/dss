@@ -91,7 +91,7 @@ contract MigrationIssue29And30 is Script, PHTDeploy, Test {
                 address(PHTCollateralHelper(res.collateralHelper).tokenHelper())
             );
             console.log("[MigrationIssue29And30] collateralHelper.tokenHelper (new)", address(newTokenHelper));
-            PHTCollateralHelper(res.collateralHelper).setTokenHelper(newTokenHelper);
+            PHTCollateralHelper(res.collateralHelper).file("tokenHelper", address(newTokenHelper));
             DSRoles(address(res.authority)).setUserRole(address(res.collateralHelper), ROLE_GOV_CREATE_TOKEN, true);
             DSRoles(address(res.authority)).setRoleCapability(
                 ROLE_GOV_CREATE_TOKEN, address(newTokenHelper), newTokenHelper.createToken.selector, true

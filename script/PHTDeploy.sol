@@ -120,7 +120,7 @@ struct PHTDeployResult {
 }
 
 contract PHTDeploy is StdCheats {
-    DssDeploy dssDeploy;
+    DssDeploy public dssDeploy;
     DssProxyActions dssProxyActions;
     DssProxyActionsEnd dssProxyActionsEnd;
     DssProxyActionsDsr dssProxyActionsDsr;
@@ -132,7 +132,7 @@ contract PHTDeploy is StdCheats {
     MkrAuthority mkrAuthority;
     PriceFeedFactory priceFeedFactory;
     PriceJoinFeedFactory joinFeedFactory;
-    GemJoinFab gemJoinFab;
+    GemJoinFab public gemJoinFab;
 
     PHTCollateralHelper collateralHelper;
     PHTTokenHelper tokenHelper;
@@ -430,8 +430,10 @@ contract PHTDeploy is StdCheats {
                 dssDeploy.pause()
             );
 
-            collateralHelper.setFabs(dssDeploy.calcFab(), dssDeploy.clipFab(), gemJoinFab);
-            collateralHelper.setTokenHelper(tokenHelper);
+            collateralHelper.file("calcFab", address(dssDeploy.calcFab()));
+            collateralHelper.file("clipFab", address(dssDeploy.clipFab()));
+            collateralHelper.file("gemJoinFab", address(gemJoinFab));
+            collateralHelper.file("tokenHelper", address(tokenHelper));
 
             proxyActions.rely(address(dssDeploy.vat()), address(collateralHelper));
             proxyActions.rely(address(dssDeploy.spotter()), address(collateralHelper));

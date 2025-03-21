@@ -4,7 +4,8 @@ pragma experimental ABIEncoderV2;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import {DssDeploy, Clipper, Spotter} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
+import {Clipper, Spotter} from "lib/dss-cdp-manager/lib/dss-deploy/src/DssDeploy.sol";
+import {DssDeploy} from "dss-deploy/DssDeploy.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -78,6 +79,17 @@ contract PHTCollateralHelperTest is Test {
         vm.startPrank(alice);
         DSRoles(address(res.authority)).setUserRole(address(this), d.ROLE_FEED_FACTORY_CREATE(), true);
         vm.stopPrank();
+        // validate file function
+        DssDeploy dssDeploy = d.dssDeploy();
+        address calcFab = address(dssDeploy.calcFab());
+        address clipFab = address(dssDeploy.clipFab());
+        address gemJoinFab = address(d.gemJoinFab());
+        address tokenHelper = address(res.tokenHelper);
+
+        assertEq(address(h.calcFab()), calcFab);
+        assertEq(address(h.clipFab()), clipFab);
+        assertEq(address(h.gemJoinFab()), gemJoinFab);
+        assertEq(address(h.tokenHelper()), tokenHelper);
     }
 
     function geLastIlkName(address ilkRegistry) internal view returns (bytes32) {
@@ -300,6 +312,8 @@ contract PHTCollateralHelperTest is Test {
         PHTTokenHelper(res.tokenHelper).mint(token, alice, 100e18);
         assertEqDecimal(IERC20(token).balanceOf(alice), 100e18, 18);
     }
+
+    function test_file() public {}
 }
 
 interface IERC20Metadata is IERC20 {

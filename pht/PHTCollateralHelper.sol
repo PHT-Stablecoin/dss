@@ -64,9 +64,9 @@ contract PHTCollateralHelper is DSAuth {
     ESM public esm;
     DSPause public pause;
 
-    CalcFab calcFab;
-    ClipFab clipFab;
-    GemJoinFab gemJoinFab;
+    CalcFab public calcFab;
+    ClipFab public clipFab;
+    GemJoinFab public gemJoinFab;
 
     PHTTokenHelper public tokenHelper;
 
@@ -137,33 +137,20 @@ contract PHTCollateralHelper is DSAuth {
         authority = DSAuthority(pause.authority());
     }
 
-    function setFabs(CalcFab calcFab_, ClipFab clipFab_, GemJoinFab gemJoinFab_) public auth {
-        require(address(calcFab) == address(0), "PHTCollateralHelper/calcFab-inited");
-        require(address(calcFab_) != address(0), "PHTCollateralHelper/calcFab-not-set");
-        require(address(clipFab_) != address(0), "PHTCollateralHelper/clipFab-not-set");
-        require(address(gemJoinFab_) != address(0), "PHTCollateralHelper/gemJoinFab-not-set");
+    function file(bytes32 what, address data) public auth {
+        require(address(data) != address(0), "Invalid address");
 
-        calcFab = calcFab_;
-        clipFab = clipFab_;
-        gemJoinFab = gemJoinFab_;
+        if (what == "calcFab") calcFab = CalcFab(data);
+        else if (what == "clipFab") clipFab = ClipFab(data);
+        else if (what == "gemJoinFab") gemJoinFab = GemJoinFab(data);
+        else if (what == "tokenHelper") tokenHelper = PHTTokenHelper(data);
+        else revert("file-unrecognized-param");
     }
 
-    function setTokenHelper(PHTTokenHelper tokenHelper_) public auth {
-        require(address(tokenHelper_) != address(0), "PHTCollateralHelper/token-helper-not-set");
-        tokenHelper = tokenHelper_;
-    }
-
-    function deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
+    function _deployCollateralClip(bytes32 ilk, address join, address pip, address calc)
         internal
         returns (Clipper clip)
     {
-        require(ilk != bytes32(""), "Missing ilk name");
-        require(join != address(0), "Missing join address");
-        require(pip != address(0), "Missing pip address");
-        require(calc != address(0), "Missing calc address");
-
-        require(address(pause) != address(0), "Missing previous step");
-
         // Deploy
         clip = clipFab.newClip(address(this), address(vat), address(spotter), address(dog), ilk);
         spotter.file(ilk, "pip", pip); // Set pip
@@ -240,7 +227,7 @@ contract PHTCollateralHelper is DSAuth {
             _calc.rely(address(pause.proxy()));
             _calc.deny(address(this));
 
-            deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
+            _deployCollateralClip(ilkParams.ilk, _join, address(_pip), address(_calc));
         }
 
         {
